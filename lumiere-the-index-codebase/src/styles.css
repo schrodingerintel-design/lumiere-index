@@ -1,0 +1,215 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-forest: var(--forest);
+  --color-forest-deep: var(--forest-deep);
+  --color-live: var(--live);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+}
+
+/* ── DARK (default) ─────────────────────────────────────────────────────────── */
+:root {
+  --radius: 0.5rem;
+
+  /* Brand palette */
+  --cream:       oklch(0.957 0.013 85);
+  --ink:         oklch(0.13 0.005 265);   /* very deep blue-charcoal */
+  --surface:     oklch(0.17 0.007 265);   /* card/panel surface */
+  --surface-alt: oklch(0.21 0.007 265);   /* slightly lighter surface */
+  --border-col:  oklch(1 0 0 / 0.08);
+
+  /* Accent: a warm amber-gold for cinema luxury */
+  --forest:      oklch(0.80 0.14 75);     /* warm gold primary */
+  --forest-deep: oklch(0.70 0.12 75);     /* slightly darker gold */
+  --live:        oklch(0.74 0.16 152);
+  --up:          oklch(0.74 0.16 152);
+  --down:        oklch(0.65 0.22 27);
+
+  /* Semantic tokens → dark mode */
+  --background:            var(--ink);
+  --foreground:            var(--cream);
+  --card:                  oklch(1 0 0 / 0.04);
+  --card-foreground:       var(--cream);
+  --popover:               var(--surface);
+  --popover-foreground:    var(--cream);
+  --primary:               var(--forest);
+  --primary-foreground:    oklch(0.12 0.005 265);
+  --secondary:             var(--surface-alt);
+  --secondary-foreground:  var(--cream);
+  --muted:                 var(--surface);
+  --muted-foreground:      oklch(0.62 0.012 265);
+  --accent:                var(--forest);
+  --accent-foreground:     oklch(0.12 0.005 265);
+  --destructive:           var(--down);
+  --destructive-foreground: var(--cream);
+  --border:                var(--border-col);
+  --input:                 oklch(1 0 0 / 0.08);
+  --ring:                  var(--forest);
+}
+
+/* ── LIGHT override (opt-in via .light class) ──────────────────────────────── */
+.light {
+  --ink:         oklch(0.18 0.005 80);
+  --cream:       oklch(0.957 0.013 85);
+  --forest:      oklch(0.45 0.08 155);
+  --forest-deep: oklch(0.32 0.06 155);
+  --background:  var(--cream);
+  --foreground:  var(--ink);
+  --card:        oklch(1 0 0 / 60%);
+  --card-foreground: var(--ink);
+  --popover:     oklch(0.99 0.005 85);
+  --popover-foreground: var(--ink);
+  --muted:       oklch(0.92 0.012 85);
+  --muted-foreground: oklch(0.45 0.008 80);
+  --border:      oklch(0.18 0.005 80 / 10%);
+  --input:       oklch(0.18 0.005 80 / 14%);
+  --primary:     var(--forest);
+  --primary-foreground: oklch(0.97 0.01 85);
+  --secondary:   oklch(0.92 0.012 85);
+  --secondary-foreground: var(--ink);
+  --accent:      var(--forest);
+  --accent-foreground: oklch(0.97 0.01 85);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, .font-serif { font-family: var(--font-serif); letter-spacing: -0.01em; }
+  .font-mono, .tabular { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+}
+
+/* ── Grain overlay — subtler on dark ──────────────────────────────────────── */
+.grain-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 60;
+  opacity: 0.045; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ── Glass — rich dark edition ───────────────────────────────────────────── */
+@utility glass {
+  background-color: oklch(1 0 0 / 0.045);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.08) inset,
+    0 0 0 0.5px oklch(1 0 0 / 0.04) inset,
+    0 16px 48px -20px oklch(0 0 0 / 0.55);
+}
+@utility glass-dark {
+  background-color: oklch(0.14 0.006 265 / 0.85);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  color: var(--cream);
+}
+/* Same look as glass but with NO backdrop-filter — for panels that sit over a
+   flat background (nothing to blur). Avoids the Chromium compositing glitch
+   where hovering a panel re-rasterizes its blurred layer and flickers
+   neighboring glass surfaces (e.g. poster cards). */
+@utility glass-flat {
+  background-color: oklch(1 0 0 / 0.06);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.08) inset,
+    0 0 0 0.5px oklch(1 0 0 / 0.04) inset,
+    0 16px 48px -20px oklch(0 0 0 / 0.55);
+}
+@utility card-lift {
+  transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s ease;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 56px -20px oklch(0 0 0 / 0.55), 0 0 0 1px oklch(1 0 0 / 0.08);
+  }
+}
+@utility live-dot {
+  position: relative;
+  &::before {
+    content: ""; position: absolute; inset: 0; border-radius: 9999px;
+    background: var(--live); animation: pingDot 1.6s cubic-bezier(0,0,.2,1) infinite;
+  }
+}
+
+@keyframes pingDot {
+  0% { transform: scale(1); opacity: .9; }
+  80%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp .7s cubic-bezier(.2,.7,.2,1) both; }
+.delay-100 { animation-delay: .08s }
+.delay-200 { animation-delay: .16s }
+.delay-300 { animation-delay: .24s }
+.delay-400 { animation-delay: .32s }
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-ticker { animation: ticker 40s linear infinite; }
+
+@keyframes barGrow {
+  from { width: 0; }
+}
+.bar-grow > * { animation: barGrow 1.2s cubic-bezier(.2,.7,.2,1) both; }
+
+/* Scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Selection highlight */
+::selection {
+  background: oklch(0.80 0.14 75 / 0.35);
+  color: var(--cream);
+}
+
+/* Scrollbar styling for dark mode */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 0.22); }

@@ -1,0 +1,12 @@
+# Freebuff desktop state (conversation DB) — never commit
+.freebuff/
+
+# Logs
+*.log
+logs/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
