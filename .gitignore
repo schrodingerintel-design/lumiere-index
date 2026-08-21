@@ -10,3 +10,6 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
+
+# Lovable template metadata
+.lovable/
