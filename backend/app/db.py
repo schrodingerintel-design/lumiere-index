@@ -5,7 +5,7 @@ from sqlalchemy.sql import sqltypes
 from app.config import settings
 
 engine = create_engine(
-    settings.database_url,
+    settings.resolved_database_url,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,

@@ -1,3 +1,4 @@
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -6,16 +7,51 @@ class Settings(BaseSettings):
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: str = "http://localhost:8080"
+    cors_origins: str = (
+        "http://localhost:8080,https://lumiere-index.vercel.app"
+    )
 
-    mysql_host: str = "mysql"
-    mysql_port: int = 3306
-    mysql_user: str = "lumiere"
-    mysql_password: str = "lumiere_pw"
-    mysql_db: str = "lumiere"
+    # -- MySQL ---------------------------------------------------------------
+    # Railway / Heroku / Render expose DATABASE_URL; individual MYSQL_* vars
+    # are a fallback for Docker Compose.
+    database_url_raw: str = Field(
+        default="",
+        validation_alias=AliasChoices("database_url_raw", "DATABASE_URL", "MYSQL_URL"),
+        description="Full SQLAlchemy DB URL (overrides individual fields)",
+    )
 
-    redis_url: str = "redis://redis:6379/0"
-    redis_password: str = ""
+    mysql_host: str = Field(
+        default="mysql",
+        validation_alias=AliasChoices("mysql_host", "MYSQLHOST"),
+    )
+    mysql_port: int = Field(
+        default=3306,
+        validation_alias=AliasChoices("mysql_port", "MYSQLPORT"),
+    )
+    mysql_user: str = Field(
+        default="lumiere",
+        validation_alias=AliasChoices("mysql_user", "MYSQLUSER"),
+    )
+    mysql_password: str = Field(
+        default="",
+        validation_alias=AliasChoices("mysql_password", "MYSQLPASSWORD"),
+        description="MySQL user password",
+    )
+    mysql_db: str = Field(
+        default="lumiere",
+        validation_alias=AliasChoices("mysql_db", "MYSQLDATABASE"),
+    )
+
+    # -- Redis ---------------------------------------------------------------
+    redis_url: str = Field(
+        default="redis://redis:6379/0",
+        validation_alias=AliasChoices("redis_url", "REDIS_URL"),
+    )
+    redis_password: str = Field(
+        default="",
+        validation_alias=AliasChoices("redis_password", "REDIS_PASSWORD"),
+        description="Redis password",
+    )
 
     reddit_user_agent: str = "lumiere-index/0.1"
     newsapi_key: str = ""
@@ -35,11 +71,28 @@ class Settings(BaseSettings):
     refresh_interval_minutes: int = 15
 
     @property
-    def database_url(self) -> str:
-        return (
-            f"mysql+pymysql://{self.mysql_user}:{self.mysql_password}"
-            f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_db}?charset=utf8mb4"
-        )
+    def resolved_database_url(self) -> str:
+        """Return the database URL, preferring DATABASE_URL / MYSQL_URL.
+
+        Railway provides ``mysql://...`` which targets the C MySQL client.
+        We only ship ``pymysql``, so rewrite the prefix and ensure the
+        charset query-parameter is present.
+        """
+        url = self.database_url_raw
+        if not url:
+            url = (
+                f"mysql+pymysql://{self.mysql_user}:{self.mysql_password}"
+                f"@{self.mysql_host}:{self.mysql_port}/{self.mysql_db}"
+            )
+        # Normalise: mysql:// → mysql+pymysql:// (we ship pymysql, not mysqlclient)
+        if url.startswith("mysql://"):
+            url = "mysql+pymysql://" + url[len("mysql://") :]
+        elif url.startswith("mysql+pymysql://"):
+            pass  # already correct
+        # Ensure charset param
+        if "charset=" not in url:
+            url += ("&" if "?" in url else "?") + "charset=utf8mb4"
+        return url
 
     @property
     def cors_list(self) -> list[str]:
