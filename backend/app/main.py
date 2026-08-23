@@ -63,6 +63,11 @@ app.add_middleware(SimpleRateLimiterMiddleware, requests_per_minute=120)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_list,
+    allow_origin_regex=(
+        r"https://lumiere-index.*\.vercel\.app"
+        r"|https://lumiere-index-production\.up\.railway\.app"
+        r"|http://localhost(:\d+)?"
+    ),
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=False,

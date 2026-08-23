@@ -5,6 +5,7 @@ Idempotent: safe to run on every container start.
 from datetime import datetime, timezone, timedelta, date
 import random
 from slugify import slugify
+from sqlalchemy import select, func
 
 from app.db import SessionLocal
 from app.models import Film, FilmAlias, Source, Ranking, Mention
@@ -114,18 +115,33 @@ MOVEMENTS = [14, 11, 8, 7, 5, 4, 3, 2, 2, 1, 0, 0, 0, 0, -1, -2, -3, -5, -7, -9]
 
 
 def run() -> None:
+    print("Seed: starting...")
     with SessionLocal() as db:
-        # Ensure sources exist
+        # ── Freshness check ──────────────────────────────────────────────────
+        # Skip re-seeding if a ranking snapshot already exists within the last
+        # 12 hours. This prevents hammering the DB on every Railway redeploy
+        # while still seeding a fresh container on first boot.
+        latest = db.scalar(
+            select(func.max(Ranking.snapshot_at))
+        )
+        if latest is not None:
+            age_hours = (datetime.now(timezone.utc) - latest.replace(tzinfo=timezone.utc)).total_seconds() / 3600
+            if age_hours < 12:
+                print(f"Seed: data is fresh ({age_hours:.1f}h old) — skipping re-seed.")
+                return
+
+        # ── Sources ──────────────────────────────────────────────────────────
         for key, name, weight in SOURCES:
             if not db.query(Source).filter_by(key=key).first():
                 db.add(Source(key=key, name=name, weight=weight))
         db.commit()
 
-        # Delete any old out-of-scope/classic films that don't belong in Lumiere V1
+        # Remove out-of-scope films that don't belong in Lumière V1
         allowed_titles = {f[0] for f in FILMS}
         db.query(Film).filter(~Film.title.in_(allowed_titles)).delete(synchronize_session=False)
         db.commit()
 
+        # ── Films ────────────────────────────────────────────────────────────
         created_films = []
         for i, (title, director, year, cc, g1, g2, rel_date, genre) in enumerate(FILMS, start=1):
             slug = slugify(title)
@@ -140,7 +156,9 @@ def run() -> None:
                 db.add(film)
                 db.commit()
                 db.refresh(film)
-                db.add(FilmAlias(film_id=film.id, alias=title))
+                # Only add alias if not already present
+                if not db.query(FilmAlias).filter_by(film_id=film.id, alias=title).first():
+                    db.add(FilmAlias(film_id=film.id, alias=title))
                 db.commit()
             else:
                 film.director = director
@@ -149,24 +167,23 @@ def run() -> None:
                 db.commit()
             created_films.append(film)
 
-        # Clear existing rankings and regenerate a fresh, realistic snapshot
+        # ── Rankings ─────────────────────────────────────────────────────────
+        # Clear and regenerate a fresh, deterministic ranking snapshot
         db.query(Ranking).delete()
         db.commit()
 
         now = datetime.now(timezone.utc)
-        random.seed(42)  # Deterministic seed for clean consistency
+        random.seed(42)  # Deterministic for consistency
 
         for i, film in enumerate(created_films, start=1):
-            # Dynamic realistic score distribution (96.4 down to 44.2)
             base_score = 96.4 - (i - 1) * 0.65 + random.uniform(-0.3, 0.3)
             score = round(max(38.0, min(97.8, base_score)), 1)
 
-            # Assign natural movement values to top 20 films
             movement = MOVEMENTS[i - 1] if i - 1 < len(MOVEMENTS) else random.choice([-2, -1, 0, 1])
             prev_rank = i - movement if (i - movement) > 0 else None
             weeks = max(1, min(24, int(16 - i * 0.15 + random.randint(-1, 2))))
 
-            ranking = Ranking(
+            db.add(Ranking(
                 snapshot_at=now,
                 film_id=film.id,
                 rank=i,
@@ -175,55 +192,72 @@ def run() -> None:
                 movement=movement,
                 peak_rank=min(i, prev_rank or i),
                 weeks_on_chart=weeks,
-            )
-            db.add(ranking)
+            ))
 
         db.commit()
 
-        # Seed real Mention rows so signal metrics & sentiment calculations are 100% genuine
-        db.query(Mention).delete()
-        db.commit()
+        # ── Mentions ─────────────────────────────────────────────────────────
+        # Delete existing seed mentions then re-insert. Wrapped in try/except
+        # so a partial-state DB (e.g. rows from a previously crashed deploy)
+        # never prevents the server from starting.
+        total_mentions = 0
+        try:
+            db.query(Mention).delete()
+            db.commit()
 
-        sources = db.query(Source).all()
-        src_map = {s.key: s.id for s in sources}
+            sources = db.query(Source).all()
+            src_map = {s.key: s.id for s in sources}
 
-        mentions_batch = []
-        for i, film in enumerate(created_films, start=1):
-            # Higher-ranked films have higher mention density (from 1,800 down to 120)
-            count = max(40, int(1800 - i * 18 + random.randint(-20, 30)))
-            for j in range(count):
-                src_key = random.choice(["reddit", "news", "letterboxd", "youtube", "tiktok"])
-                src_id = src_map.get(src_key, 1)
+            for i, film in enumerate(created_films, start=1):
+                count = max(40, int(1800 - i * 18 + random.randint(-20, 30)))
+                batch = []
+                for j in range(count):
+                    src_key = random.choice(["reddit", "news", "letterboxd", "youtube", "tiktok"])
+                    src_id = src_map.get(src_key, 1)
 
-                # Sentiment score centered around film rank
-                sentiment_val = random.gauss(0.6 - (i * 0.005), 0.25)
-                sentiment_val = max(-1.0, min(1.0, sentiment_val))
+                    sentiment_val = random.gauss(0.6 - (i * 0.005), 0.25)
+                    sentiment_val = max(-1.0, min(1.0, sentiment_val))
+                    label = (
+                        "positive" if sentiment_val > 0.15
+                        else "negative" if sentiment_val < -0.15
+                        else "neutral"
+                    )
 
-                label = "positive" if sentiment_val > 0.15 else ("negative" if sentiment_val < -0.15 else "neutral")
+                    batch.append(Mention(
+                        film_id=film.id,
+                        source_id=src_id,
+                        external_id=f"seed_{film.id}_{j}",
+                        url=f"https://{src_key}.com/mention/{film.slug}/{j}",
+                        author=f"reviewer_{random.randint(100, 999)}",
+                        country_code=film.country_origin or "US",
+                        language="en",
+                        text=f"Audience reaction to {film.title} directed by {film.director}.",
+                        sentiment_score=round(sentiment_val, 2),
+                        sentiment_label=label,
+                        engagement=random.randint(10, 850),
+                        created_at=now - timedelta(hours=random.uniform(0.5, 48.0)),
+                    ))
+                # Use merge() per-object so duplicate external_id never raises
+                # IntegrityError — merge does INSERT if new, UPDATE if exists.
+                for mention in batch:
+                    db.merge(mention)
+                db.commit()
+                total_mentions += len(batch)
 
-                created_time = now - timedelta(hours=random.uniform(0.5, 48.0))
-                engagement_val = random.randint(10, 850)
+        except Exception as exc:
+            db.rollback()
+            print(f"Seed: WARNING — mention seeding failed ({exc}). Rankings are intact; server will start.")
 
-                mentions_batch.append(Mention(
-                    film_id=film.id,
-                    source_id=src_id,
-                    external_id=f"seed_{film.id}_{j}",
-                    url=f"https://{src_key}.com/mention/{film.slug}/{j}",
-                    author=f"reviewer_{random.randint(100, 999)}",
-                    country_code=film.country_origin or "US",
-                    language="en",
-                    text=f"Audience reaction to {film.title} directed by {film.director}.",
-                    sentiment_score=round(sentiment_val, 2),
-                    sentiment_label=label,
-                    engagement=engagement_val,
-                    created_at=created_time,
-                ))
-
-        db.bulk_save_objects(mentions_batch)
-        db.commit()
-
-    print(f"Seed complete. {len(FILMS)} clean films seeded with realistic rankings, movements, and {len(mentions_batch)} audience mentions.")
+    print(f"Seed complete. {len(FILMS)} films, {total_mentions} mentions seeded.")
 
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except Exception as exc:
+        # Log the error but exit 0 so the Dockerfile CMD chain continues
+        # to start uvicorn. The app can serve existing data if any exists.
+        print(f"Seed: FATAL — {exc}")
+        import sys
+        sys.exit(0)
+

@@ -9,8 +9,10 @@ class Settings(BaseSettings):
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: str = (
-        "http://localhost:8080,https://lumiere-index.vercel.app"
+    cors_origins: str = Field(
+        default="http://localhost:8080,https://lumiere-index.vercel.app",
+        validation_alias=AliasChoices("cors_origins", "CORS_ORIGINS"),
+        description="Comma-separated list of allowed CORS origins",
     )
 
     # -- MySQL ---------------------------------------------------------------
