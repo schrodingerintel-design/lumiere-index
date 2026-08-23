@@ -1,3 +1,5 @@
+import os
+
 from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -41,6 +43,39 @@ class Settings(BaseSettings):
         default="lumiere",
         validation_alias=AliasChoices("mysql_db", "MYSQLDATABASE"),
     )
+
+    def model_post_init(self, __context) -> None:
+        """Ensure Railway env vars override defaults.
+
+        AliasChoices does not always resolve env vars in pydantic-settings,
+        so we fall back to explicit os.environ lookups.
+        """
+        # DATABASE_URL — Railway's canonical connection string
+        if not self.database_url_raw:
+            self.database_url_raw = (
+                os.environ.get("DATABASE_URL")
+                or os.environ.get("MYSQL_URL")
+                or ""
+            )
+        # Individual MySQL fields — Railway uses MYSQLDATABASE (no underscore)
+        if self.mysql_db == "lumiere":
+            self.mysql_db = (
+                os.environ.get("MYSQLDATABASE")
+                or os.environ.get("MYSQL_DATABASE")
+                or self.mysql_db
+            )
+        if self.mysql_host == "mysql":
+            self.mysql_host = os.environ.get("MYSQLHOST") or self.mysql_host
+        if self.mysql_port == 3306:
+            self.mysql_port = int(
+                os.environ.get("MYSQLPORT") or self.mysql_port
+            )
+        if self.mysql_user == "lumiere":
+            self.mysql_user = os.environ.get("MYSQLUSER") or self.mysql_user
+        if self.mysql_password == "":
+            self.mysql_password = (
+                os.environ.get("MYSQLPASSWORD") or self.mysql_password
+            )
 
     # -- Redis ---------------------------------------------------------------
     redis_url: str = Field(
