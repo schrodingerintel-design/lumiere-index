@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     )
     mysql_db: str = Field(
         default="lumiere",
-        validation_alias=AliasChoices("mysql_db", "MYSQLDATABASE"),
+        validation_alias=AliasChoices("mysql_db", "MYSQLDATABASE", "MYSQL_DATABASE"),
     )
 
     # -- Redis ---------------------------------------------------------------
