@@ -117,17 +117,11 @@ MOVEMENTS = [14, 11, 8, 7, 5, 4, 3, 2, 2, 1, 0, 0, 0, 0, -1, -2, -3, -5, -7, -9]
 def run() -> None:
     print("Seed: starting...")
     with SessionLocal() as db:
-        # ── Freshness check ──────────────────────────────────────────────────
-        # Skip re-seeding if a ranking snapshot already exists within the last
-        # 12 hours. This prevents hammering the DB on every Railway redeploy
-        # while still seeding a fresh container on first boot.
+        film_count = db.scalar(select(func.count(Film.id))) or 0
         rank_count = db.scalar(select(func.count(Ranking.id))) or 0
-        latest = db.scalar(select(func.max(Ranking.snapshot_at)))
-        if rank_count > 0 and latest is not None:
-            age_hours = (datetime.now(timezone.utc) - latest.replace(tzinfo=timezone.utc)).total_seconds() / 3600
-            if age_hours < 12:
-                print(f"Seed: data is fresh ({age_hours:.1f}h old) — skipping re-seed.")
-                return
+        if film_count >= 100 and rank_count >= 100:
+            print(f"Seed: data already present (films={film_count}, rankings={rank_count}) — skipping re-seed.")
+            return
 
         # ── Sources ──────────────────────────────────────────────────────────
         for key, name, weight in SOURCES:
@@ -153,18 +147,15 @@ def run() -> None:
                     synopsis=f"{title}, directed by {director} ({year}). A premier {genre} entry on Lumière.",
                 )
                 db.add(film)
-                db.commit()
-                db.refresh(film)
-                # Only add alias if not already present
+                db.flush()
                 if not db.query(FilmAlias).filter_by(film_id=film.id, alias=title).first():
                     db.add(FilmAlias(film_id=film.id, alias=title))
-                db.commit()
             else:
                 film.director = director
                 film.year = year
                 film.release_date = rel_date
-                db.commit()
             created_films.append(film)
+        db.commit()
 
         # ── Rankings ─────────────────────────────────────────────────────────
         # Clear and regenerate a fresh, deterministic ranking snapshot
