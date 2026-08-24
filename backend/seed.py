@@ -119,8 +119,9 @@ def run() -> None:
     with SessionLocal() as db:
         film_count = db.scalar(select(func.count(Film.id))) or 0
         rank_count = db.scalar(select(func.count(Ranking.id))) or 0
-        if film_count >= 100 and rank_count >= 100:
-            print(f"Seed: data already present (films={film_count}, rankings={rank_count}) — skipping re-seed.")
+        poster_count = db.scalar(select(func.count(Film.id)).where(Film.poster_url.isnot(None))) or 0
+        if film_count >= 100 and rank_count >= 100 and poster_count >= 50:
+            print(f"Seed: data already present (films={film_count}, rankings={rank_count}, posters={poster_count}) — skipping re-seed.")
             return
 
         # ── Sources ──────────────────────────────────────────────────────────
@@ -156,6 +157,58 @@ def run() -> None:
                 film.release_date = rel_date
             created_films.append(film)
         db.commit()
+
+        # ── Backfill Poster & Backdrop URLs from TMDB ─────────────────────────
+        from app.config import settings
+        if settings.tmdb_api_key:
+            print("Seed: backfilling poster & backdrop URLs from TMDB...")
+            from concurrent.futures import ThreadPoolExecutor
+            import httpx
+
+            TMDB_IMG = "https://image.tmdb.org/t/p"
+
+            def _fetch_poster(title: str, year: int | None):
+                try:
+                    url = "https://api.themoviedb.org/3/search/movie"
+                    params = {"api_key": settings.tmdb_api_key, "query": title}
+                    if year:
+                        params["year"] = year
+                    r = httpx.get(url, params=params, timeout=10)
+                    if r.status_code == 200:
+                        res = r.json().get("results", [])
+                        if not res and year:
+                            r = httpx.get(url, params={"api_key": settings.tmdb_api_key, "query": title}, timeout=10)
+                            if r.status_code == 200:
+                                res = r.json().get("results", [])
+                        if res:
+                            best = res[0]
+                            p = best.get("poster_path")
+                            b = best.get("backdrop_path")
+                            tmdb_id = best.get("id")
+                            return (
+                                f"{TMDB_IMG}/w500{p}" if p else None,
+                                f"{TMDB_IMG}/w1280{b}" if b else None,
+                                tmdb_id,
+                            )
+                except Exception:
+                    pass
+                return None, None, None
+
+            missing_films = [f for f in created_films if not f.poster_url]
+            if missing_films:
+                with ThreadPoolExecutor(max_workers=10) as pool:
+                    futures = {pool.submit(_fetch_poster, f.title, f.year): f for f in missing_films}
+                    for future in futures:
+                        film = futures[future]
+                        p_url, b_url, tmdb_id = future.result()
+                        if p_url:
+                            film.poster_url = p_url
+                        if b_url:
+                            film.backdrop_url = b_url
+                        if tmdb_id and not film.tmdb_id:
+                            film.tmdb_id = tmdb_id
+                db.commit()
+                print("Seed: poster & backdrop URLs backfilled successfully.")
 
         # ── Rankings ─────────────────────────────────────────────────────────
         # Clear and regenerate a fresh, deterministic ranking snapshot

@@ -93,7 +93,11 @@ class Settings(BaseSettings):
     reddit_user_agent: str = "lumiere-index/0.1"
     newsapi_key: str = ""
     youtube_api_key: str = ""
-    tmdb_api_key: str = ""
+    tmdb_api_key: str = Field(
+        default="b58020901e8a8af0f3d636c6d83b08c6",
+        validation_alias=AliasChoices("tmdb_api_key", "TMDB_API_KEY"),
+        description="TMDB API Key",
+    )
     rapidapi_key: str = ""
     rapidapi_tiktok_host: str = ""
     rapidapi_youtube_host: str = "youtube-v3-alternative.p.rapidapi.com"
