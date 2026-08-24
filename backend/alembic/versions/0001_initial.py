@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("synopsis", sa.Text),
         sa.Column("gradient_from", sa.String(20)),
         sa.Column("gradient_to", sa.String(20)),
+        sa.Column("release_date", sa.Date),
         sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
     )
     op.create_table(
