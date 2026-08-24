@@ -220,7 +220,7 @@ def sync_tmdb_catalog(db: Session, max_films: int = 100) -> list[Film]:
     # changed the catalog. On every restart the sync re-fetches the same TMDB
     # pages and adds nothing new; recomputing from identical data produces a
     # zero-movement snapshot that wipes out real movement between refreshes.
-    if newly_added:
+    if newly_added or db.scalar(select(func.max(Ranking.snapshot_at))) is None:
         recompute_rankings(db)
 
     print(f"Successfully synced {len(synced_films)} live movies from TMDB API to database.")

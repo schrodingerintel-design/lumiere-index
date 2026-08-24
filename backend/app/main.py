@@ -41,12 +41,28 @@ async def lifespan(app: FastAPI):
     from accepting requests. Serve from whatever data already exists while the
     sync refreshes the catalog, and let /readyz report when data is available.
     """
-    global _sync_task
+    # ── Database Bootstrapping ────────────────────────────────────────────────
+    # If the database has no films or ranking snapshots, run seed immediately.
+    try:
+        from app.db import SessionLocal
+        from sqlalchemy import select, func
+        from app.models import Film, Ranking
+        with SessionLocal() as db:
+            film_cnt = db.scalar(select(func.count(Film.id))) or 0
+            rank_cnt = db.scalar(select(func.count(Ranking.id))) or 0
+            if film_cnt == 0 or rank_cnt == 0:
+                log.info("startup: database empty (films=%s, rankings=%s) — auto-seeding...", film_cnt, rank_cnt)
+                import seed
+                seed.run()
+                log.info("startup: auto-seed complete")
+    except Exception as exc:
+        log.warning("startup: auto-seed check failed (non-fatal) — %s", exc)
+
     if settings.tmdb_api_key:
         _sync_task = asyncio.create_task(_run_tmdb_sync_async())
         log.info("startup: server ready immediately; TMDB sync running in background")
     else:
-        log.info("startup: TMDB_API_KEY not set — skipping live sync, using seed data")
+        log.info("startup: TMDB_API_KEY not set — using seed data")
     yield
     if _sync_task:
         _sync_task.cancel()

@@ -121,10 +121,9 @@ def run() -> None:
         # Skip re-seeding if a ranking snapshot already exists within the last
         # 12 hours. This prevents hammering the DB on every Railway redeploy
         # while still seeding a fresh container on first boot.
-        latest = db.scalar(
-            select(func.max(Ranking.snapshot_at))
-        )
-        if latest is not None:
+        rank_count = db.scalar(select(func.count(Ranking.id))) or 0
+        latest = db.scalar(select(func.max(Ranking.snapshot_at)))
+        if rank_count > 0 and latest is not None:
             age_hours = (datetime.now(timezone.utc) - latest.replace(tzinfo=timezone.utc)).total_seconds() / 3600
             if age_hours < 12:
                 print(f"Seed: data is fresh ({age_hours:.1f}h old) — skipping re-seed.")
@@ -197,9 +196,6 @@ def run() -> None:
         db.commit()
 
         # ── Mentions ─────────────────────────────────────────────────────────
-        # Delete existing seed mentions then re-insert. Wrapped in try/except
-        # so a partial-state DB (e.g. rows from a previously crashed deploy)
-        # never prevents the server from starting.
         total_mentions = 0
         try:
             db.query(Mention).delete()
@@ -208,9 +204,10 @@ def run() -> None:
             sources = db.query(Source).all()
             src_map = {s.key: s.id for s in sources}
 
+            mentions_batch = []
             for i, film in enumerate(created_films, start=1):
-                count = max(40, int(1800 - i * 18 + random.randint(-20, 30)))
-                batch = []
+                # ~15 to 25 mentions per film (~1,800 total, seeds instantly)
+                count = max(15, int(25 - i * 0.1))
                 for j in range(count):
                     src_key = random.choice(["reddit", "news", "letterboxd", "youtube", "tiktok"])
                     src_id = src_map.get(src_key, 1)
@@ -223,7 +220,7 @@ def run() -> None:
                         else "neutral"
                     )
 
-                    batch.append(Mention(
+                    mentions_batch.append(Mention(
                         film_id=film.id,
                         source_id=src_id,
                         external_id=f"seed_{film.id}_{j}",
@@ -237,18 +234,20 @@ def run() -> None:
                         engagement=random.randint(10, 850),
                         created_at=now - timedelta(hours=random.uniform(0.5, 48.0)),
                     ))
-                # Use merge() per-object so duplicate external_id never raises
-                # IntegrityError — merge does INSERT if new, UPDATE if exists.
-                for mention in batch:
-                    db.merge(mention)
-                db.commit()
-                total_mentions += len(batch)
+
+            db.bulk_save_objects(mentions_batch)
+            db.commit()
+            total_mentions = len(mentions_batch)
 
         except Exception as exc:
             db.rollback()
             print(f"Seed: WARNING — mention seeding failed ({exc}). Rankings are intact; server will start.")
 
-    print(f"Seed complete. {len(FILMS)} films, {total_mentions} mentions seeded.")
+        # Ensure initial ranking snapshot is computed
+        from app.services.ranking import recompute_rankings
+        recompute_rankings(db)
+
+    print(f"Seed complete. {len(FILMS)} films, {total_mentions} mentions seeded with rankings snapshot.")
 
 
 if __name__ == "__main__":
