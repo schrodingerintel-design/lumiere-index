@@ -21,6 +21,10 @@ dist-ssr
 .nitro
 *.local
 
+# The Vercel prebuilt function needs its traced deps (tslib) shipped with it.
+!.vercel/output/functions/__server.func/node_modules/
+!.vercel/output/functions/__server.func/node_modules/**
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
