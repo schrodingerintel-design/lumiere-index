@@ -10,7 +10,6 @@ from app.ingest.trends import fetch_trends
 from app.ingest.letterboxd import fetch_letterboxd
 from app.ingest.pipeline import ingest_batch, record_ingest
 from app.services.ranking import recompute_rankings as _recompute
-from app.services.topics import rebuild_trending_topics
 from app.services.rollup import rollup_daily as _rollup
 from app.models import Film
 
@@ -100,12 +99,6 @@ def recompute_rankings() -> str:
     with SessionLocal() as db:
         snap = _recompute(db)
         return snap.isoformat()
-
-
-@celery.task
-def rebuild_trending() -> None:
-    with SessionLocal() as db:
-        rebuild_trending_topics(db)
 
 
 @celery.task

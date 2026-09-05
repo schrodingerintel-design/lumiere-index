@@ -27,9 +27,13 @@ def db_session():
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSessionLocal()
 
-    # Seed test data
-    f1 = Film(slug="mickey-17", title="Mickey 17", director="Bong Joon-ho", year=2025)
-    f2 = Film(slug="superman", title="Superman", director="James Gunn", year=2025)
+    from datetime import date, timedelta
+    today = date.today()
+    # Seed test data — include release_date so the recency (R) component has data
+    f1 = Film(slug="mickey-17", title="Mickey 17", director="Bong Joon-ho",
+              year=2025, release_date=today - timedelta(days=60))
+    f2 = Film(slug="superman", title="Superman", director="James Gunn",
+              year=2025, release_date=today - timedelta(days=45))
     session.add_all([f1, f2])
     session.commit()
 

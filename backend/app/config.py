@@ -107,9 +107,28 @@ class Settings(BaseSettings):
 
     admin_key: str = ""
 
-    ranking_half_life_hours: float = 24.0
-    ranking_window_hours: float = 48.0
+    ranking_ca_lambda: float = 0.89           # daily decay factor for CA window (≈6-day half-life)
+    ranking_ca_window_days: int = 30          # max lookback days for CA
+    ranking_momentum_short_hl: float = 1.5   # EWMA short half-life (days) for momentum
+    ranking_momentum_long_hl: float = 7.0    # EWMA long half-life (days) for momentum
+    ranking_ae_window_days: int = 14          # audience-engagement rolling window (days)
+    ranking_recency_window_days: int = 21     # linear recency decay window (days)
+    ranking_min_tracked_days: int = 2         # min days of data before trusting CA/AE scores
+    # Cross-Platform Reach: a platform only counts toward CP when its decay-weighted
+    # presence (same λ as CA) clears this floor.  Old-only activity (nothing within
+    # roughly one half-life) stops counting, so cumulative 30-day history can never
+    # inflate CP.  0.5 ≈ a mention within ~6 days under the default λ=0.89.
+    ranking_cp_min_signal: float = 0.5
+    # Headline gate: "anchors the Index" requires current activity — CA_norm or
+    # M_norm at/above these floors — independent of blended FinalScore rank.
+    headline_min_ca: float = 0.5             # CA_norm (percentile) floor for headline
+    headline_min_momentum: float = 0.6       # M_norm floor for headline (neutral center = 0.5)
     refresh_interval_minutes: int = 15
+
+    # Confidence tiers for editorial claims (raw mention/signal counts, pre-normalization)
+    confidence_low_threshold: int = 5       # below this → "insufficient"
+    confidence_medium_threshold: int = 25   # below this → "low"
+    confidence_high_threshold: int = 100    # below this → "moderate"; at/above → "high"
 
     @property
     def resolved_database_url(self) -> str:

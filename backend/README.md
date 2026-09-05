@@ -48,8 +48,6 @@ Base: `/api/v1`
 | GET    | `/films/{slug}`              | Detail + sentiment split    |
 | GET    | `/films/{slug}/timeline`     | Daily sparkline points      |
 | GET    | `/films/{slug}/countries`    | Country breakdown           |
-| GET    | `/trending/topics`           | TF-IDF topics               |
-| GET    | `/countries`                 | Global country grid         |
 | GET    | `/stats/live`                | Hero live stats             |
 | GET    | `/meta/refresh`              | Snapshot + 15-min countdown |
 | POST   | `/newsletter/subscribe`      | `{ "email": "…" }`          |

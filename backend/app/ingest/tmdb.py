@@ -3,6 +3,7 @@ from datetime import datetime, timezone, date as date_type
 import random
 import httpx
 from slugify import slugify
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.config import settings

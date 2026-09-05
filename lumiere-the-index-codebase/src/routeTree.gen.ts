@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as Top100RouteImport } from './routes/top-100'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -23,6 +24,11 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FilmsSlugRouteImport } from './routes/films.$slug'
 
+const WatchlistRoute = WatchlistRouteImport.update({
+  id: '/watchlist',
+  path: '/watchlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrendingRoute = TrendingRouteImport.update({
   id: '/trending',
   path: '/trending',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/top-100': typeof Top100Route
   '/trending': typeof TrendingRoute
+  '/watchlist': typeof WatchlistRoute
   '/films/$slug': typeof FilmsSlugRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/top-100': typeof Top100Route
   '/trending': typeof TrendingRoute
+  '/watchlist': typeof WatchlistRoute
   '/films/$slug': typeof FilmsSlugRoute
 }
 export interface FileRoutesById {
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/top-100': typeof Top100Route
   '/trending': typeof TrendingRoute
+  '/watchlist': typeof WatchlistRoute
   '/films/$slug': typeof FilmsSlugRoute
 }
 export interface FileRouteTypes {
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/top-100'
     | '/trending'
+    | '/watchlist'
     | '/films/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/top-100'
     | '/trending'
+    | '/watchlist'
     | '/films/$slug'
   id:
     | '__root__'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/top-100'
     | '/trending'
+    | '/watchlist'
     | '/films/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -196,11 +208,19 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   Top100Route: typeof Top100Route
   TrendingRoute: typeof TrendingRoute
+  WatchlistRoute: typeof WatchlistRoute
   FilmsSlugRoute: typeof FilmsSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/watchlist': {
+      id: '/watchlist'
+      path: '/watchlist'
+      fullPath: '/watchlist'
+      preLoaderRoute: typeof WatchlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trending': {
       id: '/trending'
       path: '/trending'
@@ -308,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   Top100Route: Top100Route,
   TrendingRoute: TrendingRoute,
+  WatchlistRoute: WatchlistRoute,
   FilmsSlugRoute: FilmsSlugRoute,
 }
 export const routeTree = rootRouteImport

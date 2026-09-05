@@ -20,7 +20,6 @@ celery.conf.beat_schedule = {
         "task": "app.workers.tasks.recompute_rankings",
         "schedule": settings.refresh_interval_minutes * 60.0,
     },
-    "rebuild-trending": {"task": "app.workers.tasks.rebuild_trending", "schedule": 1800.0},
     "rollup-daily": {"task": "app.workers.tasks.rollup_daily", "schedule": crontab(minute=0)},
 }
 

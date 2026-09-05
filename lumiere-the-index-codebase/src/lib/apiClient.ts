@@ -45,6 +45,8 @@ export interface RankedFilm {
   weeks_on_chart: number | null;
   mentions_total: number;
   is_fallback?: boolean;
+  sample_size?: number | null;
+  confidence?: string | null;
 }
 
 export interface SentimentBreakdown {
@@ -64,19 +66,6 @@ export interface TimelinePoint {
   score: number;
 }
 
-export interface CountryScoreOut {
-  country_code: string;
-  mentions: number;
-  score: number;
-}
-
-export interface TrendingTopicOut {
-  topic: string;
-  slug: string;
-  score: number;
-  delta_pct: number;
-}
-
 /** Film-centric trending entry returned by /api/v1/trending/films */
 export interface TrendingFilmOut {
   film_slug: string;
@@ -92,6 +81,17 @@ export interface TrendingFilmOut {
   tags: string[];
   delta_pct: number;
   mentions_24h: number;
+  // Enhanced fields from signal engine rewrite
+  dominant_driver?: string | null;
+  driver_label?: string | null;
+  attention_delta_pct?: number | null;
+  top_platform?: string | null;
+  top_topic?: string | null;
+  // Absolute evidence floor for editorial claims
+  sample_size?: number;
+  confidence?: string; // "insufficient" | "low" | "moderate" | "high"
+  // Current-activity gate for the top editorial headline ("anchors the Index")
+  headline_eligible?: boolean;
 }
 
 export interface RefreshMeta {
@@ -149,8 +149,6 @@ export const searchFilms = (q: string, limit: number = 20) =>
 
 export const getFilmTimeline = (slug: string, days: number = 30) =>
   apiFetch<TimelinePoint[]>(`/api/v1/films/${slug}/timeline?days=${days}`);
-
-export const getTrendingTopics = () => apiFetch<TrendingTopicOut[]>("/api/v1/trending/topics");
 
 /** Fetch films trending by audience engagement velocity. */
 export const getTrendingFilms = (limit: number = 20) =>

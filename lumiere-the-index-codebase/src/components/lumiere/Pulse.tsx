@@ -34,12 +34,14 @@ export function PulseRow() {
 
   const big = rising?.[0];
   const topRising = rising?.slice(0, 3) ?? [];
-  const topEntries = newEntries?.slice(0, 4) ?? [];
-  const topTrending = trendingFilms?.slice(0, 6) ?? [];
+  const topEntries = newEntries?.slice(0, 5) ?? [];
+  // 3 not 6: each trending card carries a full trend_reason blurb, so 6 cards
+  // dwarf the other columns and leave a large empty stretch below them.
+  const topTrending = trendingFilms?.slice(0, 3) ?? [];
   const maxMentions = Math.max(...topTrending.map((f) => f.mentions_24h), 1);
 
   return (
-    <section className="mt-12 grid grid-cols-1 gap-4 px-4 md:grid-cols-2 xl:grid-cols-3 lg:px-6">
+    <section className="mt-8 grid grid-cols-1 gap-4 px-4 md:grid-cols-2 xl:grid-cols-3 lg:px-6">
       {/* Rising Now */}
       <div className="glass card-lift flex h-full flex-col overflow-hidden rounded-2xl">
         {big ? (
@@ -190,7 +192,10 @@ export function PulseRow() {
             </li>
           ))}
           {topTrending.length === 0 && (
-            <li className="text-xs text-muted-foreground">No trending films yet</li>
+            <li className="text-xs text-muted-foreground">
+              No trending films yet — cards appear once titles accumulate enough audience
+              signal.
+            </li>
           )}
         </ul>
       </div>

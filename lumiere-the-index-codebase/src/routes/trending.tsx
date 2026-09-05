@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, MessageCircle } from "lucide-react";
 import { Layout } from "@/components/lumiere/Layout";
-import { getTrendingFilms, searchTmdbMovie, tmdbPosterUrl } from "@/lib/apiClient";
+import { getTrendingFilms, type TrendingFilmOut } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 
 export const Route = createFileRoute("/trending")({
@@ -26,35 +26,18 @@ export const Route = createFileRoute("/trending")({
   errorComponent: RouteError,
 });
 
-function FilmPosterCell({
-  title,
-  year,
-  gradientFrom,
-  gradientTo,
-}: {
-  title: string;
-  year: number | null;
-  gradientFrom: string | null;
-  gradientTo: string | null;
-}) {
-  const { data: tmdb } = useQuery({
-    queryKey: ["tmdb", title, year],
-    queryFn: () => searchTmdbMovie(title, year ?? undefined),
-    enabled: !!title,
-    staleTime: 24 * 60 * 60 * 1000,
-  });
-  const posterUrl = tmdbPosterUrl(tmdb?.results?.[0]?.poster_path, "w185");
-  const bg = `linear-gradient(155deg, ${gradientFrom ?? "#2a2a2a"}, ${gradientTo ?? "#111"})`;
+function FilmPosterCell({ film }: { film: TrendingFilmOut }) {
+  const bg = `linear-gradient(155deg, ${film.gradient_from ?? "#2a2a2a"}, ${film.gradient_to ?? "#111"})`;
 
   return (
     <div
       className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg"
       style={{ background: bg }}
     >
-      {posterUrl && (
+      {film.poster_url && (
         <img
-          src={posterUrl}
-          alt={title}
+          src={film.poster_url}
+          alt={film.title}
           className="absolute inset-0 h-full w-full object-cover"
           loading="lazy"
         />
@@ -62,6 +45,7 @@ function FilmPosterCell({
     </div>
   );
 }
+
 
 function TrendingPage() {
   const {
@@ -133,12 +117,7 @@ function TrendingPage() {
                     </div>
 
                     {/* Poster thumbnail */}
-                    <FilmPosterCell
-                      title={film.title}
-                      year={film.year}
-                      gradientFrom={film.gradient_from}
-                      gradientTo={film.gradient_to}
-                    />
+                    <FilmPosterCell film={film} />
 
                     {/* Main content */}
                     <div className="min-w-0 flex-1">
@@ -190,7 +169,8 @@ function TrendingPage() {
           </ul>
         ) : (
           <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
-            No trending films yet. They'll appear after the first audience signal pass.
+            No trending films yet — titles appear once they accumulate enough real audience
+            signal to clear the evidence floor.
           </div>
         )}
       </section>

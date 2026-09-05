@@ -58,6 +58,8 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         log.warning("startup: auto-seed check failed (non-fatal) — %s", exc)
 
+    global _sync_task
+    _sync_task = None
     if settings.tmdb_api_key:
         _sync_task = asyncio.create_task(_run_tmdb_sync_async())
         log.info("startup: server ready immediately; TMDB sync running in background")

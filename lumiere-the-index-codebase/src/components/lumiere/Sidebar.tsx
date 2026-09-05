@@ -12,6 +12,7 @@ import {
   Scale,
   Info,
   X,
+  Bookmark,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { subscribeNewsletter } from "@/lib/apiClient";
@@ -21,6 +22,7 @@ export const NAV_ITEMS = [
   { to: "/", label: "Home", icon: Home },
   { to: "/top-100", label: "Top 100", icon: Trophy },
   { to: "/rising", label: "Rising", icon: Flame },
+  { to: "/watchlist", label: "Watchlist", icon: Bookmark },
   { to: "/new-entries", label: "New Entries", icon: Sparkles },
   { to: "/trending", label: "Trending Topics", icon: Hash },
   { to: "/genres", label: "By Genre", icon: Film },

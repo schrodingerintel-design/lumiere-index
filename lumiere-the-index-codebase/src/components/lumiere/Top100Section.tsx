@@ -31,7 +31,7 @@ export function Top100Section() {
   });
 
   return (
-    <section className="mt-12 px-4 lg:px-6">
+    <section className="mt-8 px-4 lg:px-6">
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">

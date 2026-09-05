@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from sqlalchemy import Integer, BigInteger, Float, Date, DateTime, ForeignKey, Index
+from sqlalchemy import Integer, BigInteger, Float, Date, DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -31,6 +31,17 @@ class Ranking(Base):
     movement: Mapped[int] = mapped_column(Integer, default=0)
     peak_rank: Mapped[int | None] = mapped_column(Integer)
     weeks_on_chart: Mapped[int] = mapped_column(Integer, default=0)
+    # Per-component sub-scores (nullable for backward-compat with old snapshots)
+    ca_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    momentum_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recency_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ae_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cp_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Absolute evidence floor for editorial claims, computed per ranking cycle:
+    # raw mention/signal count feeding the scores (pre-normalization) and the
+    # confidence tier derived from it ("insufficient"|"low"|"moderate"|"high").
+    sample_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    confidence: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
 
 class CountryScore(Base):

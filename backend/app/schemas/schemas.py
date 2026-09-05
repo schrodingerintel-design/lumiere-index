@@ -27,6 +27,15 @@ class RankedFilm(FilmBase):
     weeks_on_chart: int = 0
     mentions_total: int = 0
     is_fallback: bool = False
+    # Per-component sub-scores for UI breakdown / debugging
+    ca_score: float | None = None
+    momentum_score: float | None = None
+    recency_score: float | None = None
+    ae_score: float | None = None
+    cp_score: float | None = None
+    # Absolute evidence floor for editorial claims
+    sample_size: int | None = None      # raw mention/signal count feeding the scores
+    confidence: str | None = None       # "insufficient"|"low"|"moderate"|"high"
 
 
 class SentimentBreakdown(BaseModel):
@@ -53,13 +62,6 @@ class CountryScoreOut(BaseModel):
     score: float
 
 
-class TrendingTopicOut(BaseModel):
-    topic: str
-    slug: str
-    score: float
-    delta_pct: float
-
-
 class TrendingFilmOut(BaseModel):
     """Film-centric trending entry for the /trending/films endpoint."""
     film_slug: str
@@ -75,6 +77,19 @@ class TrendingFilmOut(BaseModel):
     tags: list[str] = []
     delta_pct: float = 0.0
     mentions_24h: int = 0
+    # Data-grounding fields for the editorial brief
+    dominant_driver: str | None = None     # component key: "recency"|"momentum"|"attention"|"engagement"|"declining"|"cross_platform"
+    driver_label: str | None = None        # display-safe driver name (never the metric's own name)
+    attention_delta_pct: float | None = None  # % change vs prior 3 days; None when no evidence
+    top_platform: str | None = None        # real external platform key, or None when no per-platform data
+    top_topic: str | None = None           # top discussion keyword from recent mentions
+    # Absolute evidence floor
+    sample_size: int = 0                   # raw mention/signal count feeding the scores
+    confidence: str = "insufficient"       # "insufficient"|"low"|"moderate"|"high"
+    # Current-activity gate for the top editorial headline ("anchors the Index").
+    # True only when CA_norm or M_norm clears the headline floor — a high blended
+    # FinalScore carried by recency or cross-platform history alone is not enough.
+    headline_eligible: bool = False
 
 
 class LiveStats(BaseModel):

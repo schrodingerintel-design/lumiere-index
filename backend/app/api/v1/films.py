@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session
 
-from app.config import settings
+
 from app.db import get_db
 from app.models import Film, Ranking, Mention, DailyScore, CountryScore
 from app.schemas import RankedFilm, FilmDetail, SentimentBreakdown, TimelinePoint, CountryScoreOut
@@ -35,14 +35,17 @@ def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
         gradient_to=film.gradient_to, release_date=film.release_date,
         rank=r.rank, score=r.score, prev_rank=r.prev_rank,
         movement=r.movement, peak_rank=r.peak_rank, weeks_on_chart=r.weeks_on_chart,
+        ca_score=r.ca_score, momentum_score=r.momentum_score,
+        recency_score=r.recency_score, ae_score=r.ae_score, cp_score=r.cp_score,
+        sample_size=r.sample_size, confidence=r.confidence,
     )
 
 
 def _mentions_map(db: Session, film_ids: list[int]) -> dict[int, int]:
-    """Bulk mention counts within the ranking window, keyed by film id."""
+    """Bulk mention counts within a 48-hour window, keyed by film id."""
     if not film_ids:
         return {}
-    since = datetime.now(timezone.utc) - timedelta(hours=settings.ranking_window_hours)
+    since = datetime.now(timezone.utc) - timedelta(hours=48)
     rows = (
         db.query(Mention.film_id, func.count(Mention.id).label("cnt"))
         .where(Mention.film_id.in_(film_ids), Mention.created_at >= since)
@@ -113,10 +116,16 @@ def rising_films(
     if not snap:
         return []
 
-    # Prefer films with positive movement
+    # Prefer films with positive movement, limited to recent releases
+    from datetime import date as _date
+    cutoff = _date.today() - timedelta(days=90)
     rows = (
         _ranked_query(db, snap)
-        .filter(Ranking.movement > 0)
+        .filter(
+            Ranking.movement > 0,
+            Film.release_date.isnot(None),
+            Film.release_date >= cutoff,
+        )
         .order_by(desc(Ranking.movement))
         .offset(offset)
         .limit(limit)
@@ -124,13 +133,25 @@ def rising_films(
     )
     real_count = len(rows)
 
-    # Fallback to top-ranked films if positive movers are sparse — tagged is_fallback=True
+    # Fallback: top-ranked recent films if positive movers are sparse
     if real_count < limit:
+        existing_ids = {f.id for f, _ in rows}
+        q = _ranked_query(db, snap).filter(
+            Film.release_date.isnot(None),
+            Film.release_date >= cutoff,
+        )
+        if existing_ids:
+            q = q.filter(~Film.id.in_(existing_ids))
+        extra_rows = q.limit(limit - real_count).all()
+        rows = list(rows) + list(extra_rows)
+
+    # Last resort: any ranked films if still short
+    if len(rows) < limit:
         existing_ids = {f.id for f, _ in rows}
         q = _ranked_query(db, snap)
         if existing_ids:
             q = q.filter(~Film.id.in_(existing_ids))
-        extra_rows = q.limit(limit - real_count).all()
+        extra_rows = q.limit(limit - len(rows)).all()
         rows = list(rows) + list(extra_rows)
 
     mentions = _mentions_map(db, [f.id for f, _ in rows])
@@ -288,7 +309,7 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
     neg = db.scalar(select(func.count()).where(Mention.film_id == film.id, Mention.sentiment_label == "negative")) or 0
     
     total = pos + neu + neg
-    if total >= 3:
+    if total >= 1:
         sentiment = SentimentBreakdown(
             positive=round(pos * 100 / total, 1),
             neutral=round(neu * 100 / total, 1),

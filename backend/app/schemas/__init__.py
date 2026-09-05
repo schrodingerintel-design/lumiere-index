@@ -5,7 +5,6 @@ from .schemas import (
     FilmDetail,
     TimelinePoint,
     CountryScoreOut,
-    TrendingTopicOut,
     TrendingFilmOut,
     LiveStats,
     RefreshMeta,

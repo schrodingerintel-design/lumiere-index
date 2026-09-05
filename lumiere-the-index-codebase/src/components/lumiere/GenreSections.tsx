@@ -38,12 +38,12 @@ const GENRE_CATEGORIES: GenreCategoryConfig[] = [
       const s = (f.synopsis || "").toLowerCase();
       const t = (f.title || "").toLowerCase();
       return (
-        s.includes("action") ||
-        s.includes("fight") ||
-        s.includes("race") ||
-        s.includes("war") ||
-        t.includes("f1") ||
-        t.includes("superman")
+        s.includes("action") || s.includes("fight") || s.includes("race") ||
+        s.includes("war") || s.includes("battle") || s.includes("combat") ||
+        s.includes("chase") || s.includes("explosion") || s.includes("martial") ||
+        s.includes("mission") || s.includes("soldier") ||
+        t.includes("f1") || t.includes("superman") || t.includes("warfare") ||
+        t.includes("captain america") || t.includes("thunderbolts")
       );
     },
   },
@@ -56,12 +56,13 @@ const GENRE_CATEGORIES: GenreCategoryConfig[] = [
       const s = (f.synopsis || "").toLowerCase();
       const t = (f.title || "").toLowerCase();
       return (
-        s.includes("sci-fi") ||
-        s.includes("future") ||
-        s.includes("alien") ||
-        s.includes("space") ||
-        t.includes("dune") ||
-        t.includes("alien")
+        s.includes("sci-fi") || s.includes("science fiction") ||
+        s.includes("future") || s.includes("alien") || s.includes("space") ||
+        s.includes("robot") || s.includes("clone") || s.includes("planet") ||
+        s.includes("dystopian") || s.includes("dimension") ||
+        t.includes("dune") || t.includes("avatar") ||
+        t.includes("mickey 17") || t.includes("elio") ||
+        t.includes("man from nowhere")
       );
     },
   },
@@ -72,12 +73,27 @@ const GENRE_CATEGORIES: GenreCategoryConfig[] = [
     icon: Award,
     matches: (f) => {
       const s = (f.synopsis || "").toLowerCase();
+      const t = (f.title || "").toLowerCase();
       return (
         s.includes("drama") ||
         s.includes("award") ||
         s.includes("festival") ||
-        s.includes("substance") ||
-        s.includes("anora")
+        s.includes("sundance") ||
+        s.includes("cannes") ||
+        s.includes("venice") ||
+        s.includes("berlin") ||
+        s.includes("independent") ||
+        s.includes("indie") ||
+        s.includes("arthouse") ||
+        s.includes("auteur") ||
+        s.includes("character study") ||
+        t.includes("substance") ||
+        t.includes("anora") ||
+        t.includes("brutalist") ||
+        t.includes("complete unknown") ||
+        t.includes("emilia perez") ||
+        t.includes("nosferatu") ||
+        t.includes("i\'m still here")
       );
     },
   },
@@ -106,7 +122,15 @@ const GENRE_CATEGORIES: GenreCategoryConfig[] = [
     icon: FilmIcon,
     matches: (f) => {
       const s = (f.synopsis || "").toLowerCase();
-      return s.includes("animat") || s.includes("anime") || s.includes("cartoon");
+      const t = (f.title || "").toLowerCase();
+      return (
+        s.includes("animat") || s.includes("anime") || s.includes("cartoon") ||
+        s.includes("animated") ||
+        t.includes("elio") || t.includes("lilo") || t.includes("minecraft") ||
+        t.includes("dragon") || t.includes("inside out") ||
+        t.includes("how to train") || t.includes("ne zha") ||
+        t.includes("wild robot") || t.includes("zootopia")
+      );
     },
   },
   {
@@ -116,50 +140,70 @@ const GENRE_CATEGORIES: GenreCategoryConfig[] = [
     icon: Ghost,
     matches: (f) => {
       const s = (f.synopsis || "").toLowerCase();
+      const t = (f.title || "").toLowerCase();
       return (
-        s.includes("thriller") ||
-        s.includes("mystery") ||
-        s.includes("murder") ||
-        s.includes("horror") ||
-        s.includes("sinners")
+        s.includes("thriller") || s.includes("mystery") || s.includes("murder") ||
+        s.includes("conspiracy") || s.includes("crime") || s.includes("detective") ||
+        s.includes("spy") || s.includes("heist") || s.includes("noir") ||
+        s.includes("investigation") || s.includes("horror") ||
+        t.includes("black bag") || t.includes("novocaine") ||
+        t.includes("alto knights") || t.includes("sinners")
       );
     },
   },
 ];
 
 const ROW_LIMIT = 10;
+const MIN_FILMS_FOR_FULL_ROW = 5; // Pad rows with fewer than this many films
 
 /**
- * Build one 10-film row per category: real keyword matches first, then the
- * catalog's top films are dealt in to fill the row out to ten. Because the
- * keyword pool is small, every row ends up carrying the same headliners —
- * the classic six-section genre layout.
+ * Build one ROW_LIMIT-film row per category.
+ *
+ * Each film is assigned to AT MOST ONE category:
+ *   1. Primary match  — the film's synopsis/title satisfies the category's
+ *      `matches()` predicate. The film is claimed by the first category it
+ *      matches (categories are processed in order).
+ *   2. Padding        — once all genuine matches are assigned we deal catalog
+ *      films round-robin across categories until every row hits ROW_LIMIT,
+ *      but each padding film is only ever added to ONE row.
+ *
+ * This prevents the same blockbuster from appearing in every section.
  */
 function buildGenreRows(catalogFilms: RankedFilm[]): RankedFilm[][] {
-  return GENRE_CATEGORIES.map((category) => {
-    const row: RankedFilm[] = [];
-    const inRow = new Set<string>();
+  const globallyUsed = new Set<string>();
+  const rows: RankedFilm[][] = GENRE_CATEGORIES.map(() => []);
+  const inRow: Set<string>[] = GENRE_CATEGORIES.map(() => new Set<string>());
 
+  // ── Pass 1: exclusive primary matches ────────────────────────────────────
+  // Each film goes to the FIRST category whose predicate it satisfies.
+  for (const film of catalogFilms) {
+    for (let ci = 0; ci < GENRE_CATEGORIES.length; ci++) {
+      if (rows[ci].length < ROW_LIMIT && GENRE_CATEGORIES[ci].matches(film) && !globallyUsed.has(film.slug)) {
+        rows[ci].push(film);
+        inRow[ci].add(film.slug);
+        globallyUsed.add(film.slug);
+        break; // only one category per film
+      }
+    }
+  }
+
+  // ── Pass 2: round-robin padding for sparse rows ─────────────────────────
+  // Pad rows that have fewer than MIN_FILMS_FOR_FULL_ROW films to ensure
+  // every section looks reasonably full. We use round-robin across categories
+  // to distribute films fairly.
+  for (let ci = 0; ci < GENRE_CATEGORIES.length; ci++) {
+    if (rows[ci].length >= MIN_FILMS_FOR_FULL_ROW) continue;
     for (const film of catalogFilms) {
-      if (row.length >= ROW_LIMIT) break;
-      if (category.matches(film)) {
-        row.push(film);
-        inRow.add(film.slug);
+      if (rows[ci].length >= ROW_LIMIT) break;
+      if (!globallyUsed.has(film.slug)) {
+        rows[ci].push(film);
+        inRow[ci].add(film.slug);
+        globallyUsed.add(film.slug);
       }
     }
+  }
 
-    let i = 0;
-    while (row.length < ROW_LIMIT && i < catalogFilms.length) {
-      const film = catalogFilms[i];
-      i++;
-      if (!inRow.has(film.slug)) {
-        row.push(film);
-        inRow.add(film.slug);
-      }
-    }
-
-    return row;
-  });
+  return rows;
 }
 
 function GenreRow({ category, films }: { category: GenreCategoryConfig; films: RankedFilm[] }) {
@@ -272,7 +316,7 @@ export function GenreSections() {
   const rows = useMemo(() => buildGenreRows(catalogFilms), [catalogFilms]);
 
   return (
-    <section className="mt-12 space-y-12 px-4 lg:px-6">
+    <section className="mt-8 space-y-10 px-4 lg:px-6">
       <div>
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Explore by Genre
