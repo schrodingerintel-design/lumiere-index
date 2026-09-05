@@ -5,7 +5,21 @@
  *  2. TMDB via backend proxy (key never exposed to browser)
  */
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) ?? "http://localhost:8000";
+const DEFAULT_API_BASE = "http://localhost:8000";
+const PROD_API_BASE = "https://lumiere-index-production.up.railway.app";
+
+const configuredBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+const isLocalhostBase =
+  !configuredBase || /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(configuredBase);
+
+// A local .env (or a prebuilt deploy) may set VITE_API_BASE_URL to localhost.
+// That is correct for `vite dev`, but a production build must never point at
+// localhost — fall back to the deployed backend so hosted deploys always work.
+const API_BASE = import.meta.env.PROD
+  ? isLocalhostBase
+    ? PROD_API_BASE
+    : (configuredBase as string)
+  : (configuredBase ?? DEFAULT_API_BASE);
 export const TMDB_IMG = "https://image.tmdb.org/t/p";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
