@@ -19,24 +19,6 @@ function gradientStyle(film: RankedFilm | null) {
   return `linear-gradient(155deg, ${from}, ${to})`;
 }
 
-/** One-line "why it's here" summary derived from real backend signals. */
-function whyItsHere(film: RankedFilm): string {
-  const move = film.movement ?? 0;
-  if (film.prev_rank == null) {
-    return "New entry — opening-weekend conversation is still building.";
-  }
-  if (move >= 5) {
-    return "Strong word-of-mouth momentum — audience conversation accelerating across platforms.";
-  }
-  if (move >= 1) {
-    return "Steady climb — audience conversation and social mentions trending upward.";
-  }
-  if (move <= -3) {
-    return "Cooling from its peak — still drawing a large conversation base.";
-  }
-  return "Holding strong — sustained audience attention and visibility this cycle.";
-}
-
 export function Hero() {
   const { data: films, isLoading: filmsLoading } = useQuery({
     queryKey: ["films", "top", 10],
@@ -116,6 +98,7 @@ export function Hero() {
   const score = activeFilm?.score ?? null;
   const move = activeFilm?.movement ?? 0;
   const isNew = activeFilm?.prev_rank == null;
+  const hasMovement = isNew || move !== 0;
 
   return (
     <section className="relative w-full overflow-hidden rounded-2xl px-4 lg:px-6 mt-4 max-w-full">
@@ -178,16 +161,14 @@ export function Hero() {
                 </span>
               </div>
             </div>
-            {score != null && (
+            {score != null && hasMovement && (
               <span
                 className={`flex items-center gap-1 rounded-full border px-2.5 py-1.5 font-mono text-xs font-medium ${
                   isNew
                     ? "border-live/50 bg-live/15 text-live"
                     : move > 0
                       ? "border-up/50 bg-up/15 text-up"
-                      : move < 0
-                        ? "border-down/50 bg-down/15 text-down"
-                        : "border-white/25 bg-black/35 text-white/80"
+                      : "border-down/50 bg-down/15 text-down"
                 }`}
               >
                 {isNew ? (
@@ -196,24 +177,15 @@ export function Hero() {
                   <>
                     <ArrowUp className="h-3.5 w-3.5" /> +{move}
                   </>
-                ) : move < 0 ? (
+                ) : (
                   <>
                     <ArrowDown className="h-3.5 w-3.5" /> {move}
                   </>
-                ) : (
-                  "HOLDING"
                 )}
               </span>
             )}
           </div>
 
-          {/* Why it's here — the Index-specific explanation */}
-          <p className="mt-4 max-w-xl text-sm sm:text-[15px] font-medium leading-relaxed text-white/90">
-            <span className="text-primary font-mono text-[10px] uppercase tracking-[0.2em] block mb-1">
-              Why it's here
-            </span>
-            {activeFilm ? whyItsHere(activeFilm) : ""}
-          </p>
 
           {/* Secondary metadata — deliberately quiet, beneath the score */}
           <div className="mt-3 flex flex-wrap items-center gap-x-2 text-[13px] text-white/60 font-mono">
