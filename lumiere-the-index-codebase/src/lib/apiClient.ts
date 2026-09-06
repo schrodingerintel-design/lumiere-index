@@ -13,6 +13,12 @@
 
 const DEFAULT_DEV_BASE = "http://localhost:8000";
 
+/** Production FastAPI backend (Railway). Used as the last-resort fallback in
+ *  built bundles so the deployed site always has a real API to talk to, even
+ *  when host env vars are missing. Overridable — in priority order — by
+ *  VITE_API_BASE_URL (build time) or window.__API_BASE_URL__ (runtime). */
+const PROD_FALLBACK_BASE = "https://lumiere-index-production.up.railway.app";
+
 export function getApiBase(): string {
   // Build-time (Vite) config wins when set explicitly.
   const configured = import.meta.env.VITE_API_BASE_URL as string | undefined;
@@ -25,9 +31,9 @@ export function getApiBase(): string {
     const runtime =
       (window as unknown as { __API_BASE_URL__?: string }).__API_BASE_URL__;
     if (runtime) return runtime;
-    // Relative to the page — correct when Freebuff fronts the backend at the
-    // same origin, or when the host rewrites /api to the backend.
-    return window.location.origin;
+    // Known production backend. (The page origin only hosts the SSR function,
+    // never the FastAPI service, so origin-relative calls 404.)
+    return PROD_FALLBACK_BASE;
   }
 
   // Dev server: localhost is correct.
