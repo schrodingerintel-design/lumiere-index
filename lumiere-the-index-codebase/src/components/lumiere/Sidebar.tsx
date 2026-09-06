@@ -55,7 +55,7 @@ export function SidebarContent({
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <Link to="/" onClick={onNavigate} className="block">
-        <div className="font-serif text-2xl leading-none">
+        <div className="font-display text-2xl leading-none">
           Lumière<span className="text-primary">.</span>
         </div>
         <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
@@ -140,7 +140,9 @@ export function MobileSidebar({
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="glass absolute left-2 top-2 bottom-2 w-72 overflow-hidden rounded-2xl animate-fade-up">
+      {/* glass-dark: navigation must be readable over arbitrary page content —
+          high-opacity surface, not a glass showcase. */}
+      <div className="glass-dark absolute left-2 top-2 bottom-2 w-72 overflow-hidden rounded-2xl animate-fade-up">
         <button
           onClick={onClose}
           className="absolute right-3 top-3 z-10 rounded-full p-1.5 hover:bg-foreground/10"

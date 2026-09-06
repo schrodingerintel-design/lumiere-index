@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Highest-rated new releases ranked in real time. The cultural intelligence platform for cinema.",
+          "The daily cultural momentum ranking for cinema. The 100 films currently generating the strongest audience conversation, attention and visibility.",
       },
     ],
   }),
@@ -56,12 +56,14 @@ function Home() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Homepage rhythm — the story the page tells:
+  // What's #1 → the full chart → what's moving → what's being discussed → what to explore.
   return (
     <Layout>
       <Hero />
-      <EditorialInsight films={trendingFilms.slice(0, 3)} />
       <Top100Section />
       <PulseRow />
+      <EditorialInsight films={trendingFilms.slice(0, 3)} />
       <GenreSections />
       <QuoteBanner />
     </Layout>

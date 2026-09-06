@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Play, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react";
+import { Trophy, Play, ChevronRight, ChevronLeft, ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   getTopFilms,
-  getLiveStats,
   searchTmdbMovie,
   getTmdbMovieVideos,
   tmdbPosterUrl,
@@ -20,17 +19,29 @@ function gradientStyle(film: RankedFilm | null) {
   return `linear-gradient(155deg, ${from}, ${to})`;
 }
 
+/** One-line "why it's here" summary derived from real backend signals. */
+function whyItsHere(film: RankedFilm): string {
+  const move = film.movement ?? 0;
+  if (film.prev_rank == null) {
+    return "New entry — opening-weekend conversation is still building.";
+  }
+  if (move >= 5) {
+    return "Strong word-of-mouth momentum — audience conversation accelerating across platforms.";
+  }
+  if (move >= 1) {
+    return "Steady climb — audience conversation and social mentions trending upward.";
+  }
+  if (move <= -3) {
+    return "Cooling from its peak — still drawing a large conversation base.";
+  }
+  return "Holding strong — sustained audience attention and visibility this cycle.";
+}
+
 export function Hero() {
   const { data: films, isLoading: filmsLoading } = useQuery({
     queryKey: ["films", "top", 10],
     queryFn: () => getTopFilms(10),
     staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: stats } = useQuery({
-    queryKey: ["stats", "live"],
-    queryFn: getLiveStats,
-    staleTime: 60 * 1000,
   });
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -98,6 +109,14 @@ export function Hero() {
   const posterUrl = activeFilm?.poster_url || tmdbPosterUrl(tmdbFilm?.poster_path, "w500");
   const backdropUrl = activeFilm?.backdrop_url || tmdbBackdropUrl(tmdbFilm?.backdrop_path, "w1280");
 
+  const director =
+    activeFilm?.director && activeFilm.director !== "Unknown"
+      ? activeFilm.director
+      : "Director TBA";
+  const score = activeFilm?.score ?? null;
+  const move = activeFilm?.movement ?? 0;
+  const isNew = activeFilm?.prev_rank == null;
+
   return (
     <section className="relative w-full overflow-hidden rounded-2xl px-4 lg:px-6 mt-4 max-w-full">
       {/* ── Backdrop image ── */}
@@ -118,75 +137,125 @@ export function Hero() {
             style={{ background: gradientStyle(activeFilm) }}
           />
         )}
-        {/* Dark gradient overlay — strong on the left, fading to transparent on the right */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
-        {/* Bottom gradient for depth */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        {/* Dark gradient overlay — strong on the left, fading to transparent on the right.
+            Kept dark enough that all hero text clears contrast even over bright posters. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
       </div>
 
       {/* ── Content grid (fixed min-height prevents jumps between slides) ── */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 lg:p-10 min-h-[420px] lg:min-h-[520px]">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 py-8 sm:p-8 lg:p-10 min-h-[460px] lg:min-h-[540px]">
         {/* ── Left: Text content ── */}
         <div className="flex flex-col justify-center lg:col-span-7 animate-fade-up">
-          {/* Badges */}
-          <div className="flex items-center gap-3 mb-5">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/90 px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+          {/* Eyebrow: rank on the Index */}
+          <div className="flex flex-wrap items-center gap-2.5 mb-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
               <Trophy className="h-3.5 w-3.5" />
-              Today's #1 Movie
+              #1 on the Index
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1.5 text-xs text-white/90">
-              <span className="relative inline-flex h-2 w-2">
-                <span className="live-dot block h-full w-full rounded-full bg-live" />
-              </span>
-              Index updating live
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/35 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.14em] text-white/85 backdrop-blur-sm">
+              Daily ranking
             </span>
           </div>
 
           {/* Title */}
-          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[0.95] text-white drop-shadow-lg line-clamp-3">
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[0.98] text-white drop-shadow-lg line-clamp-3">
             {activeFilm?.title}
           </h1>
 
-          {/* Metadata */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-2 text-sm text-white/70 font-mono">
-            <span>{activeFilm?.year ?? "—"}</span>
-            <span className="text-white/30">·</span>
-            {tmdbFilm?.release_date && (
-              <>
-                <span>1h 45m</span>
-                <span className="text-white/30">·</span>
-              </>
+          {/* ── The Index Score — the product, visually dominant ── */}
+          <div className="mt-5 flex items-center gap-4 sm:gap-5">
+            <div className="flex items-baseline gap-2">
+              <span className="index-score text-6xl sm:text-7xl lg:text-8xl font-medium leading-none drop-shadow-md">
+                {score?.toFixed(1) ?? "—"}
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-white/75">
+                  Index
+                </span>
+                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-white/75">
+                  Score
+                </span>
+              </div>
+            </div>
+            {score != null && (
+              <span
+                className={`flex items-center gap-1 rounded-full border px-2.5 py-1.5 font-mono text-xs font-medium ${
+                  isNew
+                    ? "border-live/50 bg-live/15 text-live"
+                    : move > 0
+                      ? "border-up/50 bg-up/15 text-up"
+                      : move < 0
+                        ? "border-down/50 bg-down/15 text-down"
+                        : "border-white/25 bg-black/35 text-white/80"
+                }`}
+              >
+                {isNew ? (
+                  "NEW"
+                ) : move > 0 ? (
+                  <>
+                    <ArrowUp className="h-3.5 w-3.5" /> +{move}
+                  </>
+                ) : move < 0 ? (
+                  <>
+                    <ArrowDown className="h-3.5 w-3.5" /> {move}
+                  </>
+                ) : (
+                  "HOLDING"
+                )}
+              </span>
             )}
-            <span>{activeFilm?.country_origin ?? ""}</span>
           </div>
 
-          {/* Synopsis */}
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 line-clamp-3">
-            {activeFilm?.synopsis || tmdbFilm?.overview || "No synopsis available."}
+          {/* Why it's here — the Index-specific explanation */}
+          <p className="mt-4 max-w-xl text-sm sm:text-[15px] font-medium leading-relaxed text-white/90">
+            <span className="text-primary font-mono text-[10px] uppercase tracking-[0.2em] block mb-1">
+              Why it's here
+            </span>
+            {activeFilm ? whyItsHere(activeFilm) : ""}
           </p>
 
-          {/* Action buttons */}
+          {/* Secondary metadata — deliberately quiet, beneath the score */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 text-[13px] text-white/60 font-mono">
+            <span>{director}</span>
+            <span className="text-white/30">·</span>
+            <span>{activeFilm?.year ?? "—"}</span>
+            {activeFilm?.country_origin && (
+              <>
+                <span className="text-white/30">·</span>
+                <span>{activeFilm.country_origin}</span>
+              </>
+            )}
+            {(activeFilm?.weeks_on_chart ?? 0) > 0 && (
+              <>
+                <span className="text-white/30">·</span>
+                <span>{activeFilm?.weeks_on_chart} {activeFilm?.weeks_on_chart === 1 ? "week" : "weeks"} on chart</span>
+              </>
+            )}
+          </div>
+
+          {/* Action buttons — 44px tap targets */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Link
+              to="/films/$slug"
+              params={{ slug: activeFilm?.slug ?? "" }}
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            >
+              Compare this title
+              <ChevronRight className="h-4 w-4" />
+            </Link>
             {trailer && (
               <a
                 href={`https://www.youtube.com/watch?v=${trailer.key}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm px-4 py-2.5 text-sm font-medium text-white border border-white/20 transition hover:bg-white/25"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 bg-black/40 px-4 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/60"
               >
                 <Play className="h-4 w-4" />
                 Watch Trailer
                 <ExternalLink className="h-3 w-3 opacity-50" />
               </a>
             )}
-            <Link
-              to="/films/$slug"
-              params={{ slug: activeFilm?.slug ?? "" }}
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur-sm px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/20"
-            >
-              <Play className="h-4 w-4" />
-              Compare this title
-            </Link>
           </div>
 
           {/* Carousel navigation */}
@@ -195,7 +264,8 @@ export function Hero() {
               onClick={() =>
                 setActiveIndex((curr) => (curr - 1 + carouselFilms.length) % carouselFilms.length)
               }
-              className="p-2 rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-white/20 transition-all"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
+              aria-label="Previous film"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -204,8 +274,8 @@ export function Hero() {
                 <button
                   key={f.slug}
                   onClick={() => setActiveIndex(i)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    i === activeIndex ? "w-6 bg-primary" : "w-1.5 bg-white/30 hover:bg-white/50"
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    i === activeIndex ? "w-6 bg-primary" : "w-2 bg-white/30 hover:bg-white/50"
                   }`}
                   aria-label={`View ${f.title}`}
                 />
@@ -213,16 +283,29 @@ export function Hero() {
             </div>
             <button
               onClick={() => setActiveIndex((curr) => (curr + 1) % carouselFilms.length)}
-              className="p-2 rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-white/20 transition-all"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
+              aria-label="Next film"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* ── Right: Poster card + score ── */}
+        {/* ── Right: Poster card + score block ── */}
         <div className="hidden lg:flex lg:col-span-5 items-center justify-end animate-fade-up delay-100">
           <div className="relative flex items-end gap-5">
+            {/* Score column beside the poster — echoes the hero's dominant score */}
+            <div className="flex flex-col items-end gap-1 pb-2">
+              <span className="index-score text-5xl font-medium leading-none">
+                {score?.toFixed(1) ?? "—"}
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/70">
+                Index Score
+              </span>
+              <span className="font-mono text-[11px] text-white/60">
+                #{activeFilm?.rank} of the daily Top 100
+              </span>
+            </div>
             {/* Poster card */}
             <Link
               to="/films/$slug"
@@ -243,7 +326,7 @@ export function Hero() {
               )}
               {/* Bottom overlay */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12">
-                <div className="font-serif text-base font-semibold leading-tight text-white drop-shadow">
+                <div className="font-display text-base font-semibold leading-tight text-white drop-shadow">
                   {activeFilm?.title}
                 </div>
               </div>

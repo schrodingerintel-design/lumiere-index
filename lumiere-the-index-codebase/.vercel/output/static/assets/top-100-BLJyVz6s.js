@@ -1,1 +1,0 @@
-import{t as e}from"./route-error-CZZxLuhE.js";var t=e;export{t as errorComponent};

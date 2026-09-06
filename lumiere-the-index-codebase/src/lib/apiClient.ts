@@ -3,29 +3,44 @@
  * Provides typed fetch wrappers for:
  *  1. Local FastAPI backend  (VITE_API_BASE_URL)
  *  2. TMDB via backend proxy (key never exposed to browser)
+ *
+ * API base resolution:
+ *  - Dev (`vite dev`): uses VITE_API_BASE_URL if set, else http://localhost:8000.
+ *  - Built preview/production: uses the runtime env var `API_BASE_URL` if set,
+ *    else falls back to the page origin so a Freebuff frontend + backend at the
+ *    same host / same relative path Just Works without guessing a backend URL.
  */
 
-const DEFAULT_API_BASE = "http://localhost:8000";
-const PROD_API_BASE = "https://lumiere-index-production.up.railway.app";
+const DEFAULT_DEV_BASE = "http://localhost:8000";
 
-const configuredBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
-const isLocalhostBase =
-  !configuredBase || /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(configuredBase);
+export function getApiBase(): string {
+  // Build-time (Vite) config wins when set explicitly.
+  const configured = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (configured) {
+    return configured;
+  }
 
-// A local .env (or a prebuilt deploy) may set VITE_API_BASE_URL to localhost.
-// That is correct for `vite dev`, but a production build must never point at
-// localhost — fall back to the deployed backend so hosted deploys always work.
-const API_BASE = import.meta.env.PROD
-  ? isLocalhostBase
-    ? PROD_API_BASE
-    : (configuredBase as string)
-  : (configuredBase ?? DEFAULT_API_BASE);
+  // In a built (non-dev) bundle, prefer a runtime env var injected by the host.
+  if (import.meta.env.PROD) {
+    const runtime =
+      (window as unknown as { __API_BASE_URL__?: string }).__API_BASE_URL__;
+    if (runtime) return runtime;
+    // Relative to the page — correct when Freebuff fronts the backend at the
+    // same origin, or when the host rewrites /api to the backend.
+    return window.location.origin;
+  }
+
+  // Dev server: localhost is correct.
+  return DEFAULT_DEV_BASE;
+}
+
 export const TMDB_IMG = "https://image.tmdb.org/t/p";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const base = getApiBase();
+  const res = await fetch(`${base.replace(/\/+$/, "")}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
@@ -58,6 +73,10 @@ export interface RankedFilm {
   peak_rank: number | null;
   weeks_on_chart: number | null;
   mentions_total: number;
+  /** Genre tag assigned by the backend catalog (Action, Sci-Fi, Horror, Drama,
+   *  Indie, Animation, Romance, Comedy). Single source of truth for genres —
+   *  the frontend must never re-derive genres from synopsis substrings. */
+  genre_tag?: string | null;
   is_fallback?: boolean;
   sample_size?: number | null;
   confidence?: string | null;

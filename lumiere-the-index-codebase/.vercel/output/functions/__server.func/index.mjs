@@ -17,11 +17,11 @@ globalThis.__nitro_vite_envs__ = services;
 var findRouteRules = (m, p) => {
 	return [];
 };
-var _lazy_OxsaRZ = defineLazyEventHandler(() => import("./_chunks/ssr-renderer.mjs"));
+var _lazy_EpfirK = defineLazyEventHandler(() => import("./_chunks/ssr-renderer.mjs"));
 var findRoute = /* @__PURE__ */ (() => {
 	const data = {
 		route: "/**",
-		handler: _lazy_OxsaRZ
+		handler: _lazy_EpfirK
 	};
 	return ((_m, p) => {
 		return {

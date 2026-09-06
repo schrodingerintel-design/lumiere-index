@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Sidebar, MobileSidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
-import { Ticker } from "./Ticker";
 import { SearchModal } from "./SearchModal";
 import { Footer } from "./Footer";
 
@@ -20,7 +19,6 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="lg:pl-72">
         <TopNav onMenu={() => setMenuOpen(true)} onSearch={() => setSearchOpen(true)} />
         <main className="pb-12">{children}</main>
-        <Ticker />
         <Footer />
       </div>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

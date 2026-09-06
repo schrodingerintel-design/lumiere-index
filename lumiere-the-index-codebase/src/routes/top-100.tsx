@@ -15,7 +15,7 @@ export const Route = createFileRoute("/top-100")({
       {
         name: "description",
         content:
-          "The 100 films the world is talking about, ranked in real time by audience sentiment.",
+          "The 100 films currently generating the strongest cultural momentum across audience conversation, attention and visibility.",
       },
     ],
   }),
@@ -44,16 +44,17 @@ function Top100() {
     <Layout>
       <section className="px-4 pt-6 lg:px-6">
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          The Index · Daily Ranking ·{" "}
           {new Date().toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
             year: "numeric",
           })}
         </div>
-        <h1 className="mt-2 font-serif text-5xl lg:text-6xl">The Top 100</h1>
+        <h1 className="mt-2 font-display text-5xl lg:text-6xl">The Top 100</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Highest-rated newly released films on the Index, calculated from audience sentiment and
-          engagement signals.
+          The 100 films currently generating the strongest cultural momentum across audience
+          conversation, attention and visibility.
         </p>
       </section>
 
@@ -63,13 +64,14 @@ function Top100() {
             Unable to load rankings right now. Please try again later.
           </div>
         )}
-        <div className="glass overflow-hidden rounded-2xl border border-foreground/10">
-          <div className="grid grid-cols-[50px_1fr_70px_70px] items-center gap-3 border-b border-foreground/10 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid-cols-[60px_60px_1fr_90px_90px_90px]">
+        <div className="glass-solid overflow-hidden rounded-2xl">
+          {/* Desktop header row */}
+          <div className="hidden grid-cols-[64px_64px_1fr_90px_110px_90px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
             <div>Rank</div>
-            <div className="hidden sm:block">Mvmt</div>
+            <div>Mvmt</div>
             <div>Title</div>
-            <div className="hidden sm:block">Weeks</div>
-            <div>Score</div>
+            <div>Weeks</div>
+            <div className="text-right">Index Score</div>
             <div className="text-right">Signals</div>
           </div>
           <ul>
@@ -84,19 +86,42 @@ function Top100() {
                     f.mentions_total >= 1000
                       ? `${(f.mentions_total / 1000).toFixed(1)}k`
                       : String(f.mentions_total);
+                  const isNew = f.prev_rank == null && isNewRelease(f);
 
                   return (
                     <li key={f.slug}>
                       <Link
                         to="/films/$slug"
                         params={{ slug: f.slug }}
-                        className="grid grid-cols-[50px_1fr_70px_70px] items-center gap-3 border-b border-foreground/5 px-4 py-4 transition hover:bg-foreground/[0.03] sm:grid-cols-[60px_60px_1fr_90px_90px_90px]"
+                        /* Mobile: stacked card — rank/movement/title/score, meta underneath.
+                           Desktop: full 6-column scan table. No horizontal overflow anywhere. */
+                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_110px_90px] sm:px-5"
                       >
-                        <div className="font-mono text-2xl tabular">
-                          {String(f.rank).padStart(2, "0")}
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span className="index-score text-2xl font-semibold sm:text-xl">
+                            {String(f.rank).padStart(2, "0")}
+                          </span>
+                          <span className="sm:hidden">
+                            {isNew ? (
+                              <span className="rounded bg-live px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-ink">
+                                New
+                              </span>
+                            ) : change !== null && change !== 0 ? (
+                              <span
+                                className={`flex items-center font-mono text-[10px] tabular ${change > 0 ? "text-forest-deep" : "text-down"}`}
+                              >
+                                {change > 0 ? (
+                                  <ArrowUp className="h-2.5 w-2.5" />
+                                ) : (
+                                  <ArrowDown className="h-2.5 w-2.5" />
+                                )}
+                                {Math.abs(change)}
+                              </span>
+                            ) : null}
+                          </span>
                         </div>
                         <div className="hidden sm:block">
-                          {f.prev_rank == null && isNewRelease(f) ? (
+                          {isNew ? (
                             <span className="rounded bg-live px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
                               New
                             </span>
@@ -116,21 +141,31 @@ function Top100() {
                           )}
                         </div>
                         <div className="min-w-0 flex items-center gap-3">
-                          <FilmPosterThumbnail film={f} className="h-12 w-9" />
+                          <FilmPosterThumbnail film={f} className="h-14 w-10 sm:h-12 sm:w-9" />
                           <div className="min-w-0">
-                            <div className="truncate font-serif text-lg">{f.title}</div>
+                            <div className="truncate font-display text-[15px] font-medium sm:text-lg">
+                              {f.title}
+                            </div>
                             <div className="truncate text-xs text-muted-foreground">
                               {director} · {f.year}
+                              <span className="sm:hidden">
+                                {" "}· {weeks} {weeks === 1 ? "wk" : "wks"}
+                              </span>
                             </div>
                           </div>
                         </div>
                         <div className="hidden font-mono text-xs tabular text-muted-foreground sm:block">
                           {weeks} {weeks === 1 ? "wk" : "wks"}
                         </div>
-                        <div className="font-mono text-sm tabular text-primary font-semibold">
-                          {f.score?.toFixed(1)}
+                        <div className="text-right">
+                          <div className="index-score text-xl font-semibold sm:text-lg">
+                            {f.score?.toFixed(1)}
+                          </div>
+                          <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
+                            Index
+                          </div>
                         </div>
-                        <div className="text-right font-mono text-xs tabular text-muted-foreground font-medium">
+                        <div className="hidden text-right font-mono text-xs tabular text-muted-foreground font-medium sm:block">
                           {signals}
                         </div>
                       </Link>

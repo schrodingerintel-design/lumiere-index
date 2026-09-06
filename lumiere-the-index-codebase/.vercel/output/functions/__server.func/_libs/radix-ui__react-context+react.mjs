@@ -1,5 +1,5 @@
 import { n as __toESM, t as __commonJSMin } from "../_runtime.mjs";
-import { n as require_react } from "./@radix-ui/react-compose-refs+[...].mjs";
+import { r as require_react } from "./@radix-ui/react-compose-refs+[...].mjs";
 //#region node_modules/react/cjs/react-jsx-runtime.production.js
 /**
 * @license React
@@ -11,8 +11,7 @@ import { n as require_react } from "./@radix-ui/react-compose-refs+[...].mjs";
 * LICENSE file in the root directory of this source tree.
 */
 var require_react_jsx_runtime_production = /* @__PURE__ */ __commonJSMin(((exports) => {
-	var REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element");
-	var REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
+	var REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
 	function jsxProd(type, config, maybeKey) {
 		var key = null;
 		void 0 !== maybeKey && (key = "" + maybeKey);
@@ -43,11 +42,29 @@ var require_jsx_runtime = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 //#region node_modules/@radix-ui/react-context/dist/index.mjs
 var import_react = /* @__PURE__ */ __toESM(require_react(), 1);
 var import_jsx_runtime = require_jsx_runtime();
+function createContext2(rootComponentName, defaultContext) {
+	const Context = import_react.createContext(defaultContext);
+	const Provider = (props) => {
+		const { children, ...context } = props;
+		const value = import_react.useMemo(() => context, Object.values(context));
+		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Context.Provider, {
+			value,
+			children
+		});
+	};
+	Provider.displayName = rootComponentName + "Provider";
+	function useContext2(consumerName) {
+		const context = import_react.useContext(Context);
+		if (context) return context;
+		if (defaultContext !== void 0) return defaultContext;
+		throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
+	}
+	return [Provider, useContext2];
+}
 function createContextScope(scopeName, createContextScopeDeps = []) {
 	let defaultContexts = [];
 	function createContext3(rootComponentName, defaultContext) {
 		const BaseContext = import_react.createContext(defaultContext);
-		BaseContext.displayName = rootComponentName + "Context";
 		const index = defaultContexts.length;
 		defaultContexts = [...defaultContexts, defaultContext];
 		const Provider = (props) => {
@@ -60,13 +77,11 @@ function createContextScope(scopeName, createContextScopeDeps = []) {
 			});
 		};
 		Provider.displayName = rootComponentName + "Provider";
-		function useContext2(consumerName, scope, options = {}) {
-			const { optional = false } = options;
+		function useContext2(consumerName, scope) {
 			const Context = scope?.[scopeName]?.[index] || BaseContext;
 			const context = import_react.useContext(Context);
 			if (context) return context;
 			if (defaultContext !== void 0) return defaultContext;
-			if (optional) return void 0;
 			throw new Error(`\`${consumerName}\` must be used within \`${rootComponentName}\``);
 		}
 		return [Provider, useContext2];
@@ -109,4 +124,4 @@ function composeContextScopes(...scopes) {
 	return createScope;
 }
 //#endregion
-export { require_jsx_runtime as n, createContextScope as t };
+export { createContextScope as n, require_jsx_runtime as r, createContext2 as t };

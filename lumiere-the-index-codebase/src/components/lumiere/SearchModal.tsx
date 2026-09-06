@@ -97,12 +97,13 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/10 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
         <Dialog.Content
           aria-label="Search films"
-          className="fixed left-1/2 top-[15vh] z-50 w-full max-w-xl -translate-x-1/2 px-4 outline-none animate-fade-up"
+          className="fixed left-1/2 top-[12vh] z-50 w-full max-w-xl -translate-x-1/2 px-4 outline-none animate-fade-up"
         >
-          <div className="glass rounded-2xl border border-foreground/10 shadow-2xl">
+          {/* Solid surface — search results must be readable, not a glass demo. */}
+          <div className="overflow-hidden rounded-2xl border border-foreground/15 bg-surface shadow-2xl">
             {/* ── Search input ── */}
             <div className="relative border-b border-foreground/10">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -117,7 +118,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                 onKeyDown={handleKeyDown}
                 placeholder="Search films…"
                 aria-label="Search films"
-                className="w-full rounded-t-2xl border-0 bg-transparent py-4 pl-12 pr-12 text-base outline-none placeholder:text-muted-foreground"
+                className="w-full border-0 bg-transparent py-4 pl-12 pr-12 text-base outline-none placeholder:text-muted-foreground"
               />
               {query ? (
                 <button
@@ -127,7 +128,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                     setHighlighted(0);
                     inputRef.current?.focus();
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition hover:text-foreground"
+                  className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
                   aria-label="Clear search"
                 >
                   <X className="h-4 w-4" />
@@ -181,8 +182,8 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                             to="/films/$slug"
                             params={{ slug: film.slug }}
                             onClick={closeAndClear}
-                            className={`flex items-center gap-3 px-5 py-2.5 transition ${
-                              i === highlighted ? "bg-foreground/5" : ""
+                            className={`flex min-h-12 items-center gap-3 px-5 py-2.5 transition ${
+                              i === highlighted ? "bg-foreground/10" : ""
                             }`}
                           >
                             <FilmPosterThumbnail film={film} />

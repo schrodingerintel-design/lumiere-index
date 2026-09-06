@@ -1,6 +1,6 @@
 import { n as __toESM, t as __commonJSMin } from "../../_runtime.mjs";
-import { n as require_react, t as useComposedRefs } from "./react-compose-refs+[...].mjs";
-import { n as require_jsx_runtime, t as createContextScope } from "../radix-ui__react-context+react.mjs";
+import { n as useComposedRefs, r as require_react, t as composeRefs } from "./react-compose-refs+[...].mjs";
+import { n as createContextScope, r as require_jsx_runtime, t as createContext2 } from "../radix-ui__react-context+react.mjs";
 import { t as composeEventHandlers } from "../radix-ui__primitive.mjs";
 import { __assign, __rest, __spreadArray } from "tslib";
 //#region node_modules/react-dom/cjs/react-dom.production.js
@@ -40,8 +40,7 @@ var require_react_dom_production = /* @__PURE__ */ __commonJSMin(((exports) => {
 		},
 		p: 0,
 		findDOMNode: null
-	};
-	var REACT_PORTAL_TYPE = Symbol.for("react.portal");
+	}, REACT_PORTAL_TYPE = Symbol.for("react.portal");
 	function createPortal$1(children, containerInfo, implementation) {
 		var key = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
 		return {
@@ -142,7 +141,7 @@ var require_react_dom_production = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.useFormStatus = function() {
 		return ReactSharedInternals.H.useHostTransitionStatus();
 	};
-	exports.version = "19.2.7";
+	exports.version = "19.2.5";
 }));
 //#endregion
 //#region node_modules/react-dom/index.js
@@ -226,51 +225,59 @@ function isFunction(value) {
 	return typeof value === "function";
 }
 //#endregion
-//#region node_modules/@radix-ui/react-slot/dist/index.mjs
+//#region node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot/dist/index.mjs
 var import_react_dom = /* @__PURE__ */ __toESM(require_react_dom(), 1);
+var import_jsx_runtime = require_jsx_runtime();
 // @__NO_SIDE_EFFECTS__
-function createSlot(ownerName) {
+function createSlot$1(ownerName) {
+	const SlotClone = /* @__PURE__ */ createSlotClone$1(ownerName);
 	const Slot2 = import_react.forwardRef((props, forwardedRef) => {
-		let { children, ...slotProps } = props;
-		let slottableElement = null;
-		let hasSlottable = false;
-		const newChildren = [];
-		if (isLazyComponent(children) && typeof use === "function") children = use(children._payload);
-		import_react.Children.forEach(children, (maybeSlottable) => {
-			if (isSlottable(maybeSlottable)) {
-				hasSlottable = true;
-				const slottable = maybeSlottable;
-				let child = "child" in slottable.props ? slottable.props.child : slottable.props.children;
-				if (isLazyComponent(child) && typeof use === "function") child = use(child._payload);
-				slottableElement = getSlottableElementFromSlottable(slottable, child);
-				newChildren.push(slottableElement?.props?.children);
-			} else newChildren.push(maybeSlottable);
-		});
-		if (slottableElement) slottableElement = import_react.cloneElement(slottableElement, void 0, newChildren);
-		else if (!hasSlottable && import_react.Children.count(children) === 1 && import_react.isValidElement(children)) slottableElement = children;
-		const slottableElementRef = slottableElement ? getElementRef$1(slottableElement) : void 0;
-		const composedRef = useComposedRefs(forwardedRef, slottableElementRef);
-		if (!slottableElement) {
-			if (children || children === 0) throw new Error(hasSlottable ? createSlottableError(ownerName) : createSlotError(ownerName));
-			return children;
+		const { children, ...slotProps } = props;
+		const childrenArray = import_react.Children.toArray(children);
+		const slottable = childrenArray.find(isSlottable$1);
+		if (slottable) {
+			const newElement = slottable.props.children;
+			const newChildren = childrenArray.map((child) => {
+				if (child === slottable) {
+					if (import_react.Children.count(newElement) > 1) return import_react.Children.only(null);
+					return import_react.isValidElement(newElement) ? newElement.props.children : null;
+				} else return child;
+			});
+			return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SlotClone, {
+				...slotProps,
+				ref: forwardedRef,
+				children: import_react.isValidElement(newElement) ? import_react.cloneElement(newElement, void 0, newChildren) : null
+			});
 		}
-		const mergedProps = mergeProps(slotProps, slottableElement.props ?? {});
-		if (slottableElement.type !== import_react.Fragment) mergedProps.ref = forwardedRef ? composedRef : slottableElementRef;
-		return import_react.cloneElement(slottableElement, mergedProps);
+		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SlotClone, {
+			...slotProps,
+			ref: forwardedRef,
+			children
+		});
 	});
 	Slot2.displayName = `${ownerName}.Slot`;
 	return Slot2;
 }
-var SLOTTABLE_IDENTIFIER = Symbol.for("radix.slottable");
-var getSlottableElementFromSlottable = (slottable, child) => {
-	if ("child" in slottable.props) {
-		const child2 = slottable.props.child;
-		if (!import_react.isValidElement(child2)) return null;
-		return import_react.cloneElement(child2, void 0, slottable.props.children(child2.props.children));
-	}
-	return import_react.isValidElement(child) ? child : null;
-};
-function mergeProps(slotProps, childProps) {
+// @__NO_SIDE_EFFECTS__
+function createSlotClone$1(ownerName) {
+	const SlotClone = import_react.forwardRef((props, forwardedRef) => {
+		const { children, ...slotProps } = props;
+		if (import_react.isValidElement(children)) {
+			const childrenRef = getElementRef$2(children);
+			const props2 = mergeProps$1(slotProps, children.props);
+			if (children.type !== import_react.Fragment) props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
+			return import_react.cloneElement(children, props2);
+		}
+		return import_react.Children.count(children) > 1 ? import_react.Children.only(null) : null;
+	});
+	SlotClone.displayName = `${ownerName}.SlotClone`;
+	return SlotClone;
+}
+var SLOTTABLE_IDENTIFIER$1 = Symbol("radix.slottable");
+function isSlottable$1(child) {
+	return import_react.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER$1;
+}
+function mergeProps$1(slotProps, childProps) {
 	const overrideProps = { ...childProps };
 	for (const propName in childProps) {
 		const slotPropValue = slotProps[propName];
@@ -293,7 +300,7 @@ function mergeProps(slotProps, childProps) {
 		...overrideProps
 	};
 }
-function getElementRef$1(element) {
+function getElementRef$2(element) {
 	let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
 	let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
 	if (mayWarn) return element.ref;
@@ -302,26 +309,8 @@ function getElementRef$1(element) {
 	if (mayWarn) return element.props.ref;
 	return element.props.ref || element.ref;
 }
-function isSlottable(child) {
-	return import_react.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
-}
-var REACT_LAZY_TYPE = Symbol.for("react.lazy");
-function isLazyComponent(element) {
-	return element != null && typeof element === "object" && "$$typeof" in element && element.$$typeof === REACT_LAZY_TYPE && "_payload" in element && isPromiseLike(element._payload);
-}
-function isPromiseLike(value) {
-	return typeof value === "object" && value !== null && "then" in value;
-}
-var createSlotError = (ownerName) => {
-	return `${ownerName} failed to slot onto its children. Expected a single React element child or \`Slottable\`.`;
-};
-var createSlottableError = (ownerName) => {
-	return `${ownerName} failed to slot onto its \`Slottable\`. Expected \`Slottable\` to receive a single React element child.`;
-};
-var use = import_react[" use ".trim().toString()];
 //#endregion
 //#region node_modules/@radix-ui/react-primitive/dist/index.mjs
-var import_jsx_runtime = require_jsx_runtime();
 var Primitive = [
 	"a",
 	"button",
@@ -341,7 +330,7 @@ var Primitive = [
 	"svg",
 	"ul"
 ].reduce((primitive, node) => {
-	const Slot = /* @__PURE__ */ createSlot(`Primitive.${node}`);
+	const Slot = /* @__PURE__ */ createSlot$1(`Primitive.${node}`);
 	const Node = import_react.forwardRef((props, forwardedRef) => {
 		const { asChild, ...primitiveProps } = props;
 		const Comp = asChild ? Slot : node;
@@ -367,7 +356,19 @@ function useCallbackRef$1(callback) {
 	import_react.useEffect(() => {
 		callbackRef.current = callback;
 	});
-	return import_react.useMemo(() => ((...args) => callbackRef.current?.(...args)), []);
+	return import_react.useMemo(() => (...args) => callbackRef.current?.(...args), []);
+}
+//#endregion
+//#region node_modules/@radix-ui/react-use-escape-keydown/dist/index.mjs
+function useEscapeKeydown(onEscapeKeyDownProp, ownerDocument = globalThis?.document) {
+	const onEscapeKeyDown = useCallbackRef$1(onEscapeKeyDownProp);
+	import_react.useEffect(() => {
+		const handleKeyDown = (event) => {
+			if (event.key === "Escape") onEscapeKeyDown(event);
+		};
+		ownerDocument.addEventListener("keydown", handleKeyDown, { capture: true });
+		return () => ownerDocument.removeEventListener("keydown", handleKeyDown, { capture: true });
+	}, [onEscapeKeyDown, ownerDocument]);
 }
 //#endregion
 //#region node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs
@@ -379,64 +380,44 @@ var originalBodyPointerEvents;
 var DismissableLayerContext = import_react.createContext({
 	layers: /* @__PURE__ */ new Set(),
 	layersWithOutsidePointerEventsDisabled: /* @__PURE__ */ new Set(),
-	branches: /* @__PURE__ */ new Set(),
-	dismissableSurfaces: /* @__PURE__ */ new Set()
+	branches: /* @__PURE__ */ new Set()
 });
 var DismissableLayer = import_react.forwardRef((props, forwardedRef) => {
-	const { disableOutsidePointerEvents = false, deferPointerDownOutside = false, onEscapeKeyDown, onPointerDownOutside, onFocusOutside, onInteractOutside, onDismiss, ...layerProps } = props;
+	const { disableOutsidePointerEvents = false, onEscapeKeyDown, onPointerDownOutside, onFocusOutside, onInteractOutside, onDismiss, ...layerProps } = props;
 	const context = import_react.useContext(DismissableLayerContext);
 	const [node, setNode] = import_react.useState(null);
 	const ownerDocument = node?.ownerDocument ?? globalThis?.document;
 	const [, force] = import_react.useState({});
-	const composedRefs = useComposedRefs(forwardedRef, setNode);
+	const composedRefs = useComposedRefs(forwardedRef, (node2) => setNode(node2));
 	const layers = Array.from(context.layers);
 	const [highestLayerWithOutsidePointerEventsDisabled] = [...context.layersWithOutsidePointerEventsDisabled].slice(-1);
-	const highestLayerWithOutsidePointerEventsDisabledIndex = highestLayerWithOutsidePointerEventsDisabled ? layers.indexOf(highestLayerWithOutsidePointerEventsDisabled) : -1;
+	const highestLayerWithOutsidePointerEventsDisabledIndex = layers.indexOf(highestLayerWithOutsidePointerEventsDisabled);
 	const index = node ? layers.indexOf(node) : -1;
 	const isBodyPointerEventsDisabled = context.layersWithOutsidePointerEventsDisabled.size > 0;
 	const isPointerEventsEnabled = index >= highestLayerWithOutsidePointerEventsDisabledIndex;
-	const isDeferredPointerDownOutsideRef = import_react.useRef(false);
 	const pointerDownOutside = usePointerDownOutside((event) => {
+		const target = event.target;
+		const isPointerDownOnBranch = [...context.branches].some((branch) => branch.contains(target));
+		if (!isPointerEventsEnabled || isPointerDownOnBranch) return;
 		onPointerDownOutside?.(event);
 		onInteractOutside?.(event);
 		if (!event.defaultPrevented) onDismiss?.();
-	}, {
-		ownerDocument,
-		deferPointerDownOutside,
-		isDeferredPointerDownOutsideRef,
-		dismissableSurfaces: context.dismissableSurfaces,
-		shouldHandlePointerDownOutside: import_react.useCallback((target) => {
-			if (!(target instanceof Node)) return false;
-			const isPointerDownOnBranch = [...context.branches].some((branch) => branch.contains(target));
-			return isPointerEventsEnabled && !isPointerDownOnBranch;
-		}, [context.branches, isPointerEventsEnabled])
-	});
+	}, ownerDocument);
 	const focusOutside = useFocusOutside((event) => {
-		if (deferPointerDownOutside && isDeferredPointerDownOutsideRef.current) return;
 		const target = event.target;
 		if ([...context.branches].some((branch) => branch.contains(target))) return;
 		onFocusOutside?.(event);
 		onInteractOutside?.(event);
 		if (!event.defaultPrevented) onDismiss?.();
 	}, ownerDocument);
-	const isHighestLayer = node ? index === layers.length - 1 : false;
-	const handleKeyDown = useCallbackRef$1((event) => {
-		if (event.key !== "Escape") return;
+	useEscapeKeydown((event) => {
+		if (!(index === context.layers.size - 1)) return;
 		onEscapeKeyDown?.(event);
 		if (!event.defaultPrevented && onDismiss) {
 			event.preventDefault();
 			onDismiss();
 		}
-	});
-	import_react.useEffect(() => {
-		if (!isHighestLayer) return;
-		ownerDocument.addEventListener("keydown", handleKeyDown, { capture: true });
-		return () => ownerDocument.removeEventListener("keydown", handleKeyDown, { capture: true });
-	}, [
-		ownerDocument,
-		isHighestLayer,
-		handleKeyDown
-	]);
+	}, ownerDocument);
 	import_react.useEffect(() => {
 		if (!node) return;
 		if (disableOutsidePointerEvents) {
@@ -449,10 +430,7 @@ var DismissableLayer = import_react.forwardRef((props, forwardedRef) => {
 		context.layers.add(node);
 		dispatchUpdate();
 		return () => {
-			if (disableOutsidePointerEvents) {
-				context.layersWithOutsidePointerEventsDisabled.delete(node);
-				if (context.layersWithOutsidePointerEventsDisabled.size === 0) ownerDocument.body.style.pointerEvents = originalBodyPointerEvents;
-			}
+			if (disableOutsidePointerEvents && context.layersWithOutsidePointerEventsDisabled.size === 1) ownerDocument.body.style.pointerEvents = originalBodyPointerEvents;
 		};
 	}, [
 		node,
@@ -506,88 +484,25 @@ var DismissableLayerBranch = import_react.forwardRef((props, forwardedRef) => {
 	});
 });
 DismissableLayerBranch.displayName = BRANCH_NAME;
-function useDismissableLayerSurface() {
-	const context = import_react.useContext(DismissableLayerContext);
-	const [node, setNode] = import_react.useState(null);
-	import_react.useEffect(() => {
-		if (!node) return;
-		context.dismissableSurfaces.add(node);
-		return () => {
-			context.dismissableSurfaces.delete(node);
-		};
-	}, [node, context.dismissableSurfaces]);
-	return setNode;
-}
-var IS_TRUE = () => true;
-function usePointerDownOutside(onPointerDownOutside, args) {
-	const { ownerDocument = globalThis?.document, deferPointerDownOutside = false, isDeferredPointerDownOutsideRef, dismissableSurfaces, shouldHandlePointerDownOutside = IS_TRUE } = args;
+function usePointerDownOutside(onPointerDownOutside, ownerDocument = globalThis?.document) {
 	const handlePointerDownOutside = useCallbackRef$1(onPointerDownOutside);
 	const isPointerInsideReactTreeRef = import_react.useRef(false);
-	const isPointerDownOutsideRef = import_react.useRef(false);
-	const interceptedOutsideInteractionEventsRef = import_react.useRef(/* @__PURE__ */ new Map());
 	const handleClickRef = import_react.useRef(() => {});
 	import_react.useEffect(() => {
-		function resetOutsideInteraction() {
-			isPointerDownOutsideRef.current = false;
-			isDeferredPointerDownOutsideRef.current = false;
-			interceptedOutsideInteractionEventsRef.current.clear();
-		}
-		function isOutsideInteractionIntercepted() {
-			return Array.from(interceptedOutsideInteractionEventsRef.current.values()).some(Boolean);
-		}
-		function handleInteractionCapture(event) {
-			if (!isPointerDownOutsideRef.current) return;
-			const target = event.target;
-			if (!(target instanceof Node && [...dismissableSurfaces].some((surface) => surface.contains(target)))) interceptedOutsideInteractionEventsRef.current.set(event.type, true);
-			if (event.type === "click") window.setTimeout(() => {
-				if (isPointerDownOutsideRef.current) handleClickRef.current();
-			}, 0);
-		}
-		function handleInteractionBubble(event) {
-			if (isPointerDownOutsideRef.current) interceptedOutsideInteractionEventsRef.current.set(event.type, false);
-		}
 		const handlePointerDown = (event) => {
 			if (event.target && !isPointerInsideReactTreeRef.current) {
 				let handleAndDispatchPointerDownOutsideEvent2 = function() {
-					ownerDocument.removeEventListener("click", handleClickRef.current);
-					const wasOutsideInteractionIntercepted = isOutsideInteractionIntercepted();
-					resetOutsideInteraction();
-					if (!wasOutsideInteractionIntercepted) handleAndDispatchCustomEvent(POINTER_DOWN_OUTSIDE, handlePointerDownOutside, eventDetail, { discrete: true });
+					handleAndDispatchCustomEvent(POINTER_DOWN_OUTSIDE, handlePointerDownOutside, eventDetail, { discrete: true });
 				};
-				if (!shouldHandlePointerDownOutside(event.target)) {
-					ownerDocument.removeEventListener("click", handleClickRef.current);
-					resetOutsideInteraction();
-					isPointerInsideReactTreeRef.current = false;
-					return;
-				}
 				const eventDetail = { originalEvent: event };
-				isPointerDownOutsideRef.current = true;
-				isDeferredPointerDownOutsideRef.current = deferPointerDownOutside && event.button === 0;
-				interceptedOutsideInteractionEventsRef.current.clear();
-				if (!deferPointerDownOutside || event.button !== 0) handleAndDispatchPointerDownOutsideEvent2();
-				else {
+				if (event.pointerType === "touch") {
 					ownerDocument.removeEventListener("click", handleClickRef.current);
 					handleClickRef.current = handleAndDispatchPointerDownOutsideEvent2;
 					ownerDocument.addEventListener("click", handleClickRef.current, { once: true });
-				}
-			} else {
-				ownerDocument.removeEventListener("click", handleClickRef.current);
-				resetOutsideInteraction();
-			}
+				} else handleAndDispatchPointerDownOutsideEvent2();
+			} else ownerDocument.removeEventListener("click", handleClickRef.current);
 			isPointerInsideReactTreeRef.current = false;
 		};
-		const outsideInteractionEvents = [
-			"pointerup",
-			"mousedown",
-			"mouseup",
-			"touchstart",
-			"touchend",
-			"click"
-		];
-		for (const eventName of outsideInteractionEvents) {
-			ownerDocument.addEventListener(eventName, handleInteractionCapture, true);
-			ownerDocument.addEventListener(eventName, handleInteractionBubble);
-		}
 		const timerId = window.setTimeout(() => {
 			ownerDocument.addEventListener("pointerdown", handlePointerDown);
 		}, 0);
@@ -595,19 +510,8 @@ function usePointerDownOutside(onPointerDownOutside, args) {
 			window.clearTimeout(timerId);
 			ownerDocument.removeEventListener("pointerdown", handlePointerDown);
 			ownerDocument.removeEventListener("click", handleClickRef.current);
-			for (const eventName of outsideInteractionEvents) {
-				ownerDocument.removeEventListener(eventName, handleInteractionCapture, true);
-				ownerDocument.removeEventListener(eventName, handleInteractionBubble);
-			}
 		};
-	}, [
-		ownerDocument,
-		handlePointerDownOutside,
-		deferPointerDownOutside,
-		isDeferredPointerDownOutsideRef,
-		dismissableSurfaces,
-		shouldHandlePointerDownOutside
-	]);
+	}, [ownerDocument, handlePointerDownOutside]);
 	return { onPointerDownCapture: () => isPointerInsideReactTreeRef.current = true };
 }
 function useFocusOutside(onFocusOutside, ownerDocument = globalThis?.document) {
@@ -655,7 +559,7 @@ var FocusScope = import_react.forwardRef((props, forwardedRef) => {
 	const onMountAutoFocus = useCallbackRef$1(onMountAutoFocusProp);
 	const onUnmountAutoFocus = useCallbackRef$1(onUnmountAutoFocusProp);
 	const lastFocusedElementRef = import_react.useRef(null);
-	const composedRefs = useComposedRefs(forwardedRef, setContainer);
+	const composedRefs = useComposedRefs(forwardedRef, (node) => setContainer(node));
 	const focusScope = import_react.useRef({
 		paused: false,
 		pause() {
@@ -783,8 +687,7 @@ function getTabbableCandidates(container) {
 	return nodes;
 }
 function findVisible(elements, container) {
-	const canUseCheckVisibility = typeof container.checkVisibility === "function" && container.checkVisibility({ checkVisibilityCSS: true });
-	for (const element of elements) if (!(canUseCheckVisibility ? !element.checkVisibility({ checkVisibilityCSS: true }) : isHidden(element, { upTo: container }))) return element;
+	for (const element of elements) if (!isHidden(element, { upTo: container })) return element;
 }
 function isHidden(node, { upTo }) {
 	if (getComputedStyle(node).visibility === "hidden") return true;
@@ -833,7 +736,7 @@ function removeLinks(items) {
 //#endregion
 //#region node_modules/@radix-ui/react-portal/dist/index.mjs
 var PORTAL_NAME$1 = "Portal";
-var Portal = import_react.forwardRef((props, forwardedRef) => {
+var Portal$1 = import_react.forwardRef((props, forwardedRef) => {
 	const { container: containerProp, ...portalProps } = props;
 	const [mounted, setMounted] = import_react.useState(false);
 	useLayoutEffect2(() => setMounted(true), []);
@@ -843,7 +746,7 @@ var Portal = import_react.forwardRef((props, forwardedRef) => {
 		ref: forwardedRef
 	}), container) : null;
 });
-Portal.displayName = PORTAL_NAME$1;
+Portal$1.displayName = PORTAL_NAME$1;
 //#endregion
 //#region node_modules/@radix-ui/react-presence/dist/index.mjs
 function useStateMachine(initialState, machine) {
@@ -855,7 +758,7 @@ var Presence = (props) => {
 	const { present, children } = props;
 	const presence = usePresence(present);
 	const child = typeof children === "function" ? children({ present: presence.isPresent }) : import_react.Children.only(children);
-	const ref = useStableComposedRefs(presence.ref, getElementRef(child));
+	const ref = useComposedRefs(presence.ref, getElementRef$1(child));
 	return typeof children === "function" || presence.isPresent ? import_react.cloneElement(child, { ref }) : null;
 };
 Presence.displayName = "Presence";
@@ -864,7 +767,6 @@ function usePresence(present) {
 	const stylesRef = import_react.useRef(null);
 	const prevPresentRef = import_react.useRef(present);
 	const prevAnimationNameRef = import_react.useRef("none");
-	const mountAnimationNameRef = import_react.useRef(void 0);
 	const [state, send] = useStateMachine(present ? "mounted" : "unmounted", {
 		mounted: {
 			UNMOUNT: "unmounted",
@@ -877,10 +779,8 @@ function usePresence(present) {
 		unmounted: { MOUNT: "mounted" }
 	});
 	import_react.useEffect(() => {
-		if (state === "mounted") {
-			prevAnimationNameRef.current = mountAnimationNameRef.current ?? getAnimationName(stylesRef.current);
-			mountAnimationNameRef.current = void 0;
-		} else prevAnimationNameRef.current = "none";
+		const currentAnimationName = getAnimationName(stylesRef.current);
+		prevAnimationNameRef.current = state === "mounted" ? currentAnimationName : "none";
 	}, [state]);
 	useLayoutEffect2(() => {
 		const styles = stylesRef.current;
@@ -888,10 +788,8 @@ function usePresence(present) {
 		if (wasPresent !== present) {
 			const prevAnimationName = prevAnimationNameRef.current;
 			const currentAnimationName = getAnimationName(styles);
-			if (present) {
-				mountAnimationNameRef.current = currentAnimationName;
-				send("MOUNT");
-			} else if (currentAnimationName === "none" || styles?.display === "none") send("UNMOUNT");
+			if (present) send("MOUNT");
+			else if (currentAnimationName === "none" || styles?.display === "none") send("UNMOUNT");
 			else if (wasPresent && prevAnimationName !== currentAnimationName) send("ANIMATION_OUT");
 			else send("UNMOUNT");
 			prevPresentRef.current = present;
@@ -931,43 +829,15 @@ function usePresence(present) {
 	return {
 		isPresent: ["mounted", "unmountSuspended"].includes(state),
 		ref: import_react.useCallback((node2) => {
-			if (node2) {
-				const styles = getComputedStyle(node2);
-				stylesRef.current = styles;
-				mountAnimationNameRef.current = getAnimationName(styles);
-			} else stylesRef.current = null;
+			stylesRef.current = node2 ? getComputedStyle(node2) : null;
 			setNode(node2);
 		}, [])
 	};
 }
-function setRef(ref, value) {
-	if (typeof ref === "function") return ref(value);
-	else if (ref !== null && ref !== void 0) ref.current = value;
-}
-function useStableComposedRefs(...refs) {
-	const refsRef = import_react.useRef(refs);
-	refsRef.current = refs;
-	return import_react.useCallback((node) => {
-		const currentRefs = refsRef.current;
-		let hasCleanup = false;
-		const cleanups = currentRefs.map((ref) => {
-			const cleanup = setRef(ref, node);
-			if (!hasCleanup && typeof cleanup === "function") hasCleanup = true;
-			return cleanup;
-		});
-		if (hasCleanup) return () => {
-			for (let i = 0; i < cleanups.length; i++) {
-				const cleanup = cleanups[i];
-				if (typeof cleanup === "function") cleanup();
-				else setRef(currentRefs[i], null);
-			}
-		};
-	}, []);
-}
 function getAnimationName(styles) {
 	return styles?.animationName || "none";
 }
-function getElementRef(element) {
+function getElementRef$1(element) {
 	let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
 	let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
 	if (mayWarn) return element.ref;
@@ -979,24 +849,15 @@ function getElementRef(element) {
 //#endregion
 //#region node_modules/@radix-ui/react-focus-guards/dist/index.mjs
 var count = 0;
-var guards = null;
 function useFocusGuards() {
 	import_react.useEffect(() => {
-		if (!guards) guards = {
-			start: createFocusGuard(),
-			end: createFocusGuard()
-		};
-		const { start, end } = guards;
-		if (document.body.firstElementChild !== start) document.body.insertAdjacentElement("afterbegin", start);
-		if (document.body.lastElementChild !== end) document.body.insertAdjacentElement("beforeend", end);
+		const edgeGuards = document.querySelectorAll("[data-radix-focus-guard]");
+		document.body.insertAdjacentElement("afterbegin", edgeGuards[0] ?? createFocusGuard());
+		document.body.insertAdjacentElement("beforeend", edgeGuards[1] ?? createFocusGuard());
 		count++;
 		return () => {
-			if (count === 1) {
-				guards?.start.remove();
-				guards?.end.remove();
-				guards = null;
-			}
-			count = Math.max(0, count - 1);
+			if (count === 1) document.querySelectorAll("[data-radix-focus-guard]").forEach((node) => node.remove());
+			count--;
 		};
 	}, []);
 }
@@ -1801,6 +1662,89 @@ var hideOthers = function(originalTarget, parentNode, markerName) {
 	return applyAttributeToOthers(targets, activeParentNode, markerName, "aria-hidden");
 };
 //#endregion
+//#region node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-slot/dist/index.mjs
+// @__NO_SIDE_EFFECTS__
+function createSlot(ownerName) {
+	const SlotClone = /* @__PURE__ */ createSlotClone(ownerName);
+	const Slot2 = import_react.forwardRef((props, forwardedRef) => {
+		const { children, ...slotProps } = props;
+		const childrenArray = import_react.Children.toArray(children);
+		const slottable = childrenArray.find(isSlottable);
+		if (slottable) {
+			const newElement = slottable.props.children;
+			const newChildren = childrenArray.map((child) => {
+				if (child === slottable) {
+					if (import_react.Children.count(newElement) > 1) return import_react.Children.only(null);
+					return import_react.isValidElement(newElement) ? newElement.props.children : null;
+				} else return child;
+			});
+			return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SlotClone, {
+				...slotProps,
+				ref: forwardedRef,
+				children: import_react.isValidElement(newElement) ? import_react.cloneElement(newElement, void 0, newChildren) : null
+			});
+		}
+		return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SlotClone, {
+			...slotProps,
+			ref: forwardedRef,
+			children
+		});
+	});
+	Slot2.displayName = `${ownerName}.Slot`;
+	return Slot2;
+}
+// @__NO_SIDE_EFFECTS__
+function createSlotClone(ownerName) {
+	const SlotClone = import_react.forwardRef((props, forwardedRef) => {
+		const { children, ...slotProps } = props;
+		if (import_react.isValidElement(children)) {
+			const childrenRef = getElementRef(children);
+			const props2 = mergeProps(slotProps, children.props);
+			if (children.type !== import_react.Fragment) props2.ref = forwardedRef ? composeRefs(forwardedRef, childrenRef) : childrenRef;
+			return import_react.cloneElement(children, props2);
+		}
+		return import_react.Children.count(children) > 1 ? import_react.Children.only(null) : null;
+	});
+	SlotClone.displayName = `${ownerName}.SlotClone`;
+	return SlotClone;
+}
+var SLOTTABLE_IDENTIFIER = Symbol("radix.slottable");
+function isSlottable(child) {
+	return import_react.isValidElement(child) && typeof child.type === "function" && "__radixId" in child.type && child.type.__radixId === SLOTTABLE_IDENTIFIER;
+}
+function mergeProps(slotProps, childProps) {
+	const overrideProps = { ...childProps };
+	for (const propName in childProps) {
+		const slotPropValue = slotProps[propName];
+		const childPropValue = childProps[propName];
+		if (/^on[A-Z]/.test(propName)) {
+			if (slotPropValue && childPropValue) overrideProps[propName] = (...args) => {
+				const result = childPropValue(...args);
+				slotPropValue(...args);
+				return result;
+			};
+			else if (slotPropValue) overrideProps[propName] = slotPropValue;
+		} else if (propName === "style") overrideProps[propName] = {
+			...slotPropValue,
+			...childPropValue
+		};
+		else if (propName === "className") overrideProps[propName] = [slotPropValue, childPropValue].filter(Boolean).join(" ");
+	}
+	return {
+		...slotProps,
+		...overrideProps
+	};
+}
+function getElementRef(element) {
+	let getter = Object.getOwnPropertyDescriptor(element.props, "ref")?.get;
+	let mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
+	if (mayWarn) return element.ref;
+	getter = Object.getOwnPropertyDescriptor(element, "ref")?.get;
+	mayWarn = getter && "isReactWarning" in getter && getter.isReactWarning;
+	if (mayWarn) return element.props.ref;
+	return element.props.ref || element.ref;
+}
+//#endregion
 //#region node_modules/@radix-ui/react-dialog/dist/index.mjs
 var DIALOG_NAME = "Dialog";
 var [createDialogContext, createDialogScope] = createContextScope(DIALOG_NAME);
@@ -1839,7 +1783,7 @@ var DialogTrigger = import_react.forwardRef((props, forwardedRef) => {
 		type: "button",
 		"aria-haspopup": "dialog",
 		"aria-expanded": context.open,
-		"aria-controls": context.open ? context.contentId : void 0,
+		"aria-controls": context.contentId,
 		"data-state": getState(context.open),
 		...triggerProps,
 		ref: composedTriggerRef,
@@ -1857,7 +1801,7 @@ var DialogPortal = (props) => {
 		forceMount,
 		children: import_react.Children.map(children, (child) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Presence, {
 			present: forceMount || context.open,
-			children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Portal, {
+			children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Portal$1, {
 				asChild: true,
 				container,
 				children: child
@@ -1884,7 +1828,6 @@ var Slot = /* @__PURE__ */ createSlot("DialogOverlay.RemoveScroll");
 var DialogOverlayImpl = import_react.forwardRef((props, forwardedRef) => {
 	const { __scopeDialog, ...overlayProps } = props;
 	const context = useDialogContext(OVERLAY_NAME, __scopeDialog);
-	const composedRefs = useComposedRefs(forwardedRef, useDismissableLayerSurface());
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ReactRemoveScroll, {
 		as: Slot,
 		allowPinchZoom: true,
@@ -1892,7 +1835,7 @@ var DialogOverlayImpl = import_react.forwardRef((props, forwardedRef) => {
 		children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Primitive.div, {
 			"data-state": getState(context.open),
 			...overlayProps,
-			ref: composedRefs,
+			ref: forwardedRef,
 			style: {
 				pointerEvents: "auto",
 				...overlayProps.style
@@ -1929,7 +1872,7 @@ var DialogContentModal = import_react.forwardRef((props, forwardedRef) => {
 		...props,
 		ref: composedRefs,
 		trapFocus: context.open,
-		disableOutsidePointerEvents: context.open,
+		disableOutsidePointerEvents: true,
 		onCloseAutoFocus: composeEventHandlers(props.onCloseAutoFocus, (event) => {
 			event.preventDefault();
 			context.triggerRef.current?.focus();
@@ -1975,8 +1918,10 @@ var DialogContentNonModal = import_react.forwardRef((props, forwardedRef) => {
 var DialogContentImpl = import_react.forwardRef((props, forwardedRef) => {
 	const { __scopeDialog, trapFocus, onOpenAutoFocus, onCloseAutoFocus, ...contentProps } = props;
 	const context = useDialogContext(CONTENT_NAME, __scopeDialog);
+	const contentRef = import_react.useRef(null);
+	const composedRefs = useComposedRefs(forwardedRef, contentRef);
 	useFocusGuards();
-	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_jsx_runtime.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FocusScope, {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(FocusScope, {
 		asChild: true,
 		loop: true,
 		trapped: trapFocus,
@@ -1989,11 +1934,13 @@ var DialogContentImpl = import_react.forwardRef((props, forwardedRef) => {
 			"aria-labelledby": context.titleId,
 			"data-state": getState(context.open),
 			...contentProps,
-			ref: forwardedRef,
-			deferPointerDownOutside: true,
+			ref: composedRefs,
 			onDismiss: () => context.onOpenChange(false)
 		})
-	}) });
+	}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(TitleWarning, { titleId: context.titleId }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DescriptionWarning, {
+		contentRef,
+		descriptionId: context.descriptionId
+	})] })] });
 });
 var TITLE_NAME = "DialogTitle";
 var DialogTitle = import_react.forwardRef((props, forwardedRef) => {
@@ -2032,5 +1979,44 @@ DialogClose.displayName = CLOSE_NAME;
 function getState(open) {
 	return open ? "open" : "closed";
 }
+var TITLE_WARNING_NAME = "DialogTitleWarning";
+var [WarningProvider, useWarningContext] = createContext2(TITLE_WARNING_NAME, {
+	contentName: CONTENT_NAME,
+	titleName: TITLE_NAME,
+	docsSlug: "dialog"
+});
+var TitleWarning = ({ titleId }) => {
+	const titleWarningContext = useWarningContext(TITLE_WARNING_NAME);
+	const MESSAGE = `\`${titleWarningContext.contentName}\` requires a \`${titleWarningContext.titleName}\` for the component to be accessible for screen reader users.
+
+If you want to hide the \`${titleWarningContext.titleName}\`, you can wrap it with our VisuallyHidden component.
+
+For more information, see https://radix-ui.com/primitives/docs/components/${titleWarningContext.docsSlug}`;
+	import_react.useEffect(() => {
+		if (titleId) {
+			if (!document.getElementById(titleId)) console.error(MESSAGE);
+		}
+	}, [MESSAGE, titleId]);
+	return null;
+};
+var DESCRIPTION_WARNING_NAME = "DialogDescriptionWarning";
+var DescriptionWarning = ({ contentRef, descriptionId }) => {
+	const MESSAGE = `Warning: Missing \`Description\` or \`aria-describedby={undefined}\` for {${useWarningContext(DESCRIPTION_WARNING_NAME).contentName}}.`;
+	import_react.useEffect(() => {
+		const describedById = contentRef.current?.getAttribute("aria-describedby");
+		if (descriptionId && describedById) {
+			if (!document.getElementById(descriptionId)) console.warn(MESSAGE);
+		}
+	}, [
+		MESSAGE,
+		contentRef,
+		descriptionId
+	]);
+	return null;
+};
+var Root = Dialog;
+var Portal = DialogPortal;
+var Overlay = DialogOverlay;
+var Content = DialogContent;
 //#endregion
-export { require_react_dom as a, DialogPortal as i, DialogContent as n, DialogOverlay as r, Dialog as t };
+export { require_react_dom as a, Root as i, Overlay as n, Portal as r, Content as t };
