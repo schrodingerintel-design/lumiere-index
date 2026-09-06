@@ -1,0 +1,1 @@
+import{t as e}from"./route-error-CdRgmvN3.js";var t=e;export{t as errorComponent};
