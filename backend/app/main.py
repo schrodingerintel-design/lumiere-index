@@ -6,7 +6,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin
+from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres
 from app.utils.logging_config import setup_logging
 from app.utils.rate_limit import SimpleRateLimiterMiddleware
 
@@ -120,6 +120,7 @@ app.include_router(meta.router, prefix="/api/v1", tags=["meta"])
 app.include_router(newsletter.router, prefix="/api/v1", tags=["newsletter"])
 app.include_router(tmdb_proxy.router, prefix="/api/v1", tags=["tmdb-proxy"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+app.include_router(genres.router, prefix="/api/v1", tags=["genres"])
 
 
 @app.get("/health")

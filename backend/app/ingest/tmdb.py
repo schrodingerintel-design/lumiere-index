@@ -25,6 +25,41 @@ GRADIENT_PALETTES = [
     ("#2d8a86", "#0b2422"),
 ]
 
+# TMDB genre id → canonical Lumière genre tag. Priority order matters: when a
+# film carries several genres the FIRST matching id in this list wins, so an
+# animated sci-fi lands in Animation & Anime, and an action comedy in Action.
+TMDB_GENRE_MAP: list[tuple[int, str]] = [
+    (16, "Animation"),   # Animation
+    (10751, "Animation"),  # Family → animated features dominate the family shelf
+    (14, "Sci-Fi"),      # Fantasy
+    (878, "Sci-Fi"),     # Science Fiction
+    (27, "Horror"),      # Horror
+    (53, "Thriller"),    # Thriller
+    (9648, "Thriller"),  # Mystery
+    (80, "Thriller"),    # Crime
+    (10749, "Romance"),  # Romance
+    (35, "Comedy"),      # Comedy
+    (28, "Action"),      # Action
+    (12, "Action"),      # Adventure
+    (18, "Drama"),       # Drama
+    (36, "Drama"),       # History
+    (10402, "Drama"),    # Music
+    (10770, "Drama"),    # TV Movie
+    (99, "Indie"),       # Documentary → closest shelf
+    (36, "Indie"),
+]
+
+
+def genre_tag_from_tmdb(genre_ids: list[int] | None) -> str | None:
+    """Map TMDB genre ids to one canonical Lumière genre tag."""
+    if not genre_ids:
+        return None
+    id_set = set(genre_ids)
+    for tmdb_id, tag in TMDB_GENRE_MAP:
+        if tmdb_id in id_set:
+            return tag
+    return None
+
 
 def fetch_tmdb_movies(api_key: str, pages: int = 5) -> list[dict]:
     """Fetch trending, now playing, popular, and upcoming movies from TMDB API."""
@@ -124,6 +159,7 @@ def sync_tmdb_catalog(db: Session, max_films: int = 100) -> list[Film]:
         backdrop_path = item.get("backdrop_path")
         synopsis = item.get("overview") or f"{title} film."
         country = (item.get("origin_country") or ["US"])[0] if item.get("origin_country") else "US"
+        genre_tag = genre_tag_from_tmdb(item.get("genre_ids"))
 
         poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
         backdrop_url = f"https://image.tmdb.org/t/p/w1280{backdrop_path}" if backdrop_path else None
@@ -157,6 +193,7 @@ def sync_tmdb_catalog(db: Session, max_films: int = 100) -> list[Film]:
                 gradient_from=g1,
                 gradient_to=g2,
                 release_date=parsed_release_date,
+                genre_tag=genre_tag,
             )
             db.add(film)
             db.commit()
@@ -177,6 +214,8 @@ def sync_tmdb_catalog(db: Session, max_films: int = 100) -> list[Film]:
                 film.backdrop_url = backdrop_url
             if synopsis and len(synopsis) > len(film.synopsis or ""):
                 film.synopsis = synopsis[:2000]
+            if genre_tag and not film.genre_tag:
+                film.genre_tag = genre_tag
             db.commit()
 
         synced_films.append(film)

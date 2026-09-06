@@ -22,6 +22,10 @@ class Film(Base):
     gradient_from: Mapped[str | None] = mapped_column(String(20))
     gradient_to: Mapped[str | None] = mapped_column(String(20))
     release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Single canonical genre tag (Action, Sci-Fi, Horror, Drama, Indie,
+    # Animation, Romance, Comedy, Thriller…). The frontend groups collections
+    # by this field and must never re-derive genres from synopsis substrings.
+    genre_tag: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     aliases: Mapped[list["FilmAlias"]] = relationship(back_populates="film", cascade="all, delete-orphan")

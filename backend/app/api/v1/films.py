@@ -17,13 +17,16 @@ def _latest_snapshot(db: Session) -> datetime | None:
     return db.scalar(select(func.max(Ranking.snapshot_at)))
 
 
-def _ranked_query(db: Session, snapshot: datetime):
-    return (
+def _ranked_query(db: Session, snapshot: datetime, genre: str | None = None):
+    q = (
         db.query(Film, Ranking)
         .join(Ranking, Ranking.film_id == Film.id)
         .filter(Ranking.snapshot_at == snapshot)
         .order_by(Ranking.rank.asc())
     )
+    if genre:
+        q = q.filter(func.lower(Film.genre_tag) == genre.strip().lower())
+    return q
 
 
 def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
@@ -33,6 +36,7 @@ def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
         poster_url=film.poster_url, backdrop_url=film.backdrop_url,
         synopsis=film.synopsis, gradient_from=film.gradient_from,
         gradient_to=film.gradient_to, release_date=film.release_date,
+        genre_tag=film.genre_tag,
         rank=r.rank, score=r.score, prev_rank=r.prev_rank,
         movement=r.movement, peak_rank=r.peak_rank, weeks_on_chart=r.weeks_on_chart,
         ca_score=r.ca_score, momentum_score=r.momentum_score,
@@ -68,12 +72,13 @@ def top_films(
     request: Request,
     limit: int = Query(10, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
     db: Session = Depends(get_db),
 ):
     snap = _latest_snapshot(db)
     if not snap:
         return []
-    rows = _ranked_query(db, snap).offset(offset).limit(limit).all()
+    rows = _ranked_query(db, snap, genre=genre).offset(offset).limit(limit).all()
     mentions = _mentions_map(db, [f.id for f, _ in rows])
     return _with_mentions(rows, mentions)
 
@@ -85,6 +90,7 @@ def new_releases(
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
     year_window: int = Query(2, ge=0, le=5),
+    genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
     db: Session = Depends(get_db),
 ):
     snap = _latest_snapshot(db)
@@ -92,7 +98,7 @@ def new_releases(
         return []
     min_year = datetime.now(timezone.utc).year - year_window
     rows = (
-        _ranked_query(db, snap)
+        _ranked_query(db, snap, genre=genre)
         .filter(Film.year.isnot(None), Film.year >= min_year)
         .order_by(Ranking.score.desc())
         .offset(offset)
@@ -110,6 +116,7 @@ def new_releases(
 def rising_films(
     limit: int = Query(10, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
     db: Session = Depends(get_db),
 ):
     snap = _latest_snapshot(db)
@@ -120,7 +127,7 @@ def rising_films(
     from datetime import date as _date
     cutoff = _date.today() - timedelta(days=90)
     rows = (
-        _ranked_query(db, snap)
+        _ranked_query(db, snap, genre=genre)
         .filter(
             Ranking.movement > 0,
             Film.release_date.isnot(None),
@@ -174,6 +181,7 @@ def new_entries(
     days: int = Query(30, ge=1, le=90),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
     db: Session = Depends(get_db),
 ):
     """Films released within the last `days` days, then upcoming releases (soonest first).
@@ -191,6 +199,7 @@ def new_entries(
     films = (
         db.query(Film)
         .filter(Film.release_date.isnot(None), Film.release_date >= cutoff)
+        .filter(func.lower(Film.genre_tag) == genre.strip().lower() if genre else True)
         .all()
     )
     recent = [f for f in films if f.release_date <= today]
@@ -219,7 +228,8 @@ def new_entries(
                 year=f.year, country_origin=f.country_origin, poster_url=f.poster_url,
                 backdrop_url=f.backdrop_url, synopsis=f.synopsis,
                 gradient_from=f.gradient_from, gradient_to=f.gradient_to,
-                release_date=f.release_date, rank=0, score=0.0,
+                release_date=f.release_date, genre_tag=f.genre_tag,
+                rank=0, score=0.0,
             )
         result.append(item)
     return result
@@ -231,6 +241,7 @@ def search_films(
     request: Request,
     q: str = Query(..., min_length=1),
     limit: int = Query(20, ge=1, le=50),
+    genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
     db: Session = Depends(get_db),
 ):
     snap = _latest_snapshot(db)
@@ -238,7 +249,8 @@ def search_films(
         return []
 
     pattern = f"%{q}%"
-    films = db.query(Film).filter(Film.title.ilike(pattern)).limit(limit).all()
+    genre_clause = func.lower(Film.genre_tag) == genre.strip().lower() if genre else True
+    films = db.query(Film).filter(Film.title.ilike(pattern), genre_clause).limit(limit).all()
     if not films:
         # No direct match — surface similar titles (typo tolerance) so a near
         # miss still lands on something relevant. The caller tells the user
@@ -323,6 +335,7 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         year=film.year, country_origin=film.country_origin, poster_url=film.poster_url,
         backdrop_url=film.backdrop_url, synopsis=film.synopsis,
         gradient_from=film.gradient_from, gradient_to=film.gradient_to,
+        release_date=film.release_date, genre_tag=film.genre_tag,
         rank=0, score=0,
     )
     return FilmDetail(**base.model_dump(exclude={"mentions_total"}), mentions_total=mentions_total, sentiment=sentiment)

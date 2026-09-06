@@ -145,6 +145,7 @@ def run() -> None:
                     slug=slug, title=title, director=director, year=year,
                     country_origin=cc, gradient_from=g1, gradient_to=g2,
                     release_date=rel_date,
+                    genre_tag=genre,
                     synopsis=f"{title}, directed by {director} ({year}). A premier {genre} entry on Lumière.",
                 )
                 db.add(film)
@@ -155,6 +156,8 @@ def run() -> None:
                 film.director = director
                 film.year = year
                 film.release_date = rel_date
+                if genre and not film.genre_tag:
+                    film.genre_tag = genre
             created_films.append(film)
         db.commit()
 

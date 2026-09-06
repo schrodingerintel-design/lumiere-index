@@ -16,6 +16,8 @@ class FilmBase(BaseModel):
     gradient_from: str | None = None
     gradient_to: str | None = None
     release_date: date | None = None
+    # Canonical genre tag — the frontend groups collections by this field.
+    genre_tag: str | None = None
 
 
 class RankedFilm(FilmBase):
