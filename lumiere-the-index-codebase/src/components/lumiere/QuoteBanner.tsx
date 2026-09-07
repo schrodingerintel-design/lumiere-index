@@ -13,7 +13,7 @@ export function QuoteBanner() {
           “The only ranking that moves
           <br className="hidden md:block" /> as fast as culture.”
         </p>
-        <div className="relative mt-6 text-[10px] uppercase tracking-[0.3em] text-cream/60">
+        <div className="relative mt-6 text-[10px] uppercase tracking-[0.3em] text-foreground/60">
           — Lumière Editorial
         </div>
       </div>

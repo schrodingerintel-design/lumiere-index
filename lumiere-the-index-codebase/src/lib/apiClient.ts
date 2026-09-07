@@ -146,6 +146,7 @@ export interface LiveStats {
   snapshot_at: string;
 }
 
+
 // ─── TMDB Types ───────────────────────────────────────────────────────────────
 
 export interface TmdbMovie {
@@ -162,12 +163,14 @@ export interface TmdbMovie {
 
 export interface TmdbSearchResult {
   results: TmdbMovie[];
-}
-
-// ─── Backend API ──────────────────────────────────────────────────────────────
-
+}// ─── Backend API ──────────────────────────────────────────────────────────────
 export const getTopFilms = (limit: number = 10, offset: number = 0) =>
   apiFetch<RankedFilm[]>(`/api/v1/films/top?limit=${limit}&offset=${offset}`);
+
+export const getGenreFilms = (tag: string, limit: number = 100, offset: number = 0) =>
+  apiFetch<RankedFilm[]>(`/api/v1/genres/${encodeURIComponent(tag)}/films?limit=${limit}&offset=${offset}`);
+
+export const getGenres = () => apiFetch<{ tag: string; label: string; count: number }[]>(`/api/v1/genres`);
 
 /** Recently released films, highest index score first (home page + Top 100). */
 export const getNewReleaseFilms = (limit: number = 100, offset: number = 0) =>

@@ -145,15 +145,15 @@ export function Hero() {
 
           {/* ── The Index Score — the product, visually dominant ── */}
           <div className="mt-5 flex items-center gap-4 sm:gap-5">
-            <div className="flex items-baseline gap-2">
-              <span className="index-score text-6xl sm:text-7xl lg:text-8xl font-medium leading-none drop-shadow-md">
+            <div className="flex items-baseline gap-2.5 sm:gap-3">
+              <span className="index-score text-6xl sm:text-7xl lg:text-8xl">
                 {score?.toFixed(1) ?? "—"}
               </span>
-              <div className="flex flex-col gap-0.5">
-                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-white/75">
+              <div className="index-score-sub flex flex-col gap-0.5">
+                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.24em] text-white/80">
                   Index
                 </span>
-                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-white/75">
+                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.24em] text-white/80">
                   Score
                 </span>
               </div>
@@ -251,10 +251,10 @@ export function Hero() {
           <div className="relative flex items-end gap-5">
             {/* Score column beside the poster — echoes the hero's dominant score */}
             <div className="flex flex-col items-end gap-1 pb-2">
-              <span className="index-score text-5xl font-medium leading-none">
+              <span className="index-score text-5xl">
                 {score?.toFixed(1) ?? "—"}
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/70">
+              <span className="index-score-sub font-mono text-[10px] uppercase tracking-[0.24em] text-white/75">
                 Index Score
               </span>
               <span className="font-mono text-[11px] text-white/60">

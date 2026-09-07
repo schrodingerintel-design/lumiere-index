@@ -72,7 +72,7 @@ def ingest_letterboxd() -> int:
 
 
 @celery.task
-def ingest_tmdb_catalog(max_films: int = 200) -> int:
+def ingest_tmdb_catalog(max_films: int = 400) -> int:
     """Scheduled catalog sync — keeps the index discovering new films."""
     from app.ingest.tmdb import sync_tmdb_catalog
 
