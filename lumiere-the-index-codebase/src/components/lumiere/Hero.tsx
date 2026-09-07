@@ -124,40 +124,15 @@ export function Hero() {
           A dimmed, blurred copy of the same still fills the frame behind the
           contained image, so nothing is cropped and there are no empty bars. */}
       <div className="absolute inset-0">
-        {backdropUrl || posterUrl ? (
-          <>
-            <img
-              key={`blur-${backdropUrl ?? posterUrl ?? ""}`}
-              src={backdropUrl || posterUrl || ""}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-[0.45] saturate-150"
-              decoding="async"
-            />
-            {/* Mobile: the portrait poster fills the tall frame edge-to-edge —
-                full image, no crop, no dead space.  Desktop: the landscape
-                backdrop fills the wide frame. */}
-            {posterUrl && (
-              <img
-                key={`poster-${posterUrl}`}
-                src={posterUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-contain lg:hidden"
-                fetchPriority="high"
-                decoding="async"
-              />
-            )}
-            {backdropUrl && (
-              <img
-                key={`bd-${backdropUrl}`}
-                src={backdropUrl}
-                alt=""
-                className={`absolute inset-0 h-full w-full object-contain ${posterUrl ? "hidden lg:block" : ""}`}
-                fetchPriority={posterUrl ? undefined : "high"}
-                decoding="async"
-              />
-            )}
-          </>
+        {backdropUrl ? (
+          <img
+            key={backdropUrl}
+            src={backdropUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-[50%_35%]"
+            fetchPriority="high"
+            decoding="async"
+          />
         ) : (
           <div
             key={activeFilm?.slug}
