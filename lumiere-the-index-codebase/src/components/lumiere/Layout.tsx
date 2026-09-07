@@ -3,6 +3,7 @@ import { Sidebar, MobileSidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
 import { SearchModal } from "./SearchModal";
 import { Footer } from "./Footer";
+import { Header } from "./Header";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -17,6 +18,7 @@ export function Layout({ children }: { children: ReactNode }) {
         onSearch={() => setSearchOpen(true)}
       />
       <div className="lg:pl-72">
+        <Header />
         <TopNav onMenu={() => setMenuOpen(true)} onSearch={() => setSearchOpen(true)} />
         <main className="pb-12">{children}</main>
         <Footer />
