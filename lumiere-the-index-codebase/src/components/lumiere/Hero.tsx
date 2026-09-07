@@ -1,6 +1,6 @@
 import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Play, ChevronRight, ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
+import { Trophy, Play, Scale, ArrowUp, ArrowDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   getTopFilms,
@@ -109,27 +109,40 @@ export function Hero() {
     activeFilm?.director && activeFilm.director !== "Unknown"
       ? activeFilm.director
       : "Director TBA";
+  const eyebrow = director === "Director TBA" ? "Director TBA" : `A film by ${director}`;
   const score = activeFilm?.score ?? null;
   const move = activeFilm?.movement ?? 0;
   const isNew = activeFilm?.prev_rank == null;
-  const hasMovement = isNew || move !== 0;
+  const weeks = activeFilm?.weeks_on_chart ?? 0;
 
   return (
     <section
       onClick={handleHeroTap}
       className="relative w-full select-none overflow-hidden rounded-2xl px-4 lg:px-6 mt-4 max-w-full"
     >
-      {/* ── Backdrop image ── */}
+      {/* ── Backdrop: full image, never cropped ──
+          A dimmed, blurred copy of the same still fills the frame behind the
+          contained image, so nothing is cropped and there are no empty bars. */}
       <div className="absolute inset-0">
         {backdropUrl ? (
-          <img
-            key={backdropUrl}
-            src={backdropUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center"
-            fetchPriority="high"
-            decoding="async"
-          />
+          <>
+            <img
+              key={`blur-${backdropUrl}`}
+              src={backdropUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-[0.45] saturate-150"
+              decoding="async"
+            />
+            <img
+              key={backdropUrl}
+              src={backdropUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-contain"
+              fetchPriority="high"
+              decoding="async"
+            />
+          </>
         ) : (
           <div
             key={activeFilm?.slug}
@@ -137,22 +150,30 @@ export function Hero() {
             style={{ background: gradientStyle(activeFilm) }}
           />
         )}
-        {/* Dark gradient overlay — strong on the left, fading to transparent on the right.
-            Kept dark enough that all hero text clears contrast even over bright posters. */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/25" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+        {/* Readability gradients — text sits on the left, buttons on the bottom. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
       </div>
 
       {/* ── Content grid (fixed min-height prevents jumps between slides) ── */}
       <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 py-8 pb-12 sm:p-8 lg:p-10 lg:pb-14 min-h-[460px] lg:min-h-[540px]">
-        {/* ── Left: Text content ── */}
+        {/* ── Left: badge row → eyebrow → title → meta → actions ── */}
         <div className="flex flex-col justify-center lg:col-span-7 animate-fade-up">
-          {/* Eyebrow: rank on the Index */}
-          <div className="flex flex-wrap items-center gap-2.5 mb-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
+          {/* Rank + Index Score badges */}
+          <div className="flex flex-wrap items-center gap-2.5 mb-3.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-ink">
               <Trophy className="h-3.5 w-3.5" />
-              #{activeFilm?.rank ?? 1} on the Index
+              #{activeFilm?.rank ?? 1} · Top Index
             </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-white/75 backdrop-blur-sm">
+              Index Score
+              <span className="font-bold text-primary">{score?.toFixed(1) ?? "—"}</span>
+            </span>
+          </div>
+
+          {/* Director eyebrow */}
+          <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-white/70">
+            {eyebrow}
           </div>
 
           {/* Title */}
@@ -160,134 +181,80 @@ export function Hero() {
             {activeFilm?.title}
           </h1>
 
-          {/* ── The Index Score — the product, visually dominant ── */}
-          <div className="mt-5 flex items-center gap-4 sm:gap-5">
-            <div className="flex items-baseline gap-2.5 sm:gap-3">
-              <span className="index-score text-6xl sm:text-7xl lg:text-8xl">
-                {score?.toFixed(1) ?? "—"}
+          {/* Movement + weeks on chart */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+            {isNew ? (
+              <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-live">
+                <ArrowUp className="h-4 w-4" /> New this week
               </span>
-              <div className="index-score-sub flex flex-col gap-0.5">
-                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.24em] text-white/80">
-                  Index
-                </span>
-                <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.24em] text-white/80">
-                  Score
-                </span>
-              </div>
-            </div>
-            {score != null && hasMovement && (
-              <span
-                className={`flex items-center gap-1 rounded-full border px-2.5 py-1.5 font-mono text-xs font-medium ${
-                  isNew
-                    ? "border-live/50 bg-live/15 text-live"
-                    : move > 0
-                      ? "border-up/50 bg-up/15 text-up"
-                      : "border-down/50 bg-down/15 text-down"
-                }`}
-              >
-                {isNew ? (
-                  "NEW"
-                ) : move > 0 ? (
-                  <>
-                    <ArrowUp className="h-3.5 w-3.5" /> +{move}
-                  </>
-                ) : (
-                  <>
-                    <ArrowDown className="h-3.5 w-3.5" /> {move}
-                  </>
-                )}
+            ) : move > 0 ? (
+              <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-up">
+                <ArrowUp className="h-4 w-4" /> +{move} this week
+              </span>
+            ) : move < 0 ? (
+              <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-down">
+                <ArrowDown className="h-4 w-4" /> {Math.abs(move)} this week
+              </span>
+            ) : null}
+            {!isNew && weeks > 0 && (
+              <span className="font-mono text-sm text-white/75">
+                {weeks} {weeks === 1 ? "week" : "weeks"} on chart
               </span>
             )}
-          </div>          {/* Secondary metadata — deliberately quiet, beneath the score */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 text-[13px] text-white/60 font-mono">
-            <span>{director}</span>
-            <span className="text-white/30">·</span>
-            <span>{activeFilm?.year ?? "—"}</span>
-            {activeFilm?.country_origin && (
-              <>
-                <span className="text-white/30">·</span>
-                <span>{activeFilm.country_origin}</span>
-              </>
-            )}
-            {!isNew && (activeFilm?.weeks_on_chart ?? 0) > 0 && (
-              <>
-                <span className="text-white/30">·</span>
-                <span>{activeFilm?.weeks_on_chart} {activeFilm?.weeks_on_chart === 1 ? "week" : "weeks"} on chart</span>
-              </>
-            )
-            }
           </div>
 
-          {/* Action buttons — 44px tap targets */}
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          {/* Action buttons — Compare + Trailer, 44px tap targets */}
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               to="/films/$slug"
               params={{ slug: activeFilm?.slug ?? "" }}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cream px-5 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
             >
-              Compare this title
-              <ChevronRight className="h-4 w-4" />
+              <Scale className="h-4 w-4" />
+              Compare
             </Link>
             {trailer && (
               <a
                 href={`https://www.youtube.com/watch?v=${trailer.key}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 bg-black/40 px-4 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/60"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 bg-black/45 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/65"
               >
                 <Play className="h-4 w-4" />
-                Watch Trailer
-                <ExternalLink className="h-3 w-3 opacity-50" />
+                Trailer
               </a>
             )}
           </div>
-
         </div>
 
-        {/* ── Right: Poster card + score block ── */}
+        {/* ── Right: poster card (desktop) ── */}
         <div className="hidden lg:flex lg:col-span-5 items-center justify-end animate-fade-up delay-100">
-          <div className="relative flex items-end gap-5">
-            {/* Score column beside the poster — echoes the hero's dominant score */}
-            <div className="flex flex-col items-end gap-1 pb-2">
-              <span className="index-score text-5xl">
-                {score?.toFixed(1) ?? "—"}
-              </span>
-              <span className="index-score-sub font-mono text-[10px] uppercase tracking-[0.24em] text-white/75">
-                Index Score
-              </span>
-              <span className="font-mono text-[11px] text-white/60">
-                #{activeFilm?.rank} of the daily Top 100
-              </span>
-            </div>
-            {/* Poster card */}
-            <Link
-              to="/films/$slug"
-              params={{ slug: activeFilm?.slug ?? "" }}
-              className="card-lift relative block w-56 overflow-hidden rounded-xl shadow-2xl"
-            >
-              {posterUrl ? (
-                <img
-                  key={posterUrl}
-                  src={posterUrl}
-                  alt={activeFilm?.title}
-                  className="h-full w-full object-cover aspect-[2/3]"
-                  fetchPriority="high"
-                  decoding="async"
-                />
-              ) : (
-                <div className="aspect-[2/3]" style={{ background: gradientStyle(activeFilm) }} />
-              )}
-              {/* Bottom overlay */}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12">
-                <div className="font-display text-base font-semibold leading-tight text-white drop-shadow">
-                  {activeFilm?.title}
-                </div>
+          <Link
+            to="/films/$slug"
+            params={{ slug: activeFilm?.slug ?? "" }}
+            className="card-lift relative block w-56 overflow-hidden rounded-xl shadow-2xl"
+          >
+            {posterUrl ? (
+              <img
+                key={posterUrl}
+                src={posterUrl}
+                alt={activeFilm?.title}
+                className="h-full w-full object-cover aspect-[2/3]"
+                fetchPriority="high"
+                decoding="async"
+              />
+            ) : (
+              <div className="aspect-[2/3]" style={{ background: gradientStyle(activeFilm) }} />
+            )}
+            {/* Bottom overlay */}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12">
+              <div className="font-display text-base font-semibold leading-tight text-white drop-shadow">
+                {activeFilm?.title}
               </div>
-            </Link>
-          </div>
+            </div>
+          </Link>
         </div>
       </div>
-
     </section>
   );
 }

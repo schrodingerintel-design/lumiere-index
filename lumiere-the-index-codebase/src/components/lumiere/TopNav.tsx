@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Search, ShieldCheck, Sun, Moon } from "lucide-react";
+import { Menu, Search, Sun, Moon } from "lucide-react";
 import { NAV_ITEMS } from "./Sidebar";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -66,13 +66,13 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch?: ()
             {theme === "dark" ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
           </button>
 
-          {/* Real-Time Audience Index Badge (desktop only) */}
+          {/* Live · Updating — the Index recomputes continuously (desktop+) */}
           <div
-            title="Signal engine ramping up — rankings derived from 86,000+ audience signals across Reddit, Letterboxd, news & social channels. Live ingestion is active; data volume grows with each sync cycle."
-            className="hidden xl:flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] text-primary font-mono transition-all hover:bg-primary/20 cursor-help"
+            title="Live signal engine — rankings update continuously from 86,000+ audience signals across Reddit, Letterboxd, news & social channels."
+            className="hidden md:flex items-center gap-2 rounded-full border border-live/30 bg-live/10 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-live transition-all hover:bg-live/20 cursor-help"
           >
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Audience Signal Engine</span>
+            <span className="live-dot h-1.5 w-1.5 rounded-full bg-live" />
+            <span>Live · Updating</span>
           </div>
         </div>
       </div>
