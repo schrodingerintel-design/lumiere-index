@@ -63,13 +63,7 @@ export function SidebarContent({
         </div>
       </Link>
 
-      <SearchBox
-        className="md:hidden w-full"
-        onOpen={() => {
-          onSearch?.();
-          onNavigate?.();
-        }}
-      />
+      <SearchBox className="w-full" onOpen={() => { onSearch?.(); onNavigate?.(); }} />
 
       <nav className="flex flex-col gap-1 overflow-y-auto pr-1">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
