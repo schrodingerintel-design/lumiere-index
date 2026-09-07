@@ -20,7 +20,7 @@ def _run_tmdb_sync_sync():
     from app.db import SessionLocal
     from app.ingest.tmdb import sync_tmdb_catalog
     with SessionLocal() as db:
-        sync_tmdb_catalog(db, max_films=100)
+        sync_tmdb_catalog(db, max_films=800)
 
 
 async def _run_tmdb_sync_async():

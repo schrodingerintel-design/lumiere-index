@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -12,8 +12,9 @@ import {
   Film as FilmIcon,
   Heart,
   Smile,
+  ShieldAlert,
 } from "lucide-react";
-import { getNewReleaseFilms, type RankedFilm } from "@/lib/apiClient";
+import { getGenreFilms, type RankedFilm } from "@/lib/apiClient";
 import { FilmCardSkeleton } from "./Skeletons";
 
 function gradientStyle(from: string | null, to: string | null) {
@@ -54,6 +55,13 @@ const GENRE_CATEGORIES: GenreCategoryConfig[] = [
     tag: "Horror",
   },
   {
+    id: "thriller",
+    title: "Thrillers & Edge-of-Seat",
+    subtitle: "Mystery, crime, and nerve-shredding suspense",
+    icon: ShieldAlert,
+    tag: "Thriller",
+  },
+  {
     id: "drama",
     title: "Drama & Character Studies",
     subtitle: "Intimate portraits, social currents, and award-season contenders",
@@ -90,32 +98,6 @@ const GENRE_CATEGORIES: GenreCategoryConfig[] = [
   },
 ];
 
-const ROW_LIMIT = 10;
-
-/**
- * Build one row per category. Films are assigned to AT MOST ONE collection —
- * the first (highest-priority) matching tag wins — and rows only ever contain
- * films whose backend genre_tag genuinely matches. A sparse row is shown as
- * sparse; we never pad collections with unrelated films.
- */
-function buildGenreRows(catalogFilms: RankedFilm[]): RankedFilm[][] {
-  const claimed = new Set<string>();
-  const rows: RankedFilm[][] = GENRE_CATEGORIES.map(() => []);
-
-  for (const film of catalogFilms) {
-    const filmTag = (film.genre_tag ?? "").trim().toLowerCase();
-    if (!filmTag || claimed.has(film.slug)) continue;
-    const ci = GENRE_CATEGORIES.findIndex(
-      (c) => c.tag.toLowerCase() === filmTag && rows[GENRE_CATEGORIES.indexOf(c)].length < ROW_LIMIT,
-    );
-    if (ci === -1) continue;
-    rows[ci].push(film);
-    claimed.add(film.slug);
-  }
-
-  return rows;
-}
-
 function GenreRow({ category, films }: { category: GenreCategoryConfig; films: RankedFilm[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -134,10 +116,9 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
   const cardNote = (film: RankedFilm): string => {
     if (film.prev_rank == null) return "New entry";
     const move = film.movement ?? 0;
-    if (move >= 5) return `↑ ${move} positions this cycle`;
-    if (move >= 1) return `↑ ${move} position${move === 1 ? "" : "s"} this cycle`;
-    if (move <= -1) return `↓ ${Math.abs(move)} this cycle`;
-    return `Holding at #${film.rank}`;
+    if (move > 0) return `↑ ${move} position${move === 1 ? "" : "s"} this cycle`;
+    if (move < 0) return `↓ ${Math.abs(move)} position${Math.abs(move) === 1 ? "" : "s"} this cycle`;
+    return "Steady this cycle";
   };
 
   return (
@@ -242,13 +223,20 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
 }
 
 export function GenreSections() {
-  const { data: catalogFilms = [], isLoading } = useQuery({
-    queryKey: ["films", "new-releases", 100],
-    queryFn: () => getNewReleaseFilms(100),
-    staleTime: 5 * 60 * 1000,
-  });
+  // Fetch films for each genre from the backend's dedicated genre endpoint.
+  // This ensures collections only contain films whose canonical genre_tag
+  // genuinely matches — no client-side filtering, no leakage.
+  const genreQueries = GENRE_CATEGORIES.map((category) => ({
+    category,
+    query: useQuery({
+      queryKey: ["genres", category.tag, "films", 10],
+      queryFn: () => getGenreFilms(category.tag, 24),
+      staleTime: 5 * 60 * 1000,
+    }),
+  }));
 
-  const rows = useMemo(() => buildGenreRows(catalogFilms), [catalogFilms]);
+  const isLoading = genreQueries.some((gq) => gq.query.isLoading);
+  const hasError = genreQueries.some((gq) => gq.query.isError);
 
   return (
     <section className="mt-12 space-y-10 px-4 lg:px-6">
@@ -263,15 +251,23 @@ export function GenreSections() {
         </p>
       </div>
 
-      {isLoading ? (
+      {hasError ? (
+        <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
+          Unable to load genre collections. Please try again later.
+        </div>
+      ) : isLoading ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
           {[...Array(6)].map((_, i) => (
             <FilmCardSkeleton key={i} />
           ))}
         </div>
       ) : (
-        GENRE_CATEGORIES.map((category, ci) => (
-          <GenreRow key={category.id} category={category} films={rows[ci] ?? []} />
+        genreQueries.map(({ category, query }) => (
+          <GenreRow
+            key={category.id}
+            category={category}
+            films={query.data ?? []}
+          />
         ))
       )}
     </section>

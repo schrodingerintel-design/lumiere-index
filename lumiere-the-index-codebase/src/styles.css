@@ -94,6 +94,8 @@
   --cream:       oklch(0.957 0.013 85);
   --forest:      oklch(0.45 0.08 155);
   --forest-deep: oklch(0.32 0.06 155);
+  --surface:     oklch(0.985 0.005 85);   /* near-white warm surface for modals/data */
+  --surface-alt: oklch(0.955 0.008 85);
   --background:  var(--cream);
   --foreground:  var(--ink);
   --card:        oklch(1 0 0 / 60%);
@@ -161,6 +163,16 @@
   backdrop-filter: blur(24px) saturate(150%);
   border: 1px solid oklch(1 0 0 / 0.08);
   color: var(--cream);
+}
+/* "Dark" nav chrome flips to solid light chrome in light mode. Inner content
+   (Sidebar, QuoteBanner) uses semantic tokens, so without this the panel
+   stays dark while its links resolve to dark ink — unreadable. Navigation
+   must follow the theme, not showcase glass. */
+.light .glass-dark {
+  background-color: oklch(0.99 0.005 85 / 0.96);
+  backdrop-filter: blur(28px) saturate(155%);
+  border: 1px solid oklch(0.18 0.005 80 / 0.14);
+  color: var(--ink);
 }
 /* Medium tier — cards. Lighter blur, slightly more fill for legible content. */
 @utility glass-soft {
@@ -282,6 +294,9 @@
 ::selection {
   background: oklch(0.80 0.14 75 / 0.35);
   color: var(--cream);
+}
+.light ::selection {
+  color: var(--ink);
 }
 
 /* Scrollbar styling for dark mode */

@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import { getTopFilms, getNewReleaseFilms, type RankedFilm } from "@/lib/apiClient";
+import { getGenreFilms, getGenres, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { Film, Flame, Rocket, Ghost, Sparkles, Heart, Smile, ShieldAlert, Award } from "lucide-react";
 import { Skeleton } from "@/components/lumiere/Skeletons";
@@ -101,45 +101,22 @@ const GENRES: GenreDef[] = [
 function GenresPage() {
   const [selectedGenre, setSelectedGenre] = useState<GenreDef>(GENRES[0]);
 
-  // Use our catalog films — reliable posters + scores from the Index
-  const { data: topFilms = [], isLoading: topLoading } = useQuery({
-    queryKey: ["films", "top", 100],
-    queryFn: () => getTopFilms(100),
+  // Fetch the list of available genres from the backend
+  const { data: availableGenres = [], isLoading: genresLoading } = useQuery({
+    queryKey: ["genres", "list"],
+    queryFn: getGenres,
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: newReleases = [], isLoading: newLoading } = useQuery({
-    queryKey: ["films", "new-releases", 100],
-    queryFn: () => getNewReleaseFilms(100),
+  // Fetch films for the selected genre from the backend's dedicated endpoint
+  const { data: genreFilms = [], isLoading: filmsLoading } = useQuery({
+    queryKey: ["genres", selectedGenre.tag, "films", 100],
+    queryFn: () => getGenreFilms(selectedGenre.tag, 100),
     staleTime: 5 * 60 * 1000,
   });
 
-  const isLoading = topLoading || newLoading;
-
-  // Deduplicated union catalog, ranked by score
-  const allFilms = useMemo(() => {
-    const seen = new Set<string>();
-    const merged: RankedFilm[] = [];
-    for (const f of [...topFilms, ...newReleases]) {
-      if (!seen.has(f.slug)) {
-        seen.add(f.slug);
-        merged.push(f);
-      }
-    }
-    return merged.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-  }, [topFilms, newReleases]);
-
-  // Filter strictly by the backend's canonical genre_tag. No fallback padding:
-  // an empty or sparse genre is shown as sparse — never padded with unrelated
-  // films, which is what destroyed trust in the collections before.
-  const filteredFilms = useMemo(
-    () =>
-      allFilms.filter(
-        (f) => (f.genre_tag ?? "").trim().toLowerCase() === selectedGenre.tag.toLowerCase(),
-      ),
-    [allFilms, selectedGenre],
-  );
-  const displayFilms = filteredFilms;
+  const isLoading = genresLoading || filmsLoading;
+  const displayFilms = genreFilms;
 
   const ActiveIcon = selectedGenre.icon;
 
@@ -156,13 +133,19 @@ function GenresPage() {
 
         {/* Genre Selector Pills */}
         <div className="no-scrollbar mt-6 flex gap-2.5 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible sm:pb-0">
-          {GENRES.map((g) => {
-            const Icon = g.icon;
-            const isSelected = selectedGenre.id === g.id;
+          {availableGenres.map((g) => {
+            // Find the matching GenreDef for this backend genre tag
+            const matchingDef = GENRES.find((def) => def.tag.toLowerCase() === g.tag.toLowerCase());
+            if (!matchingDef) return null;
+            const Icon = matchingDef.icon;
+            const isSelected = selectedGenre.id === matchingDef.id;
             return (
               <button
-                key={g.id}
-                onClick={() => setSelectedGenre(g)}
+                key={g.tag}
+                onClick={() => {
+                  const def = GENRES.find((d) => d.tag.toLowerCase() === g.tag.toLowerCase());
+                  if (def) setSelectedGenre(def);
+                }}
                 className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
                   isSelected
                     ? "bg-primary text-primary-foreground shadow-md"
@@ -170,7 +153,7 @@ function GenresPage() {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                <span>{g.name}</span>
+                <span>{g.label} ({g.count})</span>
               </button>
             );
           })}

@@ -20,6 +20,8 @@ GENRE_LABELS: dict[str, str] = {
     "drama": "Drama",
     "east-asian-cinema": "East Asian Cinema",
     "fantasy": "Fantasy",
+    "adventure": "Adventure",
+    "fantasy": "Fantasy",
     "horror": "Horror",
     "indie": "Indie",
     "musical": "Musical",
@@ -119,7 +121,7 @@ def genre_films(
         .limit(limit)
         .all()
     )
-    if not rows:
-        raise HTTPException(404, f"No films matched genre '{tag}'")
-
+    # An empty shelf is a valid state (sparse catalog for a genre), not an
+    # error — the frontend renders "not enough titles yet" for empty lists.
+    # Returning 404 here made every sparse collection look like a broken page.
     return [_to_ranked(f, r) for f, r in rows]
