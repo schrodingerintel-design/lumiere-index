@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Film, Search, Moon } from "lucide-react";
+import { Film, Search } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
   return (
@@ -18,15 +19,13 @@ export function Header() {
             className="w-full rounded-full border border-foreground/10 bg-background/40 py-1.5 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground backdrop-blur focus:border-primary/40 focus:outline-none"
           />
         </div>
+
+        <ThemeToggle />
       </div>
 
-      <button
-        type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:text-foreground"
-        aria-label="Toggle theme"
-      >
-        <Moon className="h-4 w-4" />
-      </button>
+      <div className="md:hidden flex items-center gap-3">
+        <ThemeToggle />
+      </div>
     </header>
   );
 }
