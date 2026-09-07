@@ -127,7 +127,7 @@ export function Hero() {
       </div>
 
       {/* ── Content grid (fixed min-height prevents jumps between slides) ── */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 py-8 sm:p-8 lg:p-10 min-h-[460px] lg:min-h-[540px]">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 py-8 pb-20 sm:p-8 lg:p-10 lg:pb-16 min-h-[460px] lg:min-h-[540px]">
         {/* ── Left: Text content ── */}
         <div className="flex flex-col justify-center lg:col-span-7 animate-fade-up">
           {/* Eyebrow: rank on the Index */}
@@ -241,18 +241,6 @@ export function Hero() {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <div className="flex gap-2">
-              {carouselFilms.map((f, i) => (
-                <button
-                  key={f.slug}
-                  onClick={() => setActiveIndex(i)}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    i === activeIndex ? "w-6 bg-primary" : "w-2 bg-white/30 hover:bg-white/50"
-                  }`}
-                  aria-label={`View ${f.title}`}
-                />
-              ))}
-            </div>
             <button
               onClick={() => setActiveIndex((curr) => (curr + 1) % carouselFilms.length)}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
@@ -306,6 +294,28 @@ export function Hero() {
           </div>
         </div>
       </div>
+
+      {/* ── Slide indicator — compact, semi-transparent capsule overlaid on the backdrop ── */}
+      {carouselFilms.length > 1 && (
+        <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/30 px-2 py-1 ring-1 ring-white/10 backdrop-blur-sm">
+          {carouselFilms.map((f, i) => (
+            <button
+              key={f.slug}
+              onClick={() => setActiveIndex(i)}
+              className={`group flex h-6 items-center justify-center transition-all duration-300 ${
+                i === activeIndex ? "w-7" : "w-6"
+              }`}
+              aria-label={`View ${f.title}`}
+            >
+              <span
+                className={`block h-1 rounded-full transition-all duration-300 ${
+                  i === activeIndex ? "w-4 bg-white/90" : "w-1 bg-white/40 group-hover:bg-white/60"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
