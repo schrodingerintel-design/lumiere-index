@@ -124,24 +124,39 @@ export function Hero() {
           A dimmed, blurred copy of the same still fills the frame behind the
           contained image, so nothing is cropped and there are no empty bars. */}
       <div className="absolute inset-0">
-        {backdropUrl ? (
+        {backdropUrl || posterUrl ? (
           <>
             <img
-              key={`blur-${backdropUrl}`}
-              src={backdropUrl}
+              key={`blur-${backdropUrl ?? posterUrl ?? ""}`}
+              src={backdropUrl || posterUrl || ""}
               alt=""
               aria-hidden
               className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-[0.45] saturate-150"
               decoding="async"
             />
-            <img
-              key={backdropUrl}
-              src={backdropUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-contain"
-              fetchPriority="high"
-              decoding="async"
-            />
+            {/* Mobile: the portrait poster fills the tall frame edge-to-edge —
+                full image, no crop, no dead space.  Desktop: the landscape
+                backdrop fills the wide frame. */}
+            {posterUrl && (
+              <img
+                key={`poster-${posterUrl}`}
+                src={posterUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-contain lg:hidden"
+                fetchPriority="high"
+                decoding="async"
+              />
+            )}
+            {backdropUrl && (
+              <img
+                key={`bd-${backdropUrl}`}
+                src={backdropUrl}
+                alt=""
+                className={`absolute inset-0 h-full w-full object-contain ${posterUrl ? "hidden lg:block" : ""}`}
+                fetchPriority={posterUrl ? undefined : "high"}
+                decoding="async"
+              />
+            )}
           </>
         ) : (
           <div
@@ -156,16 +171,16 @@ export function Hero() {
       </div>
 
       {/* ── Content grid (fixed min-height prevents jumps between slides) ── */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 py-8 pb-12 sm:p-8 lg:p-10 lg:pb-14 min-h-[460px] lg:min-h-[540px]">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 px-5 py-7 pb-10 sm:p-8 lg:p-10 lg:pb-14 min-h-[460px] lg:min-h-[540px]">
         {/* ── Left: badge row → eyebrow → title → meta → actions ── */}
         <div className="flex flex-col justify-center lg:col-span-7 animate-fade-up">
-          {/* Rank + Index Score badges */}
-          <div className="flex flex-wrap items-center gap-2.5 mb-3.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-ink">
-              <Trophy className="h-3.5 w-3.5" />
+          {/* Rank + Index Score badges — one compact row, IMDb-neat */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ink sm:text-[11px]">
+              <Trophy className="h-3 w-3" />
               #{activeFilm?.rank ?? 1} · Top Index
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-white/75 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-white/75 backdrop-blur-sm sm:text-[11px]">
               Index Score
               <span className="font-bold text-primary">{score?.toFixed(1) ?? "—"}</span>
             </span>
