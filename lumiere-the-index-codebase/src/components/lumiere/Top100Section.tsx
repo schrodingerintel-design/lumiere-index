@@ -1,36 +1,47 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Minus } from "lucide-react";
 import { getNewReleaseFilms, type RankedFilm } from "@/lib/apiClient";
 import { isNewRelease } from "@/lib/filmUtils";
+import { filmTrend } from "@/lib/trend";
 import { PosterCard } from "./PosterCard";
 import { FilmCardSkeleton, FilmRowSkeleton } from "./Skeletons";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 
-/** Rank + movement cell shared by desktop and mobile rows. */
+/** Rise / steady / fall indicator shared by desktop and mobile rows. */
 function MovementBadge({ film }: { film: RankedFilm }) {
-  const change = film.movement ?? null;
-  if (film.prev_rank == null && isNewRelease(film)) {
+  const trend = filmTrend(film);
+  const change = film.movement ?? 0;
+  if (trend === "new") {
     return (
       <span className="rounded bg-live px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
         New
       </span>
     );
   }
-  if (change !== null && change !== 0) {
+  if (trend === "rise") {
     return (
-      <span
-        className={`flex items-center gap-0.5 font-mono text-xs tabular ${
-          change > 0 ? "text-forest-deep" : "text-down"
-        }`}
-      >
-        {change > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+      <span className="flex items-center gap-0.5 font-mono text-xs tabular text-forest-deep">
+        <ArrowUp className="h-3 w-3" />
         {Math.abs(change)}
       </span>
     );
   }
-  return <span className="text-xs text-muted-foreground">—</span>;
+  if (trend === "fall") {
+    return (
+      <span className="flex items-center gap-0.5 font-mono text-xs tabular text-down">
+        <ArrowDown className="h-3 w-3" />
+        {Math.abs(change)}
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-0.5 font-mono text-xs text-muted-foreground" title="Held its rank">
+      <Minus className="h-3 w-3" />
+      Steady
+    </span>
+  );
 }
 
 export function Top100Section() {
