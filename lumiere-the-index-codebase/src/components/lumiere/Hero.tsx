@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Play, ChevronRight, ChevronLeft, ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
+import { Trophy, Play, ChevronRight, ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   getTopFilms,
@@ -86,6 +86,20 @@ export function Hero() {
     return () => clearInterval(interval);
   }, [carouselFilms.length]);
 
+  // Tap zones: tapping the left/right half of the hero flips the slide.
+  // Links and buttons opt out so CTAs (compare, trailer, poster) keep working.
+  const handleHeroTap = (e: ReactMouseEvent<HTMLElement>) => {
+    if (carouselFilms.length < 2) return;
+    if ((e.target as HTMLElement | null)?.closest("a, button, input, [role='button']")) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const goPrev = e.clientX - rect.left < rect.width / 2;
+    setActiveIndex((curr) =>
+      goPrev
+        ? (curr - 1 + carouselFilms.length) % carouselFilms.length
+        : (curr + 1) % carouselFilms.length,
+    );
+  };
+
   if (filmsLoading || !films) return <HeroSkeleton />;
 
   const posterUrl = activeFilm?.poster_url || tmdbPosterUrl(tmdbFilm?.poster_path, "w500");
@@ -101,7 +115,10 @@ export function Hero() {
   const hasMovement = isNew || move !== 0;
 
   return (
-    <section className="relative w-full overflow-hidden rounded-2xl px-4 lg:px-6 mt-4 max-w-full">
+    <section
+      onClick={handleHeroTap}
+      className="relative w-full select-none overflow-hidden rounded-2xl px-4 lg:px-6 mt-4 max-w-full"
+    >
       {/* ── Backdrop image ── */}
       <div className="absolute inset-0">
         {backdropUrl ? (
@@ -127,7 +144,7 @@ export function Hero() {
       </div>
 
       {/* ── Content grid (fixed min-height prevents jumps between slides) ── */}
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 py-8 pb-20 sm:p-8 lg:p-10 lg:pb-16 min-h-[460px] lg:min-h-[540px]">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 py-8 pb-12 sm:p-8 lg:p-10 lg:pb-14 min-h-[460px] lg:min-h-[540px]">
         {/* ── Left: Text content ── */}
         <div className="flex flex-col justify-center lg:col-span-7 animate-fade-up">
           {/* Eyebrow: rank on the Index */}
@@ -225,25 +242,6 @@ export function Hero() {
             )}
           </div>
 
-          {/* Carousel navigation */}
-          <div className="mt-8 flex flex-wrap items-center gap-2 sm:gap-3">
-            <button
-              onClick={() =>
-                setActiveIndex((curr) => (curr - 1 + carouselFilms.length) % carouselFilms.length)
-              }
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
-              aria-label="Previous film"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setActiveIndex((curr) => (curr + 1) % carouselFilms.length)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
-              aria-label="Next film"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
         </div>
 
         {/* ── Right: Poster card + score block ── */}
@@ -290,29 +288,6 @@ export function Hero() {
         </div>
       </div>
 
-      {/* ── Slide indicator — compact capsule dots overlaid on the backdrop ── */}
-      {carouselFilms.length > 1 && (
-        <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/30 px-2 py-1 ring-1 ring-white/5 backdrop-blur-sm">
-          {carouselFilms.map((f, i) => (
-            <button
-              key={f.slug}
-              onClick={() => setActiveIndex(i)}
-              className={`relative flex h-4 w-4 items-center justify-center rounded-full transition-all duration-300 ${
-                i === activeIndex ? "bg-white/55 shadow-sm" : "bg-white/10 hover:bg-white/20"
-              }`}
-              aria-label={`View ${f.title}`}
-            >
-              <span
-                className={`block h-0.5 w-1 rounded-full transition-all duration-300 ${
-                  i === activeIndex
-                    ? "bg-white/90 w-1.5"
-                    : "bg-white/35 group-hover:bg-white/55 w-0.5"
-                }`}
-              />
-            </button>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
