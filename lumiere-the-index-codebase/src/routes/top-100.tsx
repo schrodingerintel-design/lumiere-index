@@ -81,7 +81,9 @@ function Top100() {
                   const change = f.movement ?? null;
                   const director =
                     f.director && f.director !== "Unknown" ? f.director : "Director TBA";
-                  const weeks = f.weeks_on_chart ?? 1;
+                  // NEW entries have no previous snapshot — a week count would be
+                  // meaningless (and contradictory) next to the NEW badge.
+                  const weeks = f.prev_rank == null ? null : (f.weeks_on_chart ?? 1);
                   const signals =
                     f.mentions_total >= 1000
                       ? `${(f.mentions_total / 1000).toFixed(1)}k`
@@ -149,13 +151,13 @@ function Top100() {
                             <div className="truncate text-xs text-muted-foreground">
                               {director} · {f.year}
                               <span className="sm:hidden">
-                                {" "}· {weeks} {weeks === 1 ? "wk" : "wks"}
+                                {weeks != null ? ` · ${weeks} ${weeks === 1 ? "wk" : "wks"}` : ""}
                               </span>
                             </div>
                           </div>
                         </div>
                         <div className="hidden font-mono text-xs tabular text-muted-foreground sm:block">
-                          {weeks} {weeks === 1 ? "wk" : "wks"}
+                          {weeks != null ? `${weeks} ${weeks === 1 ? "wk" : "wks"}` : "—"}
                         </div>
                         <div className="text-right">
                           <div className="index-score text-xl font-semibold sm:text-lg">

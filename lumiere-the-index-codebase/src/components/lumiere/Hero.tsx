@@ -209,7 +209,7 @@ export function Hero() {
                 <span>{activeFilm.country_origin}</span>
               </>
             )}
-            {(activeFilm?.weeks_on_chart ?? 0) > 0 && (
+            {!isNew && (activeFilm?.weeks_on_chart ?? 0) > 0 && (
               <>
                 <span className="text-white/30">·</span>
                 <span>{activeFilm?.weeks_on_chart} {activeFilm?.weeks_on_chart === 1 ? "week" : "weeks"} on chart</span>

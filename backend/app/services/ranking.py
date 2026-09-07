@@ -411,12 +411,32 @@ def recompute_rankings(db: Session) -> datetime:
     prev_snap = db.scalar(select(func.max(Ranking.snapshot_at)))
     prev_ranks: dict[int, int] = {}
     prev_peak: dict[int, int] = {}
-    weeks_on: dict[int, int] = {}
     if prev_snap:
         for r in db.query(Ranking).filter(Ranking.snapshot_at == prev_snap):
             prev_ranks[r.film_id] = r.rank
             prev_peak[r.film_id] = r.peak_rank or r.rank
-            weeks_on[r.film_id] = r.weeks_on_chart or 0
+
+    # ── Weeks on chart: calendar weeks since the film's FIRST chart appearance.
+    # The previous implementation carried a counter and incremented it on every
+    # ranking run — which fires every 15 minutes — so "8 weeks on chart" could
+    # really mean "tracked for 2 hours", and re-entries showed NEW alongside an
+    # inflated count.  Deriving the count from the earliest snapshot keeps the
+    # number truthful and self-heals the inflated values already persisted by
+    # older runs: the next snapshot simply writes the correct number.
+    first_seen: dict[int, datetime] = {
+        fid: first_snap
+        for fid, first_snap in db.query(
+            Ranking.film_id, func.min(Ranking.snapshot_at)
+        ).group_by(Ranking.film_id).all()
+    }
+
+    def _weeks_on_chart(fid: int) -> int:
+        start = first_seen.get(fid)
+        if start is None:
+            return 1  # first appearance is this snapshot
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        return max(((now - start).days // 7) + 1, 1)
 
     # ── 10. Persist snapshot ──────────────────────────────────────────────────
     for i, (fid, score) in enumerate(normalized, start=1):
@@ -430,7 +450,7 @@ def recompute_rankings(db: Session) -> datetime:
             prev_rank=prev,
             movement=(prev - i) if prev else 0,
             peak_rank=peak,
-            weeks_on_chart=weeks_on.get(fid, 0) + 1,
+            weeks_on_chart=_weeks_on_chart(fid),
             # Sub-score audit log (stored as normalised 0-1 values)
             ca_score=round(ca_norm[fid], 4),
             momentum_score=round(m_norm[fid], 4),

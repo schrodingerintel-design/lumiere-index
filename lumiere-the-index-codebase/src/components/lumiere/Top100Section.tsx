@@ -117,7 +117,9 @@ export function Top100Section() {
           : films?.slice(0, 10).map((f) => {
               const director =
                 f.director && f.director !== "Unknown" ? f.director : "Director TBA";
-              const weeks = f.weeks_on_chart ?? 1;
+              // NEW entries have no previous snapshot — a week count would be
+              // meaningless (and contradictory) next to the NEW badge.
+              const weeks = f.prev_rank == null ? null : (f.weeks_on_chart ?? 1);
               return (
                 <li key={f.slug}>
                   <Link
@@ -137,7 +139,8 @@ export function Top100Section() {
                         {f.title}
                       </div>
                       <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {director} · {f.year} · {weeks} {weeks === 1 ? "wk" : "wks"}
+                        {director} · {f.year}
+                        {weeks != null ? ` · ${weeks} ${weeks === 1 ? "wk" : "wks"}` : ""}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
@@ -183,7 +186,7 @@ export function Top100Section() {
               : films?.slice(0, 10).map((f) => {
                   const director =
                     f.director && f.director !== "Unknown" ? f.director : "Director TBA";
-                  const weeks = f.weeks_on_chart ?? 1;
+                  const weeks = f.prev_rank == null ? null : (f.weeks_on_chart ?? 1);
 
                   return (
                     <li key={f.slug}>
@@ -210,7 +213,7 @@ export function Top100Section() {
                           </div>
                         </div>
                         <div className="font-mono text-xs tabular text-muted-foreground">
-                          {weeks} {weeks === 1 ? "wk" : "wks"}
+                          {weeks != null ? `${weeks} ${weeks === 1 ? "wk" : "wks"}` : "—"}
                         </div>
                         <div className="text-right">
                           <span className="index-score text-xl font-semibold">
