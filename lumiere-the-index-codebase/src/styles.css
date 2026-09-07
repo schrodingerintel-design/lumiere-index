@@ -1,3 +1,231 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-forest: var(--forest);
+  --color-forest-deep: var(--forest-deep);
+  --color-live: var(--live);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  /* Editorial display face for headlines + a highly readable UI/body face.
+     Fraunces gives cinematic-editorial character without the wedding-invitation
+     softness of Playfair; Libre Franklin is a neutral, legible UI sans. */
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Libre Franklin", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  /* Legacy `font-serif` usages resolve to the editorial display face so the
+     whole type system stays coherent (utilities layer would otherwise win). */
+  --font-serif: var(--font-display);
+}
+
+/* ── DARK (default) ─────────────────────────────────────────────────────────── */
+:root {
+  --radius: 0.5rem;
+
+  /* Brand palette */
+  --cream:       oklch(0.957 0.013 85);
+  --ink:         oklch(0.13 0.005 265);   /* very deep blue-charcoal */
+  --surface:     oklch(0.17 0.007 265);   /* card/panel surface */
+  --surface-alt: oklch(0.21 0.007 265);   /* slightly lighter surface */
+  --border-col:  oklch(1 0 0 / 0.08);
+
+  /* Accent: a warm amber-gold for cinema luxury */
+  --forest:      oklch(0.80 0.14 75);     /* warm gold primary */
+  --forest-deep: oklch(0.70 0.12 75);     /* slightly darker gold */
+  --live:        oklch(0.74 0.16 152);
+  --up:          oklch(0.74 0.16 152);
+  --down:        oklch(0.65 0.22 27);
+
+  /* Semantic tokens → dark mode */
+  --background:            var(--ink);
+  --foreground:            var(--cream);
+  --card:                  oklch(1 0 0 / 0.04);
+  --card-foreground:       var(--cream);
+  --popover:               var(--surface);
+  --popover-foreground:    var(--cream);
+  --primary:               var(--forest);
+  --primary-foreground:    oklch(0.12 0.005 265);
+  --secondary:             var(--surface-alt);
+  --secondary-foreground:  var(--cream);
+  --muted:                 var(--surface);
+  --muted-foreground:      oklch(0.62 0.012 265);
+  --accent:                var(--forest);
+  --accent-foreground:     oklch(0.12 0.005 265);
+  --destructive:           var(--down);
+  --destructive-foreground: var(--cream);
+  --border:                var(--border-col);
+  --input:                 oklch(1 0 0 / 0.08);
+  --ring:                  var(--forest);
+}
+
+/* ── LIGHT override (opt-in via .light class) ──────────────────────────────── */
+.light {
+  --ink:         oklch(0.18 0.005 80);
+  --cream:       oklch(0.957 0.013 85);
+  --forest:      oklch(0.45 0.08 155);
+  --forest-deep: oklch(0.32 0.06 155);
+  --surface:     oklch(0.985 0.005 85);   /* near-white warm surface for modals/data */
+  --surface-alt: oklch(0.955 0.008 85);
+  --background:  var(--cream);
+  --foreground:  var(--ink);
+  --card:        oklch(1 0 0 / 60%);
+  --card-foreground: var(--ink);
+  --popover:     oklch(0.99 0.005 85);
+  --popover-foreground: var(--ink);
+  --muted:       oklch(0.92 0.012 85);
+  --muted-foreground: oklch(0.45 0.008 80);
+  --border:      oklch(0.18 0.005 80 / 10%);
+  --input:       oklch(0.18 0.005 80 / 14%);
+  --primary:     var(--forest);
+  --primary-foreground: oklch(0.97 0.01 85);
+  --secondary:   oklch(0.92 0.012 85);
+  --secondary-foreground: var(--ink);
+  --accent:      var(--forest);
+  --accent-foreground: oklch(0.97 0.01 85);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    text-wrap: pretty;
+  }
+  h1, h2, h3, h4, .font-display, .font-serif { font-family: var(--font-display); letter-spacing: -0.01em; }
+  .font-mono, .tabular { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* Comfortable base sizing on small screens; most body/UI text stays ≥14px. */
+  @media (max-width: 640px) {
+    html { font-size: 15.5px; }
+  }
+}
+
+/* ── Grain overlay — subtler on dark ──────────────────────────────────────── */
+.grain-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 60;
+  opacity: 0.045; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ── Glass hierarchy ───────────────────────────────────────────────────────
+   Liquid glass is an aesthetic, not an excuse for unreadable UI. Four tiers:
+     glass       → strong  → primary interactive surfaces (nav, search modal)
+     glass-soft  → medium  → cards
+     glass-tint  → subtle  → secondary elements, strips, quiet containers
+     glass-solid → opaque  → anything requiring high readability (tables, data)
+   `glass` keeps its original look for compatibility with existing markup. */
+@utility glass {
+  background-color: oklch(1 0 0 / 0.045);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.08) inset,
+    0 0 0 0.5px oklch(1 0 0 / 0.04) inset,
+    0 16px 48px -20px oklch(0 0 0 / 0.55);
+}
+@utility glass-dark {
+  background-color: oklch(0.14 0.006 265 / 0.85);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  color: var(--cream);
+}
+/* "Dark" nav chrome flips to solid light chrome in light mode. Inner content
+   (Sidebar, QuoteBanner) uses semantic tokens, so without this the panel
+   stays dark while its links resolve to dark ink — unreadable. Navigation
+   must follow the theme, not showcase glass. */
+.light .glass-dark {
+  background-color: oklch(0.99 0.005 85 / 0.97);
+  backdrop-filter: blur(28px) saturate(155%);
+  border: 1px solid oklch(0.18 0.005 80 / 0.16);
+  color: var(--ink);
+}
+/* Medium tier — cards. Lighter blur, slightly more fill for legible content. */
+@utility glass-soft {
+  background-color: oklch(0.17 0.007 265 / 0.72);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid oklch(1 0 0 / 0.09);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.06) inset,
+    0 12px 36px -18px oklch(0 0 0 / 0.5);
+}
+.light .glass-soft {
+  background-color: oklch(1 0 0 / 0.78);
+}
+/* Subtle tier — secondary surfaces. Almost no glass theatre, just separation. */
+@utility glass-tint {
+  background-color: oklch(1 0 0 / 0.035);
+  border: 1px solid oklch(1 0 0 / 0.06);
+}
+.light .glass-tint {
+  background-color: oklch(0.18 0.005 80 / 0.04);
+  border: 1px solid oklch(0.18 0.005 80 / 0.08);
+}
+/* Solid tier — high-readability surfaces (ranking tables, data). No blur. */
+@utility glass-solid {
+  background-color: var(--surface);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.05) inset,
+    0 16px 48px -24px oklch(0 0 0 / 0.5);
+}
+.light .glass-solid {
+  background-color: oklch(1 0 0 / 0.92);
+  border: 1px solid oklch(0.18 0.005 80 / 0.1);
+}
+/* Same look as glass but with NO backdrop-filter — for panels that sit over a
+   flat background (nothing to blur). Avoids the Chromium compositing glitch
+   where hovering a panel re-rasterizes its blurred layer and flickers
+   neighboring glass surfaces (e.g. poster cards). */
+@utility glass-flat {
+  background-color: oklch(1 0 0 / 0.06);
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.08) inset,
+    0 0 0 0.5px oklch(1 0 0 / 0.04) inset,
+    0 16px 48px -20px oklch(0 0 0 / 0.55);
+}
+.light .glass-flat {
+  background-color: oklch(1 0 0 / 0.7);
+}
+
+/* Index Score — the product. A reusable, dominant score treatment:
+   tabular mono, tight tracking, and a subtle lift so the number reads as
+   the hero metric everywhere it appears (hero, tables, film pages). */
 @utility index-score {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -9,30 +237,85 @@
     0 2px 6px oklch(0 0 0 / 0.28);
   line-height: 1;
 }
-
 .light .index-score {
   font-weight: 700;
   color: var(--forest-deep);
-  text-shadow:
-    0 1px 0 oklch(1 0 0 / 0.18),
-    0 2px 6px oklch(1 0 0 / 0.16);
+  text-shadow: none;
 }
 
-.light .index-score-sub {
+/* 44px minimum tap targets on coarse pointers (mobile audit item). */
+@media (pointer: coarse) {
+  button, a[role="button"], [role="button"] {
+    min-height: 44px;
+  }
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker,
+  .animate-fade-up {
+    animation: none;
+  }
+}
+@utility card-lift {
+  transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s ease;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 56px -20px oklch(0 0 0 / 0.55), 0 0 0 1px oklch(1 0 0 / 0.08);
+  }
+}
+@utility live-dot {
+  position: relative;
+  &::before {
+    content: ""; position: absolute; inset: 0; border-radius: 9999px;
+    background: var(--live); animation: pingDot 1.6s cubic-bezier(0,0,.2,1) infinite;
+  }
+}
+
+@keyframes pingDot {
+  0% { transform: scale(1); opacity: .9; }
+  80%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp .7s cubic-bezier(.2,.7,.2,1) both; }
+.delay-100 { animation-delay: .08s }
+.delay-200 { animation-delay: .16s }
+.delay-300 { animation-delay: .24s }
+.delay-400 { animation-delay: .32s }
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-ticker { animation: ticker 40s linear infinite; }
+
+@keyframes barGrow {
+  from { width: 0; }
+}
+.bar-grow > * { animation: barGrow 1.2s cubic-bezier(.2,.7,.2,1) both; }
+
+/* Scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Selection highlight */
+::selection {
+  background: oklch(0.80 0.14 75 / 0.35);
+  color: var(--cream);
+}
+.light ::selection {
   color: var(--ink);
-  opacity: 0.85;
 }
 
-/* Creamer light-mode surfaces so the body doesn't default to hard white.
-   Cause: the .light class used --cream for --background, so the app's root
-   became flat white and every glass panel was barely visible against it.
-   Teaching Tailwind's `bg-background` to use the warmer --surface token keeps
-   the light theme in the same warm family as dark mode, while leaving the
-   page background on the softer --surface-alt tone. */
-.light .bg-background {
-  background-color: var(--surface);
+/* Scrollbar styling for dark mode */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 0.12);
+  border-radius: 9999px;
 }
-
-.light {
-  --surface-alt: oklch(0.97 0.007 90);
-}
+::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 0.22); }
