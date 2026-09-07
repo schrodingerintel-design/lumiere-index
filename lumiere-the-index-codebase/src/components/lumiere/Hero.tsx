@@ -226,19 +226,19 @@ export function Hero() {
           </div>
 
           {/* Carousel navigation */}
-          <div className="mt-8 flex items-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() =>
                 setActiveIndex((curr) => (curr - 1 + carouselFilms.length) % carouselFilms.length)
               }
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
               aria-label="Previous film"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               onClick={() => setActiveIndex((curr) => (curr + 1) % carouselFilms.length)}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-all"
               aria-label="Next film"
             >
               <ChevronRight className="h-5 w-5" />
@@ -292,19 +292,21 @@ export function Hero() {
 
       {/* ── Slide indicator — compact capsule dots overlaid on the backdrop ── */}
       {carouselFilms.length > 1 && (
-        <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/20 px-2 py-1 ring-1 ring-white/5 backdrop-blur-sm">
+        <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/30 px-2 py-1 ring-1 ring-white/5 backdrop-blur-sm">
           {carouselFilms.map((f, i) => (
             <button
               key={f.slug}
               onClick={() => setActiveIndex(i)}
-              className={`group relative flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 ${
-                i === activeIndex ? "bg-white/40" : "bg-white/10"
+              className={`relative flex h-4 w-4 items-center justify-center rounded-full transition-all duration-300 ${
+                i === activeIndex ? "bg-white/55 shadow-sm" : "bg-white/10 hover:bg-white/20"
               }`}
               aria-label={`View ${f.title}`}
             >
               <span
-                className={`block h-[2px] w-2 rounded-full transition-all duration-300 ${
-                  i === activeIndex ? "bg-white/90 w-2" : "bg-white/40 group-hover:bg-white/60 w-2"
+                className={`block h-0.5 w-1 rounded-full transition-all duration-300 ${
+                  i === activeIndex
+                    ? "bg-white/90 w-1.5"
+                    : "bg-white/35 group-hover:bg-white/55 w-0.5"
                 }`}
               />
             </button>

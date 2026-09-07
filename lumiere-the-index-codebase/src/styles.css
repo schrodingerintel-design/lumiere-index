@@ -169,9 +169,9 @@
    stays dark while its links resolve to dark ink — unreadable. Navigation
    must follow the theme, not showcase glass. */
 .light .glass-dark {
-  background-color: oklch(0.99 0.005 85 / 0.96);
+  background-color: oklch(0.99 0.005 85 / 0.97);
   backdrop-filter: blur(28px) saturate(155%);
-  border: 1px solid oklch(0.18 0.005 80 / 0.14);
+  border: 1px solid oklch(0.18 0.005 80 / 0.16);
   color: var(--ink);
 }
 /* Medium tier — cards. Lighter blur, slightly more fill for legible content. */

@@ -1,1 +1,0 @@
-function e(e,t=7){if(!e?.release_date)return!1;let n=new Date(e.release_date),r=(new Date().getTime()-n.getTime())/(1e3*60*60*24);return r>=-t&&r<=t}export{e as t};

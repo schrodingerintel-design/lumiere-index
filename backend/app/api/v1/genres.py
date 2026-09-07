@@ -20,8 +20,6 @@ GENRE_LABELS: dict[str, str] = {
     "drama": "Drama",
     "east-asian-cinema": "East Asian Cinema",
     "fantasy": "Fantasy",
-    "adventure": "Adventure",
-    "fantasy": "Fantasy",
     "horror": "Horror",
     "indie": "Indie",
     "musical": "Musical",
