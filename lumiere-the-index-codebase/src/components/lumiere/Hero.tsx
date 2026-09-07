@@ -1,6 +1,6 @@
 import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Play, Scale, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { Trophy, Play, Scale, ArrowUp, ArrowDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   getTopFilms,
@@ -171,23 +171,28 @@ export function Hero() {
             {activeFilm?.title}
           </h1>
 
-          {/* Trend indicator + weeks on chart */}
+          {/* Trend indicator — compact symbols: #3 ↑ 3 / #2 ↓ 1 / #3 — */}
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5">
             {trend === "new" ? (
               <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-live">
                 <ArrowUp className="h-4 w-4" /> New this week
               </span>
             ) : trend === "rise" ? (
-              <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-up">
-                <ArrowUp className="h-4 w-4" /> Rising · +{move} this week
+              <span className="flex items-center gap-1.5 font-mono text-sm">
+                <span className="text-white/85">#{activeFilm?.rank}</span>
+                <ArrowUp className="h-4 w-4 text-up" />
+                <span className="font-medium text-up">{move}</span>
               </span>
             ) : trend === "fall" ? (
-              <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-down">
-                <ArrowDown className="h-4 w-4" /> Falling · {Math.abs(move)} this week
+              <span className="flex items-center gap-1.5 font-mono text-sm">
+                <span className="text-white/85">#{activeFilm?.rank}</span>
+                <ArrowDown className="h-4 w-4 text-down" />
+                <span className="font-medium text-down">{Math.abs(move)}</span>
               </span>
             ) : (
-              <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-white/80">
-                <Minus className="h-4 w-4" /> Steady
+              <span className="flex items-center gap-1.5 font-mono text-sm">
+                <span className="text-white/85">#{activeFilm?.rank}</span>
+                <span className="font-medium text-primary" title="Held its rank">—</span>
               </span>
             )}
             {!isNew && weeks > 0 && (

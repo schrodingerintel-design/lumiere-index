@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Minus } from "lucide-react";
+import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { getNewReleaseFilms, type RankedFilm } from "@/lib/apiClient";
 import { isNewRelease } from "@/lib/filmUtils";
 import { filmTrend } from "@/lib/trend";
@@ -9,7 +9,7 @@ import { PosterCard } from "./PosterCard";
 import { FilmCardSkeleton, FilmRowSkeleton } from "./Skeletons";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 
-/** Rise / steady / fall indicator shared by desktop and mobile rows. */
+/** Compact trend symbol shared by desktop and mobile rows: ↑3 / ↓1 / — */
 function MovementBadge({ film }: { film: RankedFilm }) {
   const trend = filmTrend(film);
   const change = film.movement ?? 0;
@@ -22,7 +22,7 @@ function MovementBadge({ film }: { film: RankedFilm }) {
   }
   if (trend === "rise") {
     return (
-      <span className="flex items-center gap-0.5 font-mono text-xs tabular text-forest-deep">
+      <span className="flex items-center gap-0.5 font-mono text-xs tabular text-up" title={`Up ${change} since last week`}>
         <ArrowUp className="h-3 w-3" />
         {Math.abs(change)}
       </span>
@@ -30,16 +30,15 @@ function MovementBadge({ film }: { film: RankedFilm }) {
   }
   if (trend === "fall") {
     return (
-      <span className="flex items-center gap-0.5 font-mono text-xs tabular text-down">
+      <span className="flex items-center gap-0.5 font-mono text-xs tabular text-down" title={`Down ${Math.abs(change)} since last week`}>
         <ArrowDown className="h-3 w-3" />
         {Math.abs(change)}
       </span>
     );
   }
   return (
-    <span className="flex items-center gap-0.5 font-mono text-xs text-muted-foreground" title="Held its rank">
-      <Minus className="h-3 w-3" />
-      Steady
+    <span className="font-mono text-sm text-primary" title="Held its rank">
+      —
     </span>
   );
 }

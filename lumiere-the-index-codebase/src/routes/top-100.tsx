@@ -5,7 +5,7 @@ import { getNewReleaseFilms } from "@/lib/apiClient";
 import { isNewRelease } from "@/lib/filmUtils";
 import { filmTrend } from "@/lib/trend";
 import { RouteError } from "@/lib/route-error";
-import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 
@@ -121,8 +121,8 @@ function Top100() {
                                 {Math.abs(change)}
                               </span>
                             ) : (
-                              <span className="flex items-center font-mono text-[10px] text-muted-foreground">
-                                <Minus className="h-2.5 w-2.5" /> Steady
+                              <span className="font-mono text-[11px] text-primary" title="Held its rank">
+                                —
                               </span>
                             )}
                           </span>
@@ -145,10 +145,10 @@ function Top100() {
                             </span>
                           ) : (
                             <span
-                              className="flex items-center gap-0.5 font-mono text-xs text-muted-foreground"
+                              className="font-mono text-sm text-primary"
                               title="Held its rank"
                             >
-                              <Minus className="h-3 w-3" /> Steady
+                              —
                             </span>
                           )}
                         </div>
