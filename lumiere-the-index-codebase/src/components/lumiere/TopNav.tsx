@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Search, Sun, Moon } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { NAV_ITEMS } from "./Sidebar";
-import { useTheme } from "@/hooks/use-theme";
 
 /** Editorial date — e.g. "Monday, September 8, 2026" (publication masthead). */
 function todayLabel(): string {
@@ -26,7 +25,6 @@ const topLinks = NAV_ITEMS.filter(
 ).map(({ to, label }) => ({ to, label }));
 
 export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch?: () => void }) {
-  const { theme, toggle } = useTheme();
 
   return (
     <header className="sticky top-0 z-30 border-b border-foreground/10 bg-background/95 backdrop-blur">
@@ -74,14 +72,6 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch?: ()
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="hidden truncate md:inline">Search</span>
-          </button>
-
-          <button
-            onClick={toggle}
-            className="flex h-10 w-10 items-center justify-center text-foreground/60 transition hover:text-foreground"
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
         </div>
       </div>

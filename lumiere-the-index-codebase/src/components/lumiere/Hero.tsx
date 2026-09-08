@@ -132,14 +132,14 @@ export function Hero() {
       onClick={handleHeroTap}
       className="relative w-full select-none overflow-hidden mt-4 max-w-full"
     >
-      {/* ── Backdrop: cover-crop, quiet dark gradient for readability ── */}
+      {/* ── Backdrop: cover-crop, melting into the violet-black page ── */}
       <div className="absolute inset-0">
         {backdropUrl ? (
           <img
             key={backdropUrl}
             src={backdropUrl}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-[50%_35%]"
+            className="animate-kenburns absolute inset-0 h-full w-full object-cover object-[50%_35%]"
             fetchPriority="high"
             decoding="async"
           />
@@ -150,8 +150,10 @@ export function Hero() {
             style={{ background: gradientStyle(activeFilm) }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/92 via-black/60 to-black/25" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30" />
+        {/* Ink-tinted gradients instead of hard black — the image dissolves
+            into the page ground on every edge, no frame, no seam. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/55 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/20 to-ink/45" />
       </div>
 
       {/* ── Content ── */}
@@ -214,15 +216,15 @@ export function Hero() {
             Compare
           </Link>
           {trailer && (
-            <a
-              href={`https://www.youtube.com/watch?v=${trailer.key}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to="/films/$slug"
+              params={{ slug: activeFilm?.slug ?? "" }}
+              hash="trailer"
               className="inline-flex min-h-11 items-center gap-2 border border-white/35 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
             >
               <Play className="h-4 w-4" />
               Trailer
-            </a>
+            </Link>
           )}
         </div>
       </div>
@@ -232,7 +234,7 @@ export function Hero() {
         <Link
           to="/films/$slug"
           params={{ slug: activeFilm?.slug ?? "" }}
-          className="group relative block w-56 shadow-2xl"
+          className="animate-float-slow group relative block w-56 shadow-[0_0_90px_oklch(0.45_0.2_300/0.35)]"
         >
           {posterUrl ? (
             <img

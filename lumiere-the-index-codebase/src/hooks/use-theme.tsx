@@ -1,34 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 
-type Theme = "dark" | "light";
-
-const STORAGE_KEY = "lumiere_theme";
-
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark") return stored;
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-}
-
+// The Index is a dark-only product. This hook exists so legacy call sites keep
+// working; it simply pins the document to the dark violet theme.
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
-
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.add("light");
-      root.classList.remove("dark");
-    } else {
-      root.classList.add("dark");
-      root.classList.remove("light");
-    }
-    localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
-
-  const toggle = useCallback(() => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+    root.classList.add("dark");
+    root.classList.remove("light");
   }, []);
 
-  return { theme, toggle };
+  return { theme: "dark" as const, toggle: () => {} };
 }

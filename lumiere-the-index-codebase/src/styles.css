@@ -52,21 +52,21 @@
   --font-serif: var(--font-display);
 }
 
-/* ── DARK (default) ─────────────────────────────────────────────────────────── */
+/* ── DARK — the only theme: violet cinema ─────────────────────────────── */
 :root {
   --radius: 0.5rem;
 
-  /* Brand palette — warm theater-dark. The hue sits in the amber/umber range
-     like a darkened cinema, not the cool blue-gray of a tech dashboard. */
-  --cream:       oklch(0.955 0.016 82);
-  --ink:         oklch(0.145 0.012 55);   /* deep warm umber-black */
-  --surface:     oklch(0.19 0.014 55);    /* card/panel surface */
-  --surface-alt: oklch(0.235 0.016 55);   /* slightly lighter surface */
-  --border-col:  oklch(1 0 0 / 0.08);
+  /* Brand palette — tinted purple-black. Deep violet-charcoal like a theater
+     at midnight; the violet accent carries the brand glow. */
+  --cream:       oklch(0.955 0.012 300);  /* violet-tinted off-white */
+  --ink:         oklch(0.13 0.025 295);   /* purple-black */
+  --surface:     oklch(0.17 0.028 295);   /* card/panel surface */
+  --surface-alt: oklch(0.215 0.032 295);  /* slightly lighter surface */
+  --border-col:  oklch(1 0 0 / 0.09);
 
-  /* Accent: amber-gold — the projector glow */
-  --forest:      oklch(0.79 0.15 72);     /* warm gold primary */
-  --forest-deep: oklch(0.69 0.13 72);     /* slightly darker gold */
+  /* Accent: violet — the neon marquee glow */
+  --forest:      oklch(0.72 0.19 300);    /* vivid violet primary */
+  --forest-deep: oklch(0.62 0.17 300);    /* deeper violet */
   --live:        oklch(0.74 0.16 152);
   --up:          oklch(0.74 0.16 152);
   --down:        oklch(0.65 0.22 27);
@@ -79,46 +79,21 @@
   --popover:               var(--surface);
   --popover-foreground:    var(--cream);
   --primary:               var(--forest);
-  --primary-foreground:    oklch(0.14 0.012 55);
+  --primary-foreground:    oklch(0.13 0.025 295);
   --secondary:             var(--surface-alt);
   --secondary-foreground:  var(--cream);
   --muted:                 var(--surface);
-  --muted-foreground:      oklch(0.66 0.02 70);
+  --muted-foreground:      oklch(0.68 0.03 290);
   --accent:                var(--forest);
-  --accent-foreground:     oklch(0.14 0.012 55);
+  --accent-foreground:     oklch(0.13 0.025 295);
   --destructive:           var(--down);
   --destructive-foreground: var(--cream);
   --border:                var(--border-col);
-  --input:                 oklch(1 0 0 / 0.08);
+  --input:                 oklch(1 0 0 / 0.09);
   --ring:                  var(--forest);
 }
 
-/* ── LIGHT override (opt-in via .light class) ──────────────────────────────── */
-.light {
-  --ink:         oklch(0.18 0.005 80);
-  --cream:       oklch(0.957 0.013 85);
-  --forest:      oklch(0.45 0.08 155);
-  --forest-deep: oklch(0.32 0.06 155);
-  --surface:     oklch(0.985 0.005 85);   /* near-white warm surface for modals/data */
-  --surface-alt: oklch(0.955 0.008 85);
-  --background:  var(--cream);
-  --foreground:  var(--ink);
-  --card:        oklch(1 0 0 / 60%);
-  --card-foreground: var(--ink);
-  --popover:     oklch(0.99 0.005 85);
-  --popover-foreground: var(--ink);
-  --muted:       oklch(0.92 0.012 85);
-  --muted-foreground: oklch(0.45 0.008 80);
-  --border:      oklch(0.18 0.005 80 / 10%);
-  --input:       oklch(0.18 0.005 80 / 14%);
-  --primary:     var(--forest);
-  --primary-foreground: oklch(0.97 0.01 85);
-  --secondary:   oklch(0.92 0.012 85);
-  --secondary-foreground: var(--ink);
-  --accent:      var(--forest);
-  --accent-foreground: oklch(0.97 0.01 85);
-}
-
+/* ── LIGHT THEME REMOVED — dark-only product ──────────────────────────────── */
 @layer base {
   * { border-color: var(--color-border); }
   html, body {
@@ -160,48 +135,27 @@
   border: 1px solid oklch(1 0 0 / 0.12);
   color: var(--cream);
 }
-/* "Dark" nav chrome flips to solid light chrome in light mode. Inner content
-   (Sidebar, QuoteBanner) uses semantic tokens, so without this the panel
-   stays dark while its links resolve to dark ink — unreadable. */
-.light .glass-dark {
-  background-color: oklch(0.99 0.005 85);
-  border: 1px solid oklch(0.18 0.005 80 / 0.16);
-  color: var(--ink);
-}
+/* "Dark" nav chrome — the app is dark-only now. Inner content
+   (Sidebar, QuoteBanner) uses semantic tokens. */
 /* Cards — same solid treatment, one tonal step up. */
 @utility glass-soft {
   background-color: var(--surface);
   border: 1px solid oklch(1 0 0 / 0.08);
-}
-.light .glass-soft {
-  background-color: oklch(1 0 0);
-  border: 1px solid oklch(0.18 0.005 80 / 0.12);
 }
 /* Subtle tier — secondary surfaces. Barely-there separation. */
 @utility glass-tint {
   background-color: oklch(1 0 0 / 0.03);
   border: 1px solid oklch(1 0 0 / 0.06);
 }
-.light .glass-tint {
-  background-color: oklch(0.18 0.005 80 / 0.03);
-  border: 1px solid oklch(0.18 0.005 80 / 0.08);
-}
 /* Solid tier — data surfaces (ranking tables). */
 @utility glass-solid {
   background-color: var(--surface);
   border: 1px solid oklch(1 0 0 / 0.1);
 }
-.light .glass-solid {
-  background-color: oklch(1 0 0);
-  border: 1px solid oklch(0.18 0.005 80 / 0.1);
-}
 /* Flush panel over the flat background (sidebar rail). */
 @utility glass-flat {
   background-color: var(--surface);
   border: 1px solid oklch(1 0 0 / 0.09);
-}
-.light .glass-flat {
-  background-color: oklch(1 0 0);
 }
 
 /* Index Score — the product. Typography carries the authority: tabular mono,
@@ -213,10 +167,6 @@
   letter-spacing: -0.03em;
   color: var(--forest);
   line-height: 1;
-}
-.light .index-score {
-  font-weight: 700;
-  color: var(--forest-deep);
 }
 
 /* 44px minimum tap targets on coarse pointers (mobile audit item). */
@@ -230,7 +180,13 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-ticker,
   .animate-fade-up,
-  .live-dot::before {
+  .animate-breathe,
+  .animate-float-slow,
+  .animate-kenburns,
+  .live-dot::before,
+  .orb-violet,
+  .orb-violet-deep,
+  .orb-magenta {
     animation: none;
   }
 }
@@ -275,17 +231,89 @@
 }
 .bar-grow > * { animation: barGrow 1.2s cubic-bezier(.2,.7,.2,1) both; }
 
+/* ── Live blur — ambient violet orbs drifting behind the whole app ────────
+   Fixed, pointer-transparent layers of blurred color that slowly breathe.
+   This is atmosphere behind the content, never overlay on it. */
+@utility ambient-orb {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.55;
+  will-change: transform, opacity;
+}
+.orb-violet {
+  background: radial-gradient(circle, oklch(0.45 0.2 300 / 0.5), transparent 70%);
+  animation: driftA 26s ease-in-out infinite alternate;
+}
+.orb-violet-deep {
+  background: radial-gradient(circle, oklch(0.35 0.16 285 / 0.55), transparent 70%);
+  animation: driftB 34s ease-in-out infinite alternate;
+}
+.orb-magenta {
+  background: radial-gradient(circle, oklch(0.4 0.16 330 / 0.32), transparent 70%);
+  animation: driftC 40s ease-in-out infinite alternate;
+}
+@keyframes driftA {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(6vw, 4vh) scale(1.15); }
+}
+@keyframes driftB {
+  from { transform: translate(0, 0) scale(1.1); }
+  to   { transform: translate(-5vw, 6vh) scale(0.95); }
+}
+@keyframes driftC {
+  from { transform: translate(0, 0) scale(0.95); }
+  to   { transform: translate(4vw, -5vh) scale(1.2); }
+}
+
+/* Slow breathing glow for accent elements (score, live indicators). */
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+.animate-breathe { animation: breathe 4.5s ease-in-out infinite; }
+
+/* Gentle float for decorative media (hero poster). */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float-slow { animation: floatSlow 7s ease-in-out infinite; }
+
+/* Cross-fade for hero backdrop slides. */
+@keyframes kenBurns {
+  from { transform: scale(1.02); }
+  to   { transform: scale(1.1); }
+}
+.animate-kenburns { animation: kenBurns 14s ease-out both alternate infinite; }
+
+/* ── Blending media into the background ─────────────────────────────────
+   Header/hero images should never end in a hard edge against the page:
+   masks fade them into the violet-black ground instead of boxing them. */
+@utility blend-img {
+  mask-image: linear-gradient(to bottom, black 55%, transparent 98%);
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 98%);
+}
+@utility blend-img-radial {
+  mask-image: radial-gradient(120% 100% at 50% 40%, black 55%, transparent 92%);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 40%, black 55%, transparent 92%);
+}
+/* Full-bleed media that melts into the page on every edge. */
+@utility blend-full {
+  mask-image: radial-gradient(140% 120% at 50% 45%, black 48%, transparent 88%);
+  -webkit-mask-image: radial-gradient(140% 120% at 50% 45%, black 48%, transparent 88%);
+}
+
 /* Scrollbar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
 /* Selection highlight */
 ::selection {
-  background: oklch(0.80 0.14 75 / 0.35);
+  background: oklch(0.55 0.2 300 / 0.4);
   color: var(--cream);
-}
-.light ::selection {
-  color: var(--ink);
 }
 
 /* Scrollbar styling for dark mode */

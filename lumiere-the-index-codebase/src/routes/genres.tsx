@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getGenreFilms, getGenres, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
-import { Film, Flame, Rocket, Ghost, Sparkles, Heart, Smile, ShieldAlert, Award } from "lucide-react";
 import { Skeleton } from "@/components/lumiere/Skeletons";
 
 export const Route = createFileRoute("/genres")({
@@ -24,8 +23,6 @@ export const Route = createFileRoute("/genres")({
 interface GenreDef {
   id: string;
   name: string;
-  icon: React.ElementType;
-  color: string;
   /** The canonical backend genre_tag this filter maps to. Films enter a
    *  genre ONLY via this tag — never via synopsis keyword guessing, so
    *  Hollywood blockbusters can never leak into the wrong shelf. */
@@ -33,69 +30,15 @@ interface GenreDef {
 }
 
 const GENRES: GenreDef[] = [
-  {
-    id: "action",
-    name: "Action",
-    icon: Flame,
-    color: "from-red-500/15 to-amber-500/10 text-red-500",
-    tag: "Action",
-  },
-  {
-    id: "scifi",
-    name: "Sci-Fi",
-    icon: Rocket,
-    color: "from-blue-500/15 to-cyan-500/10 text-blue-500",
-    tag: "Sci-Fi",
-  },
-  {
-    id: "thriller",
-    name: "Thriller",
-    icon: Ghost,
-    color: "from-emerald-500/15 to-teal-500/10 text-emerald-500",
-    tag: "Thriller",
-  },
-  {
-    id: "comedy",
-    name: "Comedy",
-    icon: Smile,
-    color: "from-amber-500/15 to-yellow-500/10 text-amber-500",
-    tag: "Comedy",
-  },
-  {
-    id: "drama",
-    name: "Drama",
-    icon: Film,
-    color: "from-purple-500/15 to-indigo-500/10 text-purple-500",
-    tag: "Drama",
-  },
-  {
-    id: "romance",
-    name: "Romance",
-    icon: Heart,
-    color: "from-pink-500/15 to-rose-500/10 text-pink-500",
-    tag: "Romance",
-  },
-  {
-    id: "animation",
-    name: "Animation",
-    icon: Sparkles,
-    color: "from-indigo-500/15 to-blue-500/10 text-indigo-500",
-    tag: "Animation",
-  },
-  {
-    id: "horror",
-    name: "Horror",
-    icon: ShieldAlert,
-    color: "from-orange-500/15 to-red-500/10 text-orange-500",
-    tag: "Horror",
-  },
-  {
-    id: "indie",
-    name: "Indie",
-    icon: Award,
-    color: "from-teal-500/15 to-emerald-500/10 text-teal-500",
-    tag: "Indie",
-  },
+  { id: "action", name: "Action", tag: "Action" },
+  { id: "scifi", name: "Sci-Fi", tag: "Sci-Fi" },
+  { id: "thriller", name: "Thriller", tag: "Thriller" },
+  { id: "comedy", name: "Comedy", tag: "Comedy" },
+  { id: "drama", name: "Drama", tag: "Drama" },
+  { id: "romance", name: "Romance", tag: "Romance" },
+  { id: "animation", name: "Animation", tag: "Animation" },
+  { id: "horror", name: "Horror", tag: "Horror" },
+  { id: "indie", name: "Indie", tag: "Indie" },
 ];
 
 function GenresPage() {
@@ -118,8 +61,6 @@ function GenresPage() {
   const isLoading = genresLoading || filmsLoading;
   const displayFilms = genreFilms;
 
-  const ActiveIcon = selectedGenre.icon;
-
   return (
     <Layout>
       <section className="px-4 pt-6 lg:px-6">
@@ -137,7 +78,6 @@ function GenresPage() {
             // Find the matching GenreDef for this backend genre tag
             const matchingDef = GENRES.find((def) => def.tag.toLowerCase() === g.tag.toLowerCase());
             if (!matchingDef) return null;
-            const Icon = matchingDef.icon;
             const isSelected = selectedGenre.id === matchingDef.id;
             return (
               <button
@@ -146,13 +86,12 @@ function GenresPage() {
                   const def = GENRES.find((d) => d.tag.toLowerCase() === g.tag.toLowerCase());
                   if (def) setSelectedGenre(def);
                 }}
-                className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
+                className={`flex shrink-0 items-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
                   isSelected
-                    ? "bg-primary text-primary-foreground shadow-md"
+                    ? "bg-primary text-primary-foreground"
                     : "glass border border-foreground/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 }`}
               >
-                <Icon className="h-4 w-4" />
                 <span>{g.label} ({g.count})</span>
               </button>
             );
@@ -163,18 +102,11 @@ function GenresPage() {
       {/* Selected Genre Active Header */}
       <section className="mt-8 px-4 lg:px-6">
         <div className="flex items-center justify-between border-b border-foreground/10 pb-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${selectedGenre.color}`}
-            >
-              <ActiveIcon className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-display text-2xl">Top {selectedGenre.name} Films</h2>
-              <p className="text-xs text-muted-foreground">
-                Ranked by Index score · {displayFilms.length} titles tracked
-              </p>
-            </div>
+          <div>
+            <h2 className="font-display text-2xl">Top {selectedGenre.name} Films</h2>
+            <p className="text-xs text-muted-foreground">
+              Ranked by Index score · {displayFilms.length} titles tracked
+            </p>
           </div>
         </div>
 

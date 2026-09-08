@@ -426,7 +426,7 @@ function FilmDetailView() {
           {/* Poster floats right — headline, metadata and synopsis wrap around it */}
           <figure className="float-right ml-5 mb-3 w-[34%] max-w-[210px] sm:ml-8 sm:mb-4 sm:w-[30%] sm:max-w-[280px] lg:max-w-[320px]">
             <div
-              className="relative aspect-[2/3] overflow-hidden"
+              className="relative aspect-[2/3] overflow-hidden shadow-[0_0_70px_oklch(0.45_0.2_300/0.28)]"
               style={{ background: gradientStyle(film) }}
             >
               {posterUrl ? (
@@ -487,8 +487,14 @@ function FilmDetailView() {
               here on the page. No navigation, no separate player view. */}
           <div id="trailer" className="scroll-mt-24">
             {trailerKey ? (
-              <div className="border border-foreground/10">
-                <div className="relative aspect-video w-full bg-black">
+              <div className="relative">
+                {/* Ambient violet aura — the player floats on the page instead
+                    of sitting in a bordered box. No highlight, no frame. */}
+                <div
+                  aria-hidden
+                  className="animate-breathe absolute -inset-8 bg-[radial-gradient(closest-side,oklch(0.45_0.2_300/0.22),transparent)] blur-2xl"
+                />
+                <div className="relative aspect-video w-full overflow-hidden bg-black/40">
                   <iframe
                     src={`https://www.youtube.com/embed/${trailerKey}?rel=0&modestbranding=1&playsinline=1`}
                     title={`${film.title} — Official Trailer`}
@@ -497,7 +503,7 @@ function FilmDetailView() {
                     className="absolute inset-0 h-full w-full"
                   />
                 </div>
-                <div className="flex items-center justify-between px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                <div className="relative flex items-center justify-between px-1 pt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   <span>Official Trailer · YouTube</span>
                   <span className="hidden sm:inline">Plays on this page</span>
                 </div>
