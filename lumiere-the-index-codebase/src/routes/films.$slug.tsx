@@ -5,7 +5,6 @@ import { Layout } from "@/components/lumiere/Layout";
 import {
   getFilmDetail,
   searchTmdbMovie,
-  tmdbBackdropUrl,
   tmdbPosterUrl,
   getTmdbMovieVideos,
   getTmdbMovieDetails,
@@ -218,8 +217,11 @@ function FilmDetailView() {
   const [showMethodology, setShowMethodology] = useState(false);
   const [watchRegion, setWatchRegion] = useState("US");
   const [toast, setToast] = useState<string | null>(null);
-  const [trailerOpen, setTrailerOpen] = useState(false);
-  const closeTrailer = useCallback(() => setTrailerOpen(false), []);
+
+  // The trailer plays inline on the page — this action just brings it into view.
+  const scrollToTrailer = useCallback(() => {
+    document.getElementById("trailer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const handleToggleSave = () => {
     toggle();
@@ -327,7 +329,6 @@ function FilmDetailView() {
     videos?.results?.find((v) => v.site === "YouTube" && v.type === "Trailer")?.key ??
     videos?.results?.find((v) => v.site === "YouTube")?.key ??
     null;
-  const backdropUrl = tmdbBackdropUrl(tmdbFilm?.backdrop_path, "w1280");
 
   // Real backend sentiment signals, with calibrated fallback from Index score if early in tracking
   const rawSentiment = film.sentiment;
@@ -382,66 +383,8 @@ function FilmDetailView() {
 
   return (
     <Layout>
-      <section className="grid grid-cols-1 gap-8 px-4 pt-6 lg:grid-cols-12 lg:px-6">
-        {/* ── Left Column ── */}
-        <div className="lg:col-span-8 animate-fade-up space-y-6">
-          {/* ── Trailer hero — the film's media leads the page. Clicking opens
-              the in-page player; the user never leaves The Index. ── */}
-          {trailerKey ? (
-            <button
-              onClick={() => setTrailerOpen(true)}
-              className="group relative block aspect-video w-full overflow-hidden border border-foreground/10 text-left"
-              aria-label={`Watch the trailer for ${film.title}`}
-            >
-              {backdropUrl ? (
-                <img
-                  src={backdropUrl}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                />
-              ) : (
-                <div className="absolute inset-0" style={{ background: gradientStyle(film) }} />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/30" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/40 bg-black/40 backdrop-blur-sm transition group-hover:border-primary group-hover:bg-primary sm:h-16 sm:w-16">
-                  <Play className="h-6 w-6 translate-x-[2px] text-white transition group-hover:text-primary-foreground" />
-                </span>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-4 sm:p-5">
-                <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/60">
-                    Official Trailer · YouTube
-                  </div>
-                  <div className="mt-1 font-serif text-xl text-white sm:text-2xl">
-                    Watch the trailer
-                  </div>
-                </div>
-                <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-white/50 sm:block">
-                  Plays in-page
-                </span>
-              </div>
-            </button>
-          ) : videos === undefined ? (
-            <div
-              className="relative aspect-video w-full overflow-hidden border border-foreground/10"
-              style={{ background: gradientStyle(film) }}
-            >
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/50">
-                  Loading trailer…
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between border border-foreground/10 bg-surface px-4 py-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Official Trailer
-              </span>
-              <span className="text-xs text-muted-foreground">Not yet available</span>
-            </div>
-          )}
-
+      <section className="px-4 pt-6 lg:px-6">
+        <div className="mx-auto max-w-5xl animate-fade-up space-y-6">
           {/* Breadcrumb + Actions — editorial metadata row, no badges */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-foreground/10 pb-4">
             <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -450,7 +393,7 @@ function FilmDetailView() {
             <div className="flex items-center gap-4">
               {trailerKey && (
                 <button
-                  onClick={() => setTrailerOpen(true)}
+                  onClick={scrollToTrailer}
                   className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
                 >
                   <Play className="h-3.5 w-3.5" />
@@ -480,9 +423,36 @@ function FilmDetailView() {
             </div>
           </div>
 
+          {/* Poster floats right — headline, metadata and synopsis wrap around it */}
+          <figure className="float-right ml-5 mb-3 w-[34%] max-w-[210px] sm:ml-8 sm:mb-4 sm:w-[30%] sm:max-w-[280px] lg:max-w-[320px]">
+            <div
+              className="relative aspect-[2/3] overflow-hidden"
+              style={{ background: gradientStyle(film) }}
+            >
+              {posterUrl ? (
+                <img
+                  src={posterUrl}
+                  alt={film.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  loading="eager"
+                />
+              ) : (
+                <div
+                  className="absolute inset-0 opacity-40 mix-blend-overlay"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 60%)",
+                  }}
+                />
+              )}
+            </div>
+          </figure>
+
           {/* Title */}
           <div>
-            <h1 className="font-serif text-6xl leading-[0.95] lg:text-8xl">{film.title}</h1>
+            <h1 className="font-serif text-5xl leading-[0.95] sm:text-6xl lg:text-7xl">
+              {film.title}
+            </h1>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-lg text-muted-foreground">
               <span>
                 Directed by <span className="text-foreground">{director}</span>
@@ -510,7 +480,48 @@ function FilmDetailView() {
           </div>
 
           {/* Synopsis */}
-          <p className="max-w-2xl text-base leading-relaxed text-foreground/80">{synopsis}</p>
+          <p className="text-base leading-relaxed text-foreground/80">{synopsis}</p>
+          <div className="clear-both" />
+
+          {/* Trailer — embedded and ready on arrival; pressing play runs right
+              here on the page. No navigation, no separate player view. */}
+          <div id="trailer" className="scroll-mt-24">
+            {trailerKey ? (
+              <div className="border border-foreground/10">
+                <div className="relative aspect-video w-full bg-black">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${trailerKey}?rel=0&modestbranding=1&playsinline=1`}
+                    title={`${film.title} — Official Trailer`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="absolute inset-0 h-full w-full"
+                  />
+                </div>
+                <div className="flex items-center justify-between px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <span>Official Trailer · YouTube</span>
+                  <span className="hidden sm:inline">Plays on this page</span>
+                </div>
+              </div>
+            ) : videos === undefined ? (
+              <div
+                className="relative aspect-video w-full border border-foreground/10"
+                style={{ background: gradientStyle(film) }}
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/50">
+                    Loading trailer…
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between border border-foreground/10 bg-surface px-4 py-3">
+                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Official Trailer
+                </span>
+                <span className="text-xs text-muted-foreground">Not yet available</span>
+              </div>
+            )}
+          </div>
 
           {/* ── Index Score block — the measurement, treated as one ── */}
           <div className="relative border-y border-foreground/10 bg-surface p-6">
@@ -636,8 +647,8 @@ function FilmDetailView() {
                 icon={<Youtube className="h-4.5 w-4.5" />}
                 label="Trailer Signals"
                 value="Official Trailer"
-                sub={trailerKey ? "YouTube · plays in-page" : "Trailer not yet available"}
-                onClick={trailerKey ? () => setTrailerOpen(true) : undefined}
+                sub={trailerKey ? "YouTube · plays on this page" : "Trailer not yet available"}
+                onClick={trailerKey ? scrollToTrailer : undefined}
                 color="#ff0000"
               />
             </div>
@@ -915,11 +926,6 @@ function FilmDetailView() {
         </aside>
       </section>
 
-      {/* Trailer modal — in-page player; unmounting the iframe stops playback */}
-      {trailerOpen && trailerKey && (
-        <TrailerModal videoKey={trailerKey} title={film.title} onClose={closeTrailer} />
-      )}
-
       {/* Floating Save/Watchlist Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 border border-primary/30 bg-background p-4 shadow-2xl animate-fade-up">
@@ -939,64 +945,3 @@ function FilmDetailView() {
   );
 }
 
-// ── Trailer modal — YouTube embedded player inside The Index ────────────────
-// 16:9, fluid width capped for desktop, ESC / click-outside / X to close.
-// The iframe is unmounted on close, which guarantees playback stops.
-// Muted autoplay (no sound until the user unmutes in the player itself).
-function TrailerModal({
-  videoKey,
-  title,
-  onClose,
-}: {
-  videoKey: string;
-  title: string;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-10"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${title} — trailer`}
-    >
-      <button
-        onClick={onClose}
-        aria-label="Close trailer"
-        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center border border-white/20 bg-black/70 text-white transition hover:border-white/60"
-      >
-        <X className="h-5 w-5" />
-      </button>
-
-      {/* 16:9 player — fluid width, capped on desktop, never overflows */}
-      <div className="relative w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
-        <div className="relative aspect-video w-full border border-white/10 bg-black shadow-2xl">
-          <iframe
-            src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1`}
-            title={`${title} — Official Trailer`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            className="absolute inset-0 h-full w-full"
-          />
-        </div>
-        <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
-          <span className="truncate">{title} — Official Trailer</span>
-          <span className="hidden shrink-0 sm:inline">ESC to close</span>
-        </div>
-      </div>
-    </div>
-  );
-}
