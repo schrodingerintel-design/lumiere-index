@@ -56,16 +56,17 @@
 :root {
   --radius: 0.5rem;
 
-  /* Brand palette */
-  --cream:       oklch(0.957 0.013 85);
-  --ink:         oklch(0.13 0.005 265);   /* very deep blue-charcoal */
-  --surface:     oklch(0.17 0.007 265);   /* card/panel surface */
-  --surface-alt: oklch(0.21 0.007 265);   /* slightly lighter surface */
+  /* Brand palette — warm theater-dark. The hue sits in the amber/umber range
+     like a darkened cinema, not the cool blue-gray of a tech dashboard. */
+  --cream:       oklch(0.955 0.016 82);
+  --ink:         oklch(0.145 0.012 55);   /* deep warm umber-black */
+  --surface:     oklch(0.19 0.014 55);    /* card/panel surface */
+  --surface-alt: oklch(0.235 0.016 55);   /* slightly lighter surface */
   --border-col:  oklch(1 0 0 / 0.08);
 
-  /* Accent: a warm amber-gold for cinema luxury */
-  --forest:      oklch(0.80 0.14 75);     /* warm gold primary */
-  --forest-deep: oklch(0.70 0.12 75);     /* slightly darker gold */
+  /* Accent: amber-gold — the projector glow */
+  --forest:      oklch(0.79 0.15 72);     /* warm gold primary */
+  --forest-deep: oklch(0.69 0.13 72);     /* slightly darker gold */
   --live:        oklch(0.74 0.16 152);
   --up:          oklch(0.74 0.16 152);
   --down:        oklch(0.65 0.22 27);
@@ -78,13 +79,13 @@
   --popover:               var(--surface);
   --popover-foreground:    var(--cream);
   --primary:               var(--forest);
-  --primary-foreground:    oklch(0.12 0.005 265);
+  --primary-foreground:    oklch(0.14 0.012 55);
   --secondary:             var(--surface-alt);
   --secondary-foreground:  var(--cream);
   --muted:                 var(--surface);
-  --muted-foreground:      oklch(0.62 0.012 265);
+  --muted-foreground:      oklch(0.66 0.02 70);
   --accent:                var(--forest);
-  --accent-foreground:     oklch(0.12 0.005 265);
+  --accent-foreground:     oklch(0.14 0.012 55);
   --destructive:           var(--down);
   --destructive-foreground: var(--cream);
   --border:                var(--border-col);

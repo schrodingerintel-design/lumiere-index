@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import {
   getFilmDetail,
   searchTmdbMovie,
+  tmdbBackdropUrl,
   tmdbPosterUrl,
   getTmdbMovieVideos,
   getTmdbMovieDetails,
@@ -106,13 +107,14 @@ interface SourceBadgeProps {
   value: string;
   sub?: string;
   href?: string;
+  onClick?: () => void;
   color: string;
 }
 
-function SourceBadge({ icon, label, value, sub, href, color }: SourceBadgeProps) {
+function SourceBadge({ icon, label, value, sub, href, onClick, color }: SourceBadgeProps) {
   const inner = (
     <div
-      className={`flex items-center gap-3 border border-foreground/10 bg-surface p-3.5 transition ${href ? "hover:border-foreground/25 hover:bg-foreground/[0.04] cursor-pointer" : ""}`}
+      className={`flex items-center gap-3 border border-foreground/10 bg-surface p-3.5 transition ${href || onClick ? "hover:border-foreground/25 hover:bg-foreground/[0.04] cursor-pointer" : ""}`}
     >
       <div
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
@@ -127,17 +129,26 @@ function SourceBadge({ icon, label, value, sub, href, color }: SourceBadgeProps)
         </div>
         {sub && <div className="font-mono text-[10px] text-muted-foreground">{sub}</div>}
       </div>
+      {onClick && !href && <Play className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
       {href && <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
     </div>
   );
 
-  return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer">
-      {inner}
-    </a>
-  ) : (
-    inner
-  );
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {inner}
+      </a>
+    );
+  }
+  if (onClick) {
+    return (
+      <button onClick={onClick} className="block w-full text-left">
+        {inner}
+      </button>
+    );
+  }
+  return inner;
 }
 
 // ── Where to Watch ───────────────────────────────────────────────────────────
@@ -207,6 +218,8 @@ function FilmDetailView() {
   const [showMethodology, setShowMethodology] = useState(false);
   const [watchRegion, setWatchRegion] = useState("US");
   const [toast, setToast] = useState<string | null>(null);
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const closeTrailer = useCallback(() => setTrailerOpen(false), []);
 
   const handleToggleSave = () => {
     toggle();
@@ -314,6 +327,7 @@ function FilmDetailView() {
     videos?.results?.find((v) => v.site === "YouTube" && v.type === "Trailer")?.key ??
     videos?.results?.find((v) => v.site === "YouTube")?.key ??
     null;
+  const backdropUrl = tmdbBackdropUrl(tmdbFilm?.backdrop_path, "w1280");
 
   // Real backend sentiment signals, with calibrated fallback from Index score if early in tracking
   const rawSentiment = film.sentiment;
@@ -371,12 +385,78 @@ function FilmDetailView() {
       <section className="grid grid-cols-1 gap-8 px-4 pt-6 lg:grid-cols-12 lg:px-6">
         {/* ── Left Column ── */}
         <div className="lg:col-span-8 animate-fade-up space-y-6">
+          {/* ── Trailer hero — the film's media leads the page. Clicking opens
+              the in-page player; the user never leaves The Index. ── */}
+          {trailerKey ? (
+            <button
+              onClick={() => setTrailerOpen(true)}
+              className="group relative block aspect-video w-full overflow-hidden border border-foreground/10 text-left"
+              aria-label={`Watch the trailer for ${film.title}`}
+            >
+              {backdropUrl ? (
+                <img
+                  src={backdropUrl}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                />
+              ) : (
+                <div className="absolute inset-0" style={{ background: gradientStyle(film) }} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/30" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/40 bg-black/40 backdrop-blur-sm transition group-hover:border-primary group-hover:bg-primary sm:h-16 sm:w-16">
+                  <Play className="h-6 w-6 translate-x-[2px] text-white transition group-hover:text-primary-foreground" />
+                </span>
+              </div>
+              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-4 sm:p-5">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/60">
+                    Official Trailer · YouTube
+                  </div>
+                  <div className="mt-1 font-serif text-xl text-white sm:text-2xl">
+                    Watch the trailer
+                  </div>
+                </div>
+                <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-white/50 sm:block">
+                  Plays in-page
+                </span>
+              </div>
+            </button>
+          ) : videos === undefined ? (
+            <div
+              className="relative aspect-video w-full overflow-hidden border border-foreground/10"
+              style={{ background: gradientStyle(film) }}
+            >
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/50">
+                  Loading trailer…
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between border border-foreground/10 bg-surface px-4 py-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Official Trailer
+              </span>
+              <span className="text-xs text-muted-foreground">Not yet available</span>
+            </div>
+          )}
+
           {/* Breadcrumb + Actions — editorial metadata row, no badges */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-foreground/10 pb-4">
             <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               The Index · #{film.rank || "—"} · 0% critic weight
             </div>
             <div className="flex items-center gap-4">
+              {trailerKey && (
+                <button
+                  onClick={() => setTrailerOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                  Trailer
+                </button>
+              )}
               <Link
                 to="/compare"
                 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
@@ -556,52 +636,11 @@ function FilmDetailView() {
                 icon={<Youtube className="h-4.5 w-4.5" />}
                 label="Trailer Signals"
                 value="Official Trailer"
-                sub="YouTube · Verified release"
-                href={trailerKey ? `https://www.youtube.com/watch?v=${trailerKey}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${film.title} official trailer`)}`}
+                sub={trailerKey ? "YouTube · plays in-page" : "Trailer not yet available"}
+                onClick={trailerKey ? () => setTrailerOpen(true) : undefined}
                 color="#ff0000"
               />
             </div>
-          </div>
-
-          {/* Official Trailer — in-page player */}
-          <div className="border border-foreground/10 bg-surface">
-            <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Play className="h-4 w-4 text-primary" />
-                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Official Trailer
-                </div>
-              </div>
-              <a
-                href={trailerKey ? `https://www.youtube.com/watch?v=${trailerKey}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${film.title} official trailer`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-xs text-muted-foreground hover:text-foreground transition"
-              >
-                Watch on YouTube ↗
-              </a>
-            </div>
-            {trailerKey ? (
-              <div className="relative aspect-video w-full">
-                <iframe
-                  src={`https://www.youtube.com/embed/${trailerKey}?rel=0&modestbranding=1`}
-                  title={`${film.title} — Official Trailer`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="absolute inset-0 h-full w-full"
-                />
-              </div>
-            ) : (
-              <div className="relative aspect-video w-full">
-                <iframe
-                  src={`https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(`${film.title} official trailer`)}&rel=0&modestbranding=1`}
-                  title={`${film.title} — Official Trailer`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="absolute inset-0 h-full w-full"
-                />
-              </div>
-            )}
           </div>
 
           {/* Audience Sentiment Breakdown */}
@@ -876,6 +915,11 @@ function FilmDetailView() {
         </aside>
       </section>
 
+      {/* Trailer modal — in-page player; unmounting the iframe stops playback */}
+      {trailerOpen && trailerKey && (
+        <TrailerModal videoKey={trailerKey} title={film.title} onClose={closeTrailer} />
+      )}
+
       {/* Floating Save/Watchlist Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 border border-primary/30 bg-background p-4 shadow-2xl animate-fade-up">
@@ -892,5 +936,67 @@ function FilmDetailView() {
         </div>
       )}
     </Layout>
+  );
+}
+
+// ── Trailer modal — YouTube embedded player inside The Index ────────────────
+// 16:9, fluid width capped for desktop, ESC / click-outside / X to close.
+// The iframe is unmounted on close, which guarantees playback stops.
+// Muted autoplay (no sound until the user unmutes in the player itself).
+function TrailerModal({
+  videoKey,
+  title,
+  onClose,
+}: {
+  videoKey: string;
+  title: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-10"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${title} — trailer`}
+    >
+      <button
+        onClick={onClose}
+        aria-label="Close trailer"
+        className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center border border-white/20 bg-black/70 text-white transition hover:border-white/60"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {/* 16:9 player — fluid width, capped on desktop, never overflows */}
+      <div className="relative w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+        <div className="relative aspect-video w-full border border-white/10 bg-black shadow-2xl">
+          <iframe
+            src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&rel=0&modestbranding=1&playsinline=1`}
+            title={`${title} — Official Trailer`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            className="absolute inset-0 h-full w-full"
+          />
+        </div>
+        <div className="mt-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+          <span className="truncate">{title} — Official Trailer</span>
+          <span className="hidden shrink-0 sm:inline">ESC to close</span>
+        </div>
+      </div>
+    </div>
   );
 }
