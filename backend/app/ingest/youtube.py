@@ -60,10 +60,10 @@ def _video_stats(video_id: str) -> dict:
     return r.json()
 
 
-def _aggregate_engagement(video_ids: list[str]) -> tuple[int, str | None, str | None]:
+def _aggregate_engagement(video_ids: list[str]) -> tuple[int, int, str | None, str | None]:
     """
     Fetch stats for up to _TOP_N videos and sum engagement.
-    Returns (total_engagement, top_video_url, top_video_publish_date).
+    Returns (total_engagement, total_views, top_video_url, top_video_publish_date).
     """
     total_views = 0
     total_likes = 0
@@ -101,7 +101,7 @@ def _aggregate_engagement(video_ids: list[str]) -> tuple[int, str | None, str | 
 
     # Weighted score: likes/comments count more per unit than raw views
     engagement = total_likes * 3 + total_comments * 5 + total_views // 100
-    return engagement, top_url, top_date
+    return engagement, total_views, top_url, top_date
 
 
 def _parse_date(iso_str: str | None) -> datetime:
@@ -149,7 +149,7 @@ def fetch_youtube_for_film(
     if not video_ids:
         return None
 
-    engagement, top_url, top_date = _aggregate_engagement(video_ids)
+    engagement, total_views, top_url, top_date = _aggregate_engagement(video_ids)
 
     # Construct text so FilmMatcher can verify the match
     year_str = f"({year})" if year else ""
@@ -166,6 +166,7 @@ def fetch_youtube_for_film(
         author="youtube_aggregate",
         language="en",
         engagement=engagement,
+        observations=total_views,
         created_at=_parse_date(top_date),
     )
 

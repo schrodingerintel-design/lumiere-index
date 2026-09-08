@@ -6,8 +6,16 @@ from sqlalchemy.orm import Session
 
 
 from app.db import get_db
-from app.models import Film, Ranking, Mention, DailyScore, CountryScore
-from app.schemas import RankedFilm, FilmDetail, SentimentBreakdown, TimelinePoint, CountryScoreOut
+from app.models import Film, Ranking, Mention, DailyScore, CountryScore, Source
+from app.schemas import (
+    RankedFilm,
+    FilmDetail,
+    SentimentBreakdown,
+    TimelinePoint,
+    CountryScoreOut,
+    SourceSignalBreakdown,
+    SignalFunnel,
+)
 from app.utils.cache import cache_response
 
 router = APIRouter()
@@ -310,6 +318,58 @@ def _fuzzy_search(db: Session, q: str, limit: int) -> list[Film]:
     return [f for _, f in scored[:limit]]
 
 
+def _signal_funnel(db: Session, film_id: int, days: int = 30) -> SignalFunnel:
+    """Build the raw-observation funnel for one film.
+
+    Distinguishes the three layers the audit demands:
+      raw observations (upstream volume) → ingest records (what we stored) →
+      per-source breakdown with collection timestamps. The Index Score itself
+      stays normalized 0-100 regardless of volume.
+    """
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    rows = db.execute(
+        select(
+            Source.key,
+            func.count(Mention.id),
+            func.coalesce(func.sum(Mention.observations), 0),
+            func.max(Mention.created_at),
+        )
+        .join(Source, Source.id == Mention.source_id)
+        .where(Mention.film_id == film_id, Mention.created_at >= since)
+        .group_by(Source.key)
+    ).all()
+
+    sources: list[SourceSignalBreakdown] = []
+    total_obs = 0
+    total_records = 0
+    window_start: datetime | None = None
+    for key, records, observations, last_at in rows:
+        rec = int(records or 0)
+        obs = int(observations or 0)
+        total_records += rec
+        total_obs += obs
+        if last_at and (window_start is None or last_at < window_start):
+            window_start = last_at
+        sources.append(
+            SourceSignalBreakdown(
+                source_key=key,
+                records=rec,
+                observations=obs,
+                last_collected_at=last_at,
+            )
+        )
+
+    return SignalFunnel(
+        raw_observations_30d=total_obs,
+        ingest_records_30d=total_records,
+        source_coverage=len(sources),
+        window_start=window_start,
+        window_end=datetime.now(timezone.utc) if total_records else None,
+        sources=sources,
+    )
+
+
 @router.get("/films/{slug}", response_model=FilmDetail)
 def film_detail(slug: str, db: Session = Depends(get_db)):
     film = db.scalar(select(Film).where(Film.slug == slug))
@@ -342,7 +402,12 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         release_date=film.release_date, genre_tag=film.genre_tag,
         rank=0, score=0,
     )
-    return FilmDetail(**base.model_dump(exclude={"mentions_total"}), mentions_total=mentions_total, sentiment=sentiment)
+    return FilmDetail(
+        **base.model_dump(exclude={"mentions_total"}),
+        mentions_total=mentions_total,
+        sentiment=sentiment,
+        signal_funnel=_signal_funnel(db, film.id),
+    )
 
 
 @router.get("/films/{slug}/timeline", response_model=list[TimelinePoint])

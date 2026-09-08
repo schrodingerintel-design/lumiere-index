@@ -130,7 +130,14 @@ def ingest_batch(db: Session, source_key: str, raws: list[RawMention]) -> int:
                 url=r.url, author=r.author, country_code=r.country_code,
                 language=r.language, text=r.text[:5000],
                 sentiment_score=score, sentiment_label=label,
-                engagement=r.engagement, created_at=r.created_at,
+                engagement=r.engagement,
+                # Raw observation volume: aggregate sources report the real
+                # underlying count; per-item sources default to engagement
+                # (one record = one observation).
+                observations=(
+                    r.observations if r.observations is not None else r.engagement
+                ),
+                created_at=r.created_at,
             )
             db.add(m)
             db.commit()

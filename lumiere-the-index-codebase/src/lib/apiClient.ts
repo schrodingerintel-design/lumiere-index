@@ -95,8 +95,27 @@ export interface SentimentBreakdown {
   sufficient_data: boolean;
 }
 
+/** Per-source observation funnel for one film. */
+export interface SourceSignalBreakdown {
+  source_key: string;
+  records: number;
+  observations: number;
+  last_collected_at: string | null;
+}
+
+/** Raw observation volume behind the score (Signal Health internals). */
+export interface SignalFunnel {
+  raw_observations_30d: number;
+  ingest_records_30d: number;
+  source_coverage: number;
+  window_start: string | null;
+  window_end: string | null;
+  sources: SourceSignalBreakdown[];
+}
+
 export interface FilmDetail extends RankedFilm {
   sentiment: SentimentBreakdown;
+  signal_funnel?: SignalFunnel | null;
 }
 
 export interface TimelinePoint {
@@ -149,6 +168,8 @@ export interface SourceHealth {
   last_error: string | null;
   last_error_at: string | null;
   mentions_24h: number;
+  /** Raw engagement volume in 24h (views, pageviews, search units) — distinct from record count. */
+  observations_24h: number;
   key_configured: boolean;
   records_requested: number;
   records_received: number;
@@ -181,6 +202,10 @@ export interface SignalHealthSummary {
   sources_ok: number;
   sources_error: number;
   snapshot_at: string | null;
+  total_observations_30d: number;
+  total_records_30d: number;
+  scheduler_enabled: boolean;
+  scheduler_last_runs: Record<string, string>;
 }
 
 export interface LiveStats {

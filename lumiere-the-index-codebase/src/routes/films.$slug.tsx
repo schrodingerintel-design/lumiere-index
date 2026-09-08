@@ -561,8 +561,11 @@ function FilmDetailView() {
                 Audience Signals
               </div>
               <span className="font-mono text-[10px] text-muted-foreground">
-                Based on {film.mentions_total > 0 ? film.mentions_total.toLocaleString() : "—"}{" "}
-                viewer reactions
+                {film.signal_funnel && film.signal_funnel.raw_observations_30d > 0
+                  ? `${film.signal_funnel.raw_observations_30d.toLocaleString()} raw observations · ${film.signal_funnel.source_coverage} source${film.signal_funnel.source_coverage === 1 ? "" : "s"} · last 30d`
+                  : film.mentions_total > 0
+                    ? `${film.mentions_total.toLocaleString()} tracked records · last 48h`
+                    : "—"}
               </span>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -713,8 +716,9 @@ function FilmDetailView() {
           </div>
 
           {/* Editorial Insight & Cultural Context — claim strength gated by the
-              confidence tier the ranking engine computed. Small samples are
-              stated honestly, never dressed up. */}
+              confidence tier the ranking engine computed. The observation volume
+              (real upstream activity) is shown separately from the ingest
+              record count — one YouTube record can aggregate millions of views. */}
           <div className="glass rounded-2xl p-5 border border-primary/20 bg-primary/5">
             <div className="flex items-center gap-2 text-xs font-mono text-primary uppercase tracking-widest mb-1">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -726,8 +730,21 @@ function FilmDetailView() {
                 ? `"${film.title}" has just entered tracking — not enough audience signal yet to assess its trajectory.`
                 : film.confidence === "low"
                   ? `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index with limited early evidence — ${(film.sample_size ?? film.mentions_total).toLocaleString()} audience ${((film.sample_size ?? film.mentions_total) === 1) ? "signal" : "signals"} tracked so far.`
-                  : `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index, backed by ${(film.sample_size ?? film.mentions_total).toLocaleString()} tracked audience signals this cycle.`}
+                  : `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index, backed by ${(film.signal_funnel?.raw_observations_30d ?? film.sample_size ?? film.mentions_total).toLocaleString()} raw audience observations over the last 30 days.`}
             </p>
+            {/* Source-level funnel — internal Signal Health detail, kept honest */}
+            {film.signal_funnel && film.signal_funnel.sources.length > 0 && (
+              <div className="mt-4 space-y-1.5 border-t border-foreground/10 pt-3">
+                {film.signal_funnel.sources.map((s) => (
+                  <div key={s.source_key} className="flex items-center justify-between font-mono text-[10px]">
+                    <span className="uppercase tracking-wider text-muted-foreground">{s.source_key}</span>
+                    <span className="tabular text-foreground/80">
+                      {s.observations.toLocaleString()} obs · {s.records} rec
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -867,14 +884,16 @@ function FilmDetailView() {
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Audience Signals
+                  Observations
                 </div>
                 <div className="mt-1 font-mono text-xl tabular">
-                  {film.mentions_total > 1000
-                    ? `${(film.mentions_total / 1000).toFixed(1)}k`
-                    : film.mentions_total > 0
-                      ? film.mentions_total
-                      : "—"}
+                  {(() => {
+                    const obs = film.signal_funnel?.raw_observations_30d ?? 0;
+                    const n = obs > 0 ? obs : film.mentions_total;
+                    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+                    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+                    return n > 0 ? n : "—";
+                  })()}
                 </div>
               </div>
               <div>

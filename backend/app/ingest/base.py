@@ -11,4 +11,9 @@ class RawMention:
     country_code: str | None = None
     language: str | None = None
     engagement: int = 0
+    # Raw underlying observations this record aggregates (views, pageviews,
+    # search-interest units). Defaults to None → pipeline stores `engagement`
+    # for per-item sources (1 record = 1 observation) and the adapter's real
+    # count for aggregate sources.
+    observations: int | None = None
     created_at: datetime | None = None

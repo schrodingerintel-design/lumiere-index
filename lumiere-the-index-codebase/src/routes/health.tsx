@@ -156,13 +156,13 @@ function SignalHealthPage() {
             </div>
             <div className="glass-soft rounded-2xl p-4">
               <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                <Activity className="h-3.5 w-3.5" /> Signals 30d
+                <Activity className="h-3.5 w-3.5" /> Observations 30d
               </div>
               <div className="mt-2 font-mono text-2xl font-semibold tabular">
-                {fmt(summary.total_mentions_30d)}
+                {fmt(summary.total_observations_30d)}
               </div>
               <div className="mt-0.5 text-[10px] text-muted-foreground">
-                raw observations ingested
+                {fmt(summary.total_records_30d)} records · views/pageviews/posts
               </div>
             </div>
             <div className="glass-soft rounded-2xl p-4">
@@ -179,6 +179,22 @@ function SignalHealthPage() {
           </>
         )}
       </section>
+
+      {/* ── Scheduler status ── */}
+      {summary && (
+        <section className="mt-6 px-4 lg:px-6">
+          <div className="glass-tint flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-4 py-2.5 font-mono text-[10px]">
+            <span className={summary.scheduler_enabled ? "text-up" : "text-down"}>
+              scheduler: {summary.scheduler_enabled ? "running in-process" : "disabled"}
+            </span>
+            {Object.entries(summary.scheduler_last_runs ?? {}).slice(0, 6).map(([task, ts]) => (
+              <span key={task} className="text-muted-foreground">
+                {task.replace("ingest_", "")}: {timeAgo(ts)}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Source table ── */}
       <section className="mt-8 px-4 lg:px-6">
@@ -221,6 +237,11 @@ function SignalHealthPage() {
                         {src.key} · weight {src.weight.toFixed(1)} ·{" "}
                         {fmt(src.mentions_24h)} signals/24h
                       </div>
+                      {src.observations_24h > 0 && (
+                        <div className="font-mono text-[10px] text-up">
+                          {fmt(src.observations_24h)} observations/24h (views · pageviews · units)
+                        </div>
+                      )}
                       {src.last_error && (
                         <div className="mt-1 max-w-md truncate font-mono text-[10px] text-down">
                           {src.last_error}

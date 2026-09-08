@@ -107,6 +107,14 @@ class Settings(BaseSettings):
 
     admin_key: str = ""
 
+    # In-process ingest scheduler (see app/ingest/scheduler.py). On by default
+    # so the API deployment collects signals without needing a separate Celery
+    # worker; set INGEST_SCHEDULER_ENABLED=false when a dedicated worker runs.
+    enable_ingest_scheduler: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("enable_ingest_scheduler", "INGEST_SCHEDULER_ENABLED"),
+    )
+
     ranking_ca_lambda: float = 0.89           # daily decay factor for CA window (≈6-day half-life)
     ranking_ca_window_days: int = 30          # max lookback days for CA
     ranking_momentum_short_hl: float = 1.5   # EWMA short half-life (days) for momentum

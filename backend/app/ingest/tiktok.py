@@ -124,6 +124,7 @@ def fetch_tiktok_for_film(
         author="tiktok_aggregate",
         language="en",
         engagement=engagement,
+        observations=total_plays,
         created_at=datetime.now(timezone.utc),
     )
 

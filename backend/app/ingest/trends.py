@@ -28,6 +28,9 @@ def fetch_trends(film_tuples: list[tuple[int, str, int | None]]) -> list[RawMent
                 if title in interest_df.columns:
                     recent_score = int(interest_df[title].iloc[-1])
                     if recent_score > 0:
+                        # Sum the weekly interest series: each day's 0-100 index
+                        # is a real, comparable observation of search demand.
+                        weekly_total = int(interest_df[title].sum())
                         ext_id = f"gtrends_{title.replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d%H')}"
                         out.append(
                             RawMention(
@@ -36,6 +39,7 @@ def fetch_trends(film_tuples: list[tuple[int, str, int | None]]) -> list[RawMent
                                 url=f"https://trends.google.com/trends/explore?q={title}",
                                 author="Google Trends",
                                 engagement=recent_score * 10,
+                                observations=weekly_total,
                                 created_at=datetime.now(timezone.utc),
                             )
                         )

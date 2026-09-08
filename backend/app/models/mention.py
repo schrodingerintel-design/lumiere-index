@@ -24,5 +24,12 @@ class Mention(Base):
     sentiment_score: Mapped[float | None] = mapped_column(Float)
     sentiment_label: Mapped[str | None] = mapped_column(String(10))
     engagement: Mapped[int] = mapped_column(Integer, default=0)
+    # Raw underlying observations this record aggregates (views, pageviews,
+    # search-interest units, etc.). For per-item sources (Reddit posts,
+    # Letterboxd reviews) this equals engagement; for aggregate sources
+    # (YouTube video stats, Wikipedia daily pageviews) it is the summed
+    # upstream count. Record COUNT is never a proxy for observation volume —
+    # one YouTube record can aggregate millions of real views.
+    observations: Mapped[int] = mapped_column(BigInteger, default=0)
     created_at: Mapped[datetime | None] = mapped_column(DateTime)
     ingested_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

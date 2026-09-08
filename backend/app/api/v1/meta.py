@@ -57,6 +57,7 @@ def source_health(db: Session = Depends(get_db)):
             Source.api_errors,
             Source.rate_limit_errors,
             func.count(Mention.id),
+            func.coalesce(func.sum(Mention.observations), 0),
         )
         .outerjoin(Mention, Mention.source_id == Source.id)
         .where(Mention.created_at >= since)
@@ -66,7 +67,7 @@ def source_health(db: Session = Depends(get_db)):
     by_key = {}
     for (
         key, name, enabled, weight, last_at, last_err, last_err_at,
-        requested, received, processed, rejected, api_err, rl_err, mentions,
+        requested, received, processed, rejected, api_err, rl_err, mentions, observations,
     ) in rows:
         by_key[key] = {
             "key": key,
@@ -77,6 +78,7 @@ def source_health(db: Session = Depends(get_db)):
             "last_error": last_err,
             "last_error_at": last_err_at,
             "mentions_24h": int(mentions),
+            "observations_24h": int(observations or 0),
             "records_requested": int(requested or 0),
             "records_received": int(received or 0),
             "records_processed": int(processed or 0),
@@ -139,6 +141,15 @@ def signal_health_summary(db: Session = Depends(get_db)):
         select(func.count(Mention.id)).where(Mention.created_at >= since_30d)
     ) or 0
 
+    # Raw observation volume vs ingest record count. Observations come from
+    # aggregate sources (YouTube views, Wikipedia pageviews, Trends units) or
+    # fall back to engagement for per-item sources; records are just rows.
+    total_observations_30d = db.scalar(
+        select(func.coalesce(func.sum(Mention.observations), 0)).where(
+            Mention.created_at >= since_30d
+        )
+    ) or 0
+
     pending = db.scalar(
         select(func.count(PendingMention.id)).where(PendingMention.status == "pending")
     ) or 0
@@ -152,6 +163,8 @@ def signal_health_summary(db: Session = Depends(get_db)):
         else:
             sources_ok += 1
 
+    from app.ingest.scheduler import last_run_times
+
     return SignalHealthSummary(
         total_films_tracked=total_films,
         films_charted=films_charted,
@@ -162,6 +175,10 @@ def signal_health_summary(db: Session = Depends(get_db)):
         sources_ok=sources_ok,
         sources_error=sources_error,
         snapshot_at=snap,
+        total_observations_30d=total_observations_30d,
+        total_records_30d=total_mentions_30d,
+        scheduler_enabled=settings.enable_ingest_scheduler,
+        scheduler_last_runs=last_run_times(),
     )
 
 

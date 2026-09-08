@@ -11,5 +11,7 @@ from .schemas import (
     SourceHealth,
     SignalHealthFilm,
     SignalHealthSummary,
+    SourceSignalBreakdown,
+    SignalFunnel,
     NewsletterIn,
 )

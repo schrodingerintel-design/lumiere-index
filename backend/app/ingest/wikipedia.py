@@ -6,6 +6,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import settings
 from app.ingest.base import RawMention
 
+# Wikipedia adapters report real pageview counts. `observations` carries the
+# raw underlying pageviews; `engagement` is the platform-weighted signal fed
+# to the ranking engine.
+
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential())
 def _fetch_pageviews(article_title: str) -> dict | None:
@@ -66,6 +70,7 @@ def fetch_wikipedia(film_tuples: list[tuple[int, str, int | None]]) -> list[RawM
                 url=f"https://en.wikipedia.org/wiki/{used_article.replace(' ', '_')}",
                 author="Wikipedia",
                 engagement=total_views,
+                observations=total_views,
                 created_at=datetime.now(timezone.utc),
             )
         )

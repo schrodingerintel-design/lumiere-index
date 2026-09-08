@@ -47,9 +47,35 @@ class SentimentBreakdown(BaseModel):
     sufficient_data: bool = False
 
 
+class SourceSignalBreakdown(BaseModel):
+    """Per-source observation funnel for one film.
+
+    `observations` is the raw underlying volume (views, pageviews, search
+    units, posts); `records` is how many ingest records carried it. They are
+    different numbers by design — record count is never a proxy for volume.
+    """
+    source_key: str
+    records: int = 0
+    observations: int = 0
+    last_collected_at: datetime | None = None
+
+
+class SignalFunnel(BaseModel):
+    """The observation → signal funnel for one film (Signal Health internals)."""
+    raw_observations_30d: int = 0
+    ingest_records_30d: int = 0
+    source_coverage: int = 0
+    window_start: datetime | None = None
+    window_end: datetime | None = None
+    sources: list[SourceSignalBreakdown] = []
+
+
 class FilmDetail(RankedFilm):
     mentions_total: int = 0
     sentiment: SentimentBreakdown
+    # Observation funnel — raw volume behind the score, for internal Signal
+    # Health consumers. Optional so older clients ignore it cleanly.
+    signal_funnel: SignalFunnel | None = None
 
 
 class TimelinePoint(BaseModel):
@@ -116,6 +142,9 @@ class SourceHealth(BaseModel):
     last_error: str | None = None
     last_error_at: datetime | None = None
     mentions_24h: int = 0
+    # Raw engagement volume flowing through this source in 24h (views, pageviews,
+    # search units, upvotes…) — distinct from the row count above.
+    observations_24h: int = 0
     key_configured: bool = False
     # Per-run ingest counters (Data/Signal Health view)
     records_requested: int = 0
@@ -149,6 +178,12 @@ class SignalHealthSummary(BaseModel):
     sources_ok: int
     sources_error: int
     snapshot_at: datetime | None = None
+    # Raw observation volume (upstream counts: views, pageviews, search units,
+    # posts) vs ingest record count — the funnel the audit requires.
+    total_observations_30d: int = 0
+    total_records_30d: int = 0
+    scheduler_enabled: bool = False
+    scheduler_last_runs: dict[str, str] = {}
 
 
 class NewsletterIn(BaseModel):
