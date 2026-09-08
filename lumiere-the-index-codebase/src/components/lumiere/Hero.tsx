@@ -1,6 +1,6 @@
 import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Play, Scale, ArrowUp, ArrowDown } from "lucide-react";
+import { Play, Scale, ArrowUp, ArrowDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   getTopFilms,
@@ -14,7 +14,7 @@ import { HeroSkeleton } from "./Skeletons";
 import { filmTrend } from "@/lib/trend";
 
 function gradientStyle(film: RankedFilm | null) {
-  if (!film) return "#333";
+  if (!film) return "#1a1a1a";
   const from = film.gradient_from ?? "#333";
   const to = film.gradient_to ?? "#111";
   return `linear-gradient(155deg, ${from}, ${to})`;
@@ -110,7 +110,6 @@ export function Hero() {
     activeFilm?.director && activeFilm.director !== "Unknown"
       ? activeFilm.director
       : "Director TBA";
-  const eyebrow = director === "Director TBA" ? "Director TBA" : `A film by ${director}`;
   const score = activeFilm?.score ?? null;
   const move = activeFilm?.movement ?? 0;
   const isNew = activeFilm?.prev_rank == null;
@@ -131,9 +130,9 @@ export function Hero() {
   return (
     <section
       onClick={handleHeroTap}
-      className="relative w-full select-none overflow-hidden rounded-2xl px-4 lg:px-6 mt-4 max-w-full"
+      className="relative w-full select-none overflow-hidden mt-4 max-w-full"
     >
-      {/* ── Backdrop: cover-crop with an elevated focus point ── */}
+      {/* ── Backdrop: cover-crop, quiet dark gradient for readability ── */}
       <div className="absolute inset-0">
         {backdropUrl ? (
           <img
@@ -151,89 +150,65 @@ export function Hero() {
             style={{ background: gradientStyle(activeFilm) }}
           />
         )}
-        {/* Readability gradients — text on the left, buttons along the bottom. */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/92 via-black/60 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/30" />
       </div>
 
-      {/* ── Content: badges pinned top, text centered, buttons pinned bottom ── */}
-      <div className="relative z-10 flex min-h-[460px] flex-col px-5 py-6 sm:px-8 sm:py-7 lg:min-h-[540px] lg:px-10 lg:py-8 lg:pr-72">
-        {/* ── Top: rank badge only — the score gets its own dominant block ── */}
-        <div className="flex flex-wrap items-center gap-2 animate-fade-up">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ink sm:text-[11px]">
-            <Trophy className="h-3 w-3" />
-            #{activeFilm?.rank ?? 1} ON THE INDEX
-          </span>
-          {!isNew && weeks > 0 && (
-            <span className="inline-flex items-center rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-white/70 backdrop-blur-sm sm:text-[11px]">
-              {weeks} {weeks === 1 ? "week" : "weeks"} on chart
+      {/* ── Content ── */}
+      <div className="relative z-10 flex min-h-[460px] flex-col px-5 py-7 sm:px-8 sm:py-8 lg:min-h-[540px] lg:px-12 lg:py-10 lg:pr-80">
+        {/* Masthead strip — rank, movement, weeks, date. Editorial, not badges. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/75">
+          <span className="font-semibold text-primary">#{activeFilm?.rank ?? 1} on the Index</span>
+          {trend === "new" ? (
+            <span className="font-semibold text-live">New entry</span>
+          ) : trend === "rise" ? (
+            <span className="flex items-center gap-1 font-semibold text-up">
+              <ArrowUp className="h-3.5 w-3.5" /> {move}
             </span>
+          ) : trend === "fall" ? (
+            <span className="flex items-center gap-1 font-semibold text-down">
+              <ArrowDown className="h-3.5 w-3.5" /> {Math.abs(move)}
+            </span>
+          ) : (
+            <span className="text-yellow-300/90" title="Held its rank">—</span>
           )}
+          {!isNew && weeks > 0 && <span>{weeks} {weeks === 1 ? "week" : "weeks"} on chart</span>}
+          <span className="hidden sm:inline">{todayLabel()}</span>
         </div>
 
-        {/* ── Middle: eyebrow → title → score, vertically centered ── */}
-        <div className="flex flex-1 flex-col justify-center py-6 animate-fade-up delay-100">
-          {/* Director eyebrow */}
-          <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-white/70">
-            {eyebrow}
+        {/* Title + score, vertically centered */}
+        <div className="flex flex-1 flex-col justify-center py-6">
+          <div className="font-mono text-[11px] uppercase tracking-[0.26em] text-white/70">
+            A film by {director}
           </div>
 
-          {/* Title */}
-          <h1 className="mt-2 font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[0.98] text-white drop-shadow-lg line-clamp-3">
+          <h1 className="mt-3 font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[0.98] text-white line-clamp-3">
             {activeFilm?.title}
           </h1>
 
-          {/* Index Score — THE product. Visually dominant: oversized number,
-              explicit label, movement symbol. Secondary info sits underneath. */}
-          <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-3">
+          {/* Index Score — the product. Big number in brand gold, label underneath. */}
+          <div className="mt-6 flex items-end gap-4">
             <div>
-              <div
-                className="font-mono text-6xl font-bold leading-none tracking-tight text-primary tabular-nums sm:text-7xl lg:text-8xl"
-                style={{ textShadow: "0 2px 12px rgba(0,0,0,0.55), 0 1px 0 rgba(0,0,0,0.4)" }}
-              >
+              <div className="font-mono text-6xl font-bold leading-none tracking-tight text-primary sm:text-7xl lg:text-8xl">
                 {score?.toFixed(1) ?? "—"}
               </div>
-              <div className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.28em] text-white/80">
+              <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.3em] text-white/80">
                 Index Score
               </div>
             </div>
-
-            {/* Movement — rank-anchored symbols: #3 ↑ 3 / #2 ↓ 1 / #3 — */}
-            <div className="pb-1.5">
-              {trend === "new" ? (
-                <span className="flex items-center gap-1.5 font-mono text-base font-medium text-live">
-                  <ArrowUp className="h-5 w-5" /> New
-                </span>
-              ) : trend === "rise" ? (
-                <span className="flex items-center gap-1.5 font-mono text-base">
-                  <ArrowUp className="h-5 w-5 text-up" />
-                  <span className="font-semibold text-up">{move}</span>
-                </span>
-              ) : trend === "fall" ? (
-                <span className="flex items-center gap-1.5 font-mono text-base">
-                  <ArrowDown className="h-5 w-5 text-down" />
-                  <span className="font-semibold text-down">{Math.abs(move)}</span>
-                </span>
-              ) : (
-                <span className="flex items-center font-mono text-base font-medium text-yellow-300/90" title="Held its rank">
-                  —
-                </span>
-              )}
-            </div>
           </div>
 
-          {/* Why it's here — evidence-gated, honest */}
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/75">
+          <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/70">
             {whyItsHere}
           </p>
         </div>
 
-        {/* ── Bottom: action buttons pinned to the base of the card ── */}
-        <div className="flex flex-wrap items-center gap-3 animate-fade-up delay-200">
+        {/* Bottom: text CTAs — confident, not pill badges */}
+        <div className="flex flex-wrap items-center gap-5">
           <Link
             to="/films/$slug"
             params={{ slug: activeFilm?.slug ?? "" }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cream px-5 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
+            className="inline-flex min-h-11 items-center gap-2 bg-cream px-5 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
           >
             <Scale className="h-4 w-4" />
             Compare
@@ -243,7 +218,7 @@ export function Hero() {
               href={`https://www.youtube.com/watch?v=${trailer.key}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/25 bg-black/45 px-5 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-black/65"
+              className="inline-flex min-h-11 items-center gap-2 border border-white/35 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
             >
               <Play className="h-4 w-4" />
               Trailer
@@ -252,12 +227,12 @@ export function Hero() {
         </div>
       </div>
 
-      {/* ── Right: poster card (desktop only, floats over the backdrop) ── */}
-      <div className="absolute right-10 top-1/2 z-10 hidden -translate-y-1/2 lg:block animate-fade-up delay-100">
+      {/* ── Right: poster (desktop only) — the artwork does the talking ── */}
+      <div className="absolute right-12 top-1/2 z-10 hidden -translate-y-1/2 lg:block">
         <Link
           to="/films/$slug"
           params={{ slug: activeFilm?.slug ?? "" }}
-          className="card-lift relative block w-56 overflow-hidden rounded-xl shadow-2xl"
+          className="group relative block w-56 shadow-2xl"
         >
           {posterUrl ? (
             <img
@@ -271,14 +246,17 @@ export function Hero() {
           ) : (
             <div className="aspect-[2/3]" style={{ background: gradientStyle(activeFilm) }} />
           )}
-          {/* Bottom overlay */}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12">
-            <div className="font-display text-base font-semibold leading-tight text-white drop-shadow">
-              {activeFilm?.title}
-            </div>
-          </div>
         </Link>
       </div>
     </section>
   );
+}
+
+function todayLabel(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }

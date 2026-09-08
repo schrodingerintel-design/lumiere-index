@@ -161,9 +161,9 @@ export function EditorialInsight({ films }: EditorialInsightProps) {
 
   if (spotlightFilms.length === 0) {
     return (
-      <section className="mt-4 px-4 lg:px-6">
-        <div className="glass overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-background via-foreground/[0.06] to-primary/5 dark:via-ink/80 p-6 lg:p-8 flex items-center gap-4 text-muted-foreground">
-          <AlertCircle className="h-5 w-5 text-primary shrink-0" />
+      <section className="mt-12 px-4 lg:px-6">
+        <div className="flex items-center gap-4 border-y border-foreground/10 py-5 text-muted-foreground">
+          <AlertCircle className="h-5 w-5 shrink-0 text-primary" />
           <p className="text-sm">
             Editorial Briefing — not enough audience signal yet. Briefs appear once titles
             clear the evidence floor.
@@ -182,24 +182,26 @@ export function EditorialInsight({ films }: EditorialInsightProps) {
   const topDelta = top.attention_delta_pct ?? null;
 
   return (
-    <section className="mt-4 px-4 lg:px-6">
-      <div className="glass overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-background via-foreground/[0.06] to-primary/5 dark:via-ink/80 p-6 lg:p-8">
+    <section className="mt-12 px-4 lg:px-6">
+      <div className="border-y border-foreground/10 bg-surface p-6 lg:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
-            <div className="flex items-center gap-2 text-primary font-mono text-xs uppercase tracking-widest">
+            <div className="flex items-center gap-3">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span>Index Editorial Brief · {weekLabel}</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+                Editorial Brief · {weekLabel}
+              </span>
             </div>
-            <h2 className="mt-2 font-serif text-3xl lg:text-4xl text-foreground">
-              <span className="italic text-primary">{editorialHeadline(top)}</span>
+            <h2 className="mt-3 font-display text-2xl lg:text-3xl text-foreground">
+              <span className="italic">{editorialHeadline(top)}</span>
             </h2>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
               {editorialBody(top)}
             </p>
           </div>
 
-          <div className="shrink-0 flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-background/60 p-5 backdrop-blur max-w-sm">
-            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+          <div className="shrink-0 border border-foreground/10 bg-background/60 p-5 max-w-sm">
+            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.14em] text-muted-foreground">
               <Compass className="h-4 w-4 text-primary" />
               <span>Signal Breakdown · {top.title}</span>
             </div>
@@ -231,8 +233,8 @@ export function EditorialInsight({ films }: EditorialInsightProps) {
           </div>
         </div>
 
-        {/* Dynamic spotlight cards */}
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3 pt-5 border-t border-foreground/10">
+        {/* Spotlight films — editorial columns with hairline dividers */}
+        <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-3 pt-5 border-t border-foreground/10">
           {spotlightFilms.map((film, i) => {
             const driver = film.dominant_driver ?? null;
             return (
@@ -240,23 +242,22 @@ export function EditorialInsight({ films }: EditorialInsightProps) {
                 key={film.film_slug}
                 to="/films/$slug"
                 params={{ slug: film.film_slug }}
-                className="group rounded-xl border border-foreground/5 bg-foreground/[0.03] p-4 transition hover:bg-foreground/10"
+                className="group"
               >
-                <div className="flex items-center justify-between text-xs font-mono text-primary mb-1">
+                <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{driverLabel(film, i === headlineIdx, film.rank)}</span>
-                  <DriverIcon driver={driver} className="h-3.5 w-3.5" />
+                  <DriverIcon driver={driver} className="h-3.5 w-3.5 text-primary" />
                 </div>
-                <div className="font-serif text-lg font-medium text-foreground group-hover:text-primary transition-colors">
+                <div className="mt-1 font-display text-lg font-medium text-foreground group-hover:text-primary">
                   {film.title}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
                   {spotlightCopy(film)}
                 </p>
-                {/* Tags */}
                 {film.tags && film.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1">
                     {film.tags.map((tag) => (
-                      <span key={tag} className="rounded px-1.5 py-0.5 font-mono text-[9px] bg-primary/10 text-primary">
+                      <span key={tag} className="font-mono text-[9px] uppercase tracking-wide text-primary/80">
                         {tag}
                       </span>
                     ))}

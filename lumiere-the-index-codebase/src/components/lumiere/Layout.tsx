@@ -15,9 +15,8 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-screen">
-      <div className="grain-overlay" aria-hidden />
       <Sidebar />
-      <div className="lg:pl-72">
+      <div className="lg:pl-64">
         <TopNav onMenu={() => setMenuOpen(true)} onSearch={openSearch} />
         <main className="pb-12">{children}</main>
         <Footer />

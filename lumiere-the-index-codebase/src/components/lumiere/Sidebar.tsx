@@ -75,9 +75,9 @@ export function SidebarContent({
             onClick={onNavigate}
             activeOptions={{ exact: to === "/" }}
             activeProps={{ className: "bg-primary/10 text-primary font-medium" }}
-            className="group flex items-center gap-3 rounded-md px-3 py-2 text-sm text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            className="group flex items-center gap-3 px-3 py-2 text-sm text-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
-            <Icon className="h-4 w-4 opacity-70 group-hover:opacity-100" />
+            <Icon className="h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100" />
             <span>{label}</span>
           </Link>
         ))}
@@ -117,7 +117,7 @@ export function SidebarContent({
 
 export function Sidebar() {
   return (
-    <aside className="glass-flat fixed left-4 top-4 bottom-4 z-40 hidden w-64 overflow-hidden rounded-2xl lg:block">
+    <aside className="fixed left-0 top-14 bottom-0 z-40 hidden w-64 overflow-y-auto border-r border-foreground/10 bg-surface lg:block">
       <SidebarContent />
     </aside>
   );
@@ -136,12 +136,10 @@ export function MobileSidebar({
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" onClick={onClose} />
-      {/* glass-dark: navigation must be readable over arbitrary page content —
-          high-opacity surface, not a glass showcase. */}
-      <div className="glass-dark absolute left-2 top-2 bottom-2 w-72 overflow-hidden rounded-2xl animate-fade-up">
+      <div className="glass-dark absolute left-0 top-0 bottom-0 w-72 overflow-y-auto border-r border-foreground/10 animate-fade-up">
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 rounded-full p-1.5 hover:bg-foreground/10"
+          className="absolute right-3 top-3 z-10 p-2 hover:bg-foreground/10"
         >
           <X className="h-4 w-4" />
         </button>

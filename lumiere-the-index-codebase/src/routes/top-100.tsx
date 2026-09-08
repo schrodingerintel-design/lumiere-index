@@ -61,11 +61,11 @@ function Top100() {
 
       <section className="mt-10 px-4 lg:px-6">
         {error && (
-          <div className="glass rounded-2xl p-6 text-center text-sm text-muted-foreground">
+          <div className="border border-foreground/10 bg-surface p-6 text-center text-sm text-muted-foreground">
             Unable to load rankings right now. Please try again later.
           </div>
         )}
-        <div className="glass-solid overflow-hidden rounded-2xl">
+        <div className="border-t-2 border-foreground/20">
           {/* Desktop header row */}
           <div className="hidden grid-cols-[64px_64px_1fr_90px_110px_90px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
             <div>Rank</div>

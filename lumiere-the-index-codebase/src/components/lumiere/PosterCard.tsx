@@ -2,25 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { type RankedFilm, searchTmdbMovie, tmdbPosterUrl } from "@/lib/apiClient";
-import { isNewRelease } from "@/lib/filmUtils";
+import { filmTrend } from "@/lib/trend";
 
 function gradientStyle(from: string | null, to: string | null) {
   return `linear-gradient(155deg, ${from ?? "#333"}, ${to ?? "#111"})`;
 }
 
-/** One Index-specific line per card — what the ranking says about this film. */
-function indexNote(film: RankedFilm): string | null {
-  if (film.prev_rank == null) return "New entry";
-  const move = film.movement ?? 0;
-  if (move >= 5) return `↑ ${move} positions this cycle`;
-  if (move >= 1) return `↑ ${move} position${move === 1 ? "" : "s"} this cycle`;
-  if (move <= -1) return `↓ ${Math.abs(move)} this cycle`;
-  return null;
-}
-
 export function PosterCard({ film, width = 140 }: { film: RankedFilm; width?: number }) {
-  const change = film.movement ?? null;
-  const isNew = film.prev_rank == null && isNewRelease(film);
+  const trend = filmTrend(film);
+  const change = film.movement ?? 0;
 
   const { data: tmdb } = useQuery({
     queryKey: ["tmdb", film.title, film.year],
@@ -35,24 +25,24 @@ export function PosterCard({ film, width = 140 }: { film: RankedFilm; width?: nu
   });
 
   const posterUrl = film.poster_url || tmdbPosterUrl(tmdb?.results?.[0]?.poster_path, "w342");
-  const note = indexNote(film);
 
   return (
     <Link
       to="/films/$slug"
       params={{ slug: film.slug }}
-      className="card-lift group block shrink-0"
+      className="group block shrink-0"
       style={{ width }}
     >
+      {/* The artwork IS the card — no container around it. */}
       <div
-        className="relative aspect-[2/3] overflow-hidden rounded-xl bg-ink"
+        className="relative aspect-[2/3] overflow-hidden bg-ink"
         style={{ background: gradientStyle(film.gradient_from, film.gradient_to) }}
       >
         {posterUrl && (
           <img
             src={posterUrl}
             alt={film.title}
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             loading="lazy"
             decoding="async"
           />
@@ -66,45 +56,40 @@ export function PosterCard({ film, width = 140 }: { film: RankedFilm; width?: nu
             }}
           />
         )}
-        <div className="absolute left-2 top-2 flex items-center gap-1">
-          <span className="rounded-md border border-white/20 bg-black/60 px-2 py-1 font-mono text-xs font-medium text-white backdrop-blur-sm">
-            #{film.rank}
-          </span>
-          {isNew ? (
-            <span className="rounded-md bg-live px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-ink">
-              New
-            </span>
-          ) : change !== 0 && change !== null ? (
-            <span
-              className={`flex items-center rounded-md px-1.5 py-1 font-mono text-[10px] font-medium ${
-                change > 0 ? "bg-up/90 text-ink" : "bg-down/90 text-white"
-              }`}
-            >
-              {change > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-              {Math.abs(change)}
-            </span>
-          ) : null}
-        </div>
-
-        {/* Index Score — dominant, right where the eye lands */}
-        <div className="absolute right-2 top-2 rounded-full bg-primary px-2 py-1 font-mono text-[12px] font-bold leading-none text-primary-foreground shadow">
+        {/* Index Score — gold, quiet, on the artwork. */}
+        <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-bold leading-none text-primary">
           {film.score?.toFixed(1)}
         </div>
-
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3 pt-8">
-          <div className="font-display text-lg font-semibold leading-tight text-white drop-shadow">
-            {film.title}
+        {trend === "new" && (
+          <div className="absolute left-1.5 top-1.5 bg-live px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
+            New
           </div>
-          {note && (
-            <div className="mt-0.5 flex items-center gap-1 font-mono text-[9px] uppercase tracking-wide text-live">
-              {note}
-            </div>
-          )}
-        </div>
+        )}
       </div>
-      <div className="mt-2 px-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Index Score
+
+      {/* Caption strip below the poster — rank, movement, title, year */}
+      <div className="mt-2">
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-mono text-xs font-semibold tabular text-muted-foreground">
+            {String(film.rank).padStart(2, "0")}
+          </span>
+          {trend === "rise" ? (
+            <span className="flex items-center font-mono text-[10px] tabular text-up">
+              <ArrowUp className="h-3 w-3" />{change}
+            </span>
+          ) : trend === "fall" ? (
+            <span className="flex items-center font-mono text-[10px] tabular text-down">
+              <ArrowDown className="h-3 w-3" />{Math.abs(change)}
+            </span>
+          ) : trend === "steady" ? (
+            <span className="font-mono text-[10px] text-yellow-300/80">—</span>
+          ) : null}
+        </div>
+        <div className="mt-0.5 truncate font-display text-sm font-medium leading-snug">
+          {film.title}
+        </div>
+        <div className="truncate font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+          {film.year}
         </div>
       </div>
     </Link>
