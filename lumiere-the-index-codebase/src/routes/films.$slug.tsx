@@ -34,7 +34,6 @@ import {
   Tv,
   Film as FilmIcon,
 } from "lucide-react";
-
 export const Route = createFileRoute("/films/$slug")({
   head: ({ params }) => ({
     meta: [
@@ -100,49 +99,6 @@ function useWatchlist(slug: string) {
   return { saved, toggle };
 }
 
-// ── Score ring visual ─────────────────────────────────────────────────────────
-function ScoreRing({ score, label, color }: { score: number; label: string; color: string }) {
-  const r = 36;
-  const circ = 2 * Math.PI * r;
-  const pct = Math.min(score / 100, 1);
-  const dash = pct * circ;
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative h-24 w-24">
-        <svg className="h-full w-full -rotate-90" viewBox="0 0 88 88">
-          <circle
-            cx="44"
-            cy="44"
-            r={r}
-            fill="none"
-            strokeWidth="7"
-            className="stroke-foreground/10"
-          />
-          <circle
-            cx="44"
-            cy="44"
-            r={r}
-            fill="none"
-            strokeWidth="7"
-            strokeDasharray={`${dash} ${circ}`}
-            strokeLinecap="round"
-            style={{ stroke: color, transition: "stroke-dasharray 1s ease" }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-mono text-xl font-semibold tabular" style={{ color }}>
-            {score.toFixed(0)}
-          </span>
-        </div>
-      </div>
-      <span className="text-center text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </span>
-    </div>
-  );
-}
-
 // ── Source signal badges ──────────────────────────────────────────────────────
 interface SourceBadgeProps {
   icon: React.ReactNode;
@@ -156,7 +112,7 @@ interface SourceBadgeProps {
 function SourceBadge({ icon, label, value, sub, href, color }: SourceBadgeProps) {
   const inner = (
     <div
-      className={`glass flex items-center gap-3 rounded-xl border border-foreground/10 p-3.5 transition ${href ? "hover:border-foreground/25 hover:bg-foreground/[0.04] cursor-pointer" : ""}`}
+      className={`flex items-center gap-3 border border-foreground/10 bg-surface p-3.5 transition ${href ? "hover:border-foreground/25 hover:bg-foreground/[0.04] cursor-pointer" : ""}`}
     >
       <div
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
@@ -221,17 +177,17 @@ function ProviderGroup({
             target="_blank"
             rel="noopener noreferrer"
             title={`${p.provider_name} — ${label}`}
-            className="flex items-center gap-1.5 rounded-lg border border-foreground/10 bg-foreground/5 px-1.5 py-1 transition hover:border-foreground/25 hover:bg-foreground/10"
+            className="flex items-center gap-1.5 border border-foreground/10 bg-foreground/5 px-1.5 py-1 transition hover:border-foreground/25 hover:bg-foreground/10"
           >
             {p.logo_path ? (
               <img
                 src={`${TMDB_IMG}/w92${p.logo_path}`}
                 alt={p.provider_name}
-                className="h-7 w-7 rounded-md bg-white object-contain"
+                className="h-7 w-7 bg-white object-contain"
                 loading="lazy"
               />
             ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground/10 text-[8px] font-bold">
+              <span className="flex h-7 w-7 items-center justify-center bg-foreground/10 text-[8px] font-bold">
                 {p.provider_name.slice(0, 2).toUpperCase()}
               </span>
             )}
@@ -375,9 +331,6 @@ function FilmDetailView() {
   };
   const hasSentimentData = true;
 
-  // Cultural pulse is derived from the backend Index Score
-  const culturalPulseScore = Math.round(film.score ?? 0);
-
   // TMDB derived metrics
   const tmdbVotes = tmdbDetails?.vote_count ?? 0;
   const runtime = tmdbDetails?.runtime;
@@ -418,30 +371,23 @@ function FilmDetailView() {
       <section className="grid grid-cols-1 gap-8 px-4 pt-6 lg:grid-cols-12 lg:px-6">
         {/* ── Left Column ── */}
         <div className="lg:col-span-8 animate-fade-up space-y-6">
-          {/* Breadcrumb + Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Film · #{film.rank || "—"} on The Index
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 font-mono text-[10px] text-primary">
-                <ShieldCheck className="h-3 w-3" /> Audience-Driven
-              </span>
+          {/* Breadcrumb + Actions — editorial metadata row, no badges */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-foreground/10 pb-4">
+            <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              The Index · #{film.rank || "—"} · 0% critic weight
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <Link
                 to="/compare"
-                className="flex items-center gap-1.5 rounded-full border border-foreground/15 bg-foreground/5 px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
               >
                 <Scale className="h-3.5 w-3.5" />
                 Compare
               </Link>
               <button
                 onClick={handleToggleSave}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  saved
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-foreground/15 bg-foreground/5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+                className={`flex items-center gap-1.5 text-xs font-medium transition ${
+                  saved ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {saved ? (
@@ -470,14 +416,12 @@ function FilmDetailView() {
                 </>
               )}
             </div>
-            {/* Genre pills */}
+            {/* Genres — quiet editorial metadata, not pills */}
             {genres.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {genres.map((g) => (
-                  <span
-                    key={g.id}
-                    className="rounded-full border border-foreground/10 bg-foreground/5 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
-                  >
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                {genres.map((g, i) => (
+                  <span key={g.id} className="flex items-center gap-2">
+                    {i > 0 && <span className="text-foreground/25">·</span>}
                     {g.name}
                   </span>
                 ))}
@@ -488,24 +432,24 @@ function FilmDetailView() {
           {/* Synopsis */}
           <p className="max-w-2xl text-base leading-relaxed text-foreground/80">{synopsis}</p>
 
-          {/* ── Dual Index Meter ── */}
-          <div className="glass rounded-2xl p-6 relative">
+          {/* ── Index Score block — the measurement, treated as one ── */}
+          <div className="relative border-y border-foreground/10 bg-surface p-6">
             <div className="flex items-center justify-between mb-5">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Lumière Audience Index
+              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+                Index Score
               </div>
               <button
                 onClick={() => setShowMethodology(!showMethodology)}
-                className="flex items-center gap-1 font-mono text-[10px] text-primary hover:underline"
+                className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground"
               >
                 <Info className="h-3 w-3" />
-                <span>How is this score calculated?</span>
+                <span>How is this calculated?</span>
               </button>
             </div>
 
             {/* Methodology popover */}
             {showMethodology && (
-              <div className="mb-5 rounded-xl border border-primary/20 bg-primary/10 p-4 text-xs leading-relaxed text-foreground animate-fade-up">
+              <div className="mb-5 border border-foreground/15 bg-background p-4 text-xs leading-relaxed text-foreground animate-fade-up">
                 <div className="flex items-center justify-between font-bold text-primary mb-1">
                   <span>Methodology & Transparency</span>
                   <button onClick={() => setShowMethodology(false)}>
@@ -525,32 +469,29 @@ function FilmDetailView() {
               </div>
             )}
 
-            <div className="flex items-center justify-center gap-4">
-              <div className="text-center">
-                <div className="font-mono text-5xl font-bold tabular text-primary">
+            {/* Score + movement — the number is the hero, no ring theatrics */}
+            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+              <div>
+                <div className="index-score text-6xl font-bold lg:text-7xl">
                   {film.score?.toFixed(1) || "—"}
                 </div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Index Score
-                </div>
-                <div className="mt-3 flex items-center justify-center gap-1 font-mono text-xs text-muted-foreground">
-                  {(film.movement ?? 0) > 0 ? (
-                    <>
-                      <ArrowUp className="h-3 w-3 text-green-400" />
-                      <span className="text-green-400">+{film.movement}</span>
-                    </>
-                  ) : (film.movement ?? 0) < 0 ? (
-                    <>
-                      <ArrowDown className="h-3 w-3 text-red-400" />
-                      <span className="text-red-400">{film.movement}</span>
-                    </>
-                  ) : (
-                    <span>No change</span>
-                  )}
-                  <span>this cycle</span>
+                <div className="mt-2 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                  of 100 · audience-driven
                 </div>
               </div>
-              <ScoreRing score={culturalPulseScore} label="Cultural Pulse" color="#a78bfa" />
+              <div className="pb-1.5 font-mono text-base">
+                {(film.movement ?? 0) > 0 ? (
+                  <span className="flex items-center gap-1 font-semibold text-up">
+                    <ArrowUp className="h-5 w-5" /> {film.movement}
+                  </span>
+                ) : (film.movement ?? 0) < 0 ? (
+                  <span className="flex items-center gap-1 font-semibold text-down">
+                    <ArrowDown className="h-5 w-5" /> {Math.abs(film.movement ?? 0)}
+                  </span>
+                ) : (
+                  <span className="font-medium text-yellow-300/90" title="Held its rank">—</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -622,8 +563,8 @@ function FilmDetailView() {
             </div>
           </div>
 
-          {/* Official Trailer */}
-          <div className="glass rounded-2xl overflow-hidden">
+          {/* Official Trailer — in-page player */}
+          <div className="border border-foreground/10 bg-surface">
             <div className="px-5 pt-5 pb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Play className="h-4 w-4 text-primary" />
@@ -664,7 +605,7 @@ function FilmDetailView() {
           </div>
 
           {/* Audience Sentiment Breakdown */}
-          <div className="glass rounded-2xl p-5">
+          <div className="border border-foreground/10 bg-surface p-5">
             <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 Audience Sentiment Breakdown
@@ -675,7 +616,7 @@ function FilmDetailView() {
             </div>
             {hasSentimentData && sentiment.positive != null ? (
               <>
-                <div className="mt-4 flex h-3 overflow-hidden rounded-full">
+                <div className="mt-4 flex h-1.5">
                   <div style={{ width: `${sentiment.positive}%` }} className="bg-up" />
                   <div style={{ width: `${sentiment.neutral}%` }} className="bg-foreground/20" />
                   <div style={{ width: `${sentiment.negative}%` }} className="bg-down" />
@@ -719,10 +660,12 @@ function FilmDetailView() {
               confidence tier the ranking engine computed. The observation volume
               (real upstream activity) is shown separately from the ingest
               record count — one YouTube record can aggregate millions of views. */}
-          <div className="glass rounded-2xl p-5 border border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-2 text-xs font-mono text-primary uppercase tracking-widest mb-1">
+          <div className="border border-foreground/10 bg-surface p-5">
+            <div className="flex items-center gap-2 mb-1">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span>Editorial Insight & Cultural Context</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+                Editorial Insight
+              </span>
             </div>
             <p className="mt-2 text-xs text-foreground/90 leading-relaxed font-serif">
               {film.confidence === "insufficient" ||
@@ -750,9 +693,9 @@ function FilmDetailView() {
 
         {/* ── Right Aside ── */}
         <aside className="space-y-4 lg:col-span-4 animate-fade-up delay-100">
-          {/* Poster */}
+          {/* Poster — artwork flush, no rounded frame */}
           <div
-            className="relative aspect-[2/3] overflow-hidden rounded-2xl"
+            className="relative aspect-[2/3] overflow-hidden"
             style={{ background: gradientStyle(film) }}
           >
             {posterUrl ? (
@@ -781,7 +724,7 @@ function FilmDetailView() {
           </div>
 
           {/* Where to Watch */}
-          <div className="glass rounded-2xl p-5">
+          <div className="border border-foreground/10 bg-surface p-5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 <Tv className="h-4 w-4 text-primary" />
@@ -858,7 +801,7 @@ function FilmDetailView() {
           </div>
 
           {/* Index Score Card */}
-          <div className="glass rounded-2xl p-5">
+          <div className="border border-foreground/10 bg-surface p-5">
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               Lumière Index Score
             </div>
@@ -913,10 +856,10 @@ function FilmDetailView() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleToggleSave}
-              className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition ${
+              className={`flex items-center justify-center gap-2 border py-3 text-sm font-medium transition ${
                 saved
-                  ? "bg-primary text-primary-foreground"
-                  : "glass border border-foreground/15 hover:bg-foreground/10"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-foreground/15 bg-surface hover:bg-foreground/10"
               }`}
             >
               {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
@@ -924,7 +867,7 @@ function FilmDetailView() {
             </button>
             <Link
               to="/compare"
-              className="flex items-center justify-center gap-2 rounded-xl border border-foreground/15 glass py-3 text-sm font-medium transition hover:bg-foreground/10"
+              className="flex items-center justify-center gap-2 border border-foreground/15 bg-surface py-3 text-sm font-medium transition hover:bg-foreground/10"
             >
               <Scale className="h-4 w-4" />
               Compare
@@ -935,7 +878,7 @@ function FilmDetailView() {
 
       {/* Floating Save/Watchlist Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-primary/30 bg-background/95 p-4 shadow-2xl backdrop-blur-lg animate-fade-up">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 border border-primary/30 bg-background p-4 shadow-2xl animate-fade-up">
           <BookmarkCheck className="h-5 w-5 text-primary shrink-0" />
           <div className="text-xs">
             <span className="font-medium text-foreground">{toast}</span>
