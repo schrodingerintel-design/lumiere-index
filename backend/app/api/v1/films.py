@@ -105,10 +105,14 @@ def new_releases(
         .limit(limit)
         .all()
     )
+    # Canonical ranking: the rank shown here IS the official Index rank from the
+    # latest snapshot. Renumbering by list position (enumerate) made every page
+    # disagree with the canonical chart — "#1" on the Top 100 could be rank 7
+    # on the film page and rank 12 in search. Every consumer reads the same row.
     mentions = _mentions_map(db, [f.id for f, _ in rows])
     return [
-        _to_ranked(f, r).model_copy(update={"rank": i, "mentions_total": mentions.get(f.id, 0)})
-        for i, (f, r) in enumerate(rows, start=offset + 1)
+        _to_ranked(f, r).model_copy(update={"mentions_total": mentions.get(f.id, 0)})
+        for f, r in rows
     ]
 
 

@@ -9,74 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WatchlistRouteImport } from './routes/watchlist'
-import { Route as TrendingRouteImport } from './routes/trending'
-import { Route as Top100RouteImport } from './routes/top-100'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as RisingRouteImport } from './routes/rising'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as NewEntriesRouteImport } from './routes/new-entries'
-import { Route as MethodologyRouteImport } from './routes/methodology'
-import { Route as GenresRouteImport } from './routes/genres'
-import { Route as CompareRouteImport } from './routes/compare'
-import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as CompareRouteImport } from './routes/compare'
+import { Route as GenresRouteImport } from './routes/genres'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as MethodologyRouteImport } from './routes/methodology'
+import { Route as NewEntriesRouteImport } from './routes/new-entries'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RisingRouteImport } from './routes/rising'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as Top100RouteImport } from './routes/top-100'
+import { Route as TrendingRouteImport } from './routes/trending'
+import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as FilmsSlugRouteImport } from './routes/films.$slug'
 
-const WatchlistRoute = WatchlistRouteImport.update({
-  id: '/watchlist',
-  path: '/watchlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TrendingRoute = TrendingRouteImport.update({
-  id: '/trending',
-  path: '/trending',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Top100Route = Top100RouteImport.update({
-  id: '/top-100',
-  path: '/top-100',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RisingRoute = RisingRouteImport.update({
-  id: '/rising',
-  path: '/rising',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewEntriesRoute = NewEntriesRouteImport.update({
-  id: '/new-entries',
-  path: '/new-entries',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MethodologyRoute = MethodologyRouteImport.update({
-  id: '/methodology',
-  path: '/methodology',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GenresRoute = GenresRouteImport.update({
-  id: '/genres',
-  path: '/genres',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompareRoute = CompareRouteImport.update({
-  id: '/compare',
-  path: '/compare',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarRoute = CalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -84,9 +35,64 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GenresRoute = GenresRouteImport.update({
+  id: '/genres',
+  path: '/genres',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MethodologyRoute = MethodologyRouteImport.update({
+  id: '/methodology',
+  path: '/methodology',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewEntriesRoute = NewEntriesRouteImport.update({
+  id: '/new-entries',
+  path: '/new-entries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RisingRoute = RisingRouteImport.update({
+  id: '/rising',
+  path: '/rising',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Top100Route = Top100RouteImport.update({
+  id: '/top-100',
+  path: '/top-100',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrendingRoute = TrendingRouteImport.update({
+  id: '/trending',
+  path: '/trending',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatchlistRoute = WatchlistRouteImport.update({
+  id: '/watchlist',
+  path: '/watchlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FilmsSlugRoute = FilmsSlugRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
+  '/health': typeof HealthRoute
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
+  '/health': typeof HealthRoute
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
+  '/health': typeof HealthRoute
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
+    | '/health'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
+    | '/health'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
+    | '/health'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -201,6 +213,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CompareRoute: typeof CompareRoute
   GenresRoute: typeof GenresRoute
+  HealthRoute: typeof HealthRoute
   MethodologyRoute: typeof MethodologyRoute
   NewEntriesRoute: typeof NewEntriesRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -214,81 +227,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/watchlist': {
-      id: '/watchlist'
-      path: '/watchlist'
-      fullPath: '/watchlist'
-      preLoaderRoute: typeof WatchlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trending': {
-      id: '/trending'
-      path: '/trending'
-      fullPath: '/trending'
-      preLoaderRoute: typeof TrendingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/top-100': {
-      id: '/top-100'
-      path: '/top-100'
-      fullPath: '/top-100'
-      preLoaderRoute: typeof Top100RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rising': {
-      id: '/rising'
-      path: '/rising'
-      fullPath: '/rising'
-      preLoaderRoute: typeof RisingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/new-entries': {
-      id: '/new-entries'
-      path: '/new-entries'
-      fullPath: '/new-entries'
-      preLoaderRoute: typeof NewEntriesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/methodology': {
-      id: '/methodology'
-      path: '/methodology'
-      fullPath: '/methodology'
-      preLoaderRoute: typeof MethodologyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/genres': {
-      id: '/genres'
-      path: '/genres'
-      fullPath: '/genres'
-      preLoaderRoute: typeof GenresRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/compare': {
-      id: '/compare'
-      path: '/compare'
-      fullPath: '/compare'
-      preLoaderRoute: typeof CompareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendar': {
-      id: '/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -298,11 +241,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/genres': {
+      id: '/genres'
+      path: '/genres'
+      fullPath: '/genres'
+      preLoaderRoute: typeof GenresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/methodology': {
+      id: '/methodology'
+      path: '/methodology'
+      fullPath: '/methodology'
+      preLoaderRoute: typeof MethodologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-entries': {
+      id: '/new-entries'
+      path: '/new-entries'
+      fullPath: '/new-entries'
+      preLoaderRoute: typeof NewEntriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rising': {
+      id: '/rising'
+      path: '/rising'
+      fullPath: '/rising'
+      preLoaderRoute: typeof RisingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/top-100': {
+      id: '/top-100'
+      path: '/top-100'
+      fullPath: '/top-100'
+      preLoaderRoute: typeof Top100RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trending': {
+      id: '/trending'
+      path: '/trending'
+      fullPath: '/trending'
+      preLoaderRoute: typeof TrendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/watchlist': {
+      id: '/watchlist'
+      path: '/watchlist'
+      fullPath: '/watchlist'
+      preLoaderRoute: typeof WatchlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/films/$slug': {
@@ -321,6 +341,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CompareRoute: CompareRoute,
   GenresRoute: GenresRoute,
+  HealthRoute: HealthRoute,
   MethodologyRoute: MethodologyRoute,
   NewEntriesRoute: NewEntriesRoute,
   PrivacyRoute: PrivacyRoute,
@@ -334,13 +355,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

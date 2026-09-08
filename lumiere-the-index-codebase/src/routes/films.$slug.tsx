@@ -407,7 +407,11 @@ function FilmDetailView() {
     return `$${n.toLocaleString()}`;
   };
 
-  const weeksOnChart = film.weeks_on_chart ?? 1;
+  // A NEW entry (no previous snapshot) has no meaningful chart tenure — showing
+  // "8 weeks" next to "just entered tracking" is the exact contradiction the
+  // audit flagged. Weeks count only from the first charted snapshot onward.
+  const isNewEntry = film.prev_rank == null;
+  const weeksOnChart = isNewEntry ? 0 : (film.weeks_on_chart ?? 1);
 
   return (
     <Layout>
@@ -509,10 +513,14 @@ function FilmDetailView() {
                   </button>
                 </div>
                 <p>
-                  Lumière's Index Score is calculated directly from{" "}
-                  <strong>audience sentiment signals</strong> across review platforms, social
-                  discussion density, and search velocity. We do not aggregate critic star ratings
-                  or press reviews — every point reflects real viewer reactions.
+                  The Index Score blends five time-windowed components — Current Attention (30%),
+                  Momentum (25%), Recency (20%), Audience Engagement (15%), and Cross-Platform
+                  Reach (10%) — computed from raw audience observations and normalized to 0–100
+                  within the active pool. We do not aggregate critic star ratings or press reviews —
+                  every point reflects real audience signals.{" "}
+                  <a href="/methodology" className="font-medium text-primary underline">
+                    Full methodology →
+                  </a>
                 </p>
               </div>
             )}
@@ -704,7 +712,9 @@ function FilmDetailView() {
             )}
           </div>
 
-          {/* Editorial Insight & Cultural Context */}
+          {/* Editorial Insight & Cultural Context — claim strength gated by the
+              confidence tier the ranking engine computed. Small samples are
+              stated honestly, never dressed up. */}
           <div className="glass rounded-2xl p-5 border border-primary/20 bg-primary/5">
             <div className="flex items-center gap-2 text-xs font-mono text-primary uppercase tracking-widest mb-1">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -714,7 +724,9 @@ function FilmDetailView() {
               {film.confidence === "insufficient" ||
               (film.confidence == null && (film.sample_size ?? 0) < 5)
                 ? `"${film.title}" has just entered tracking — not enough audience signal yet to assess its trajectory.`
-                : `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index, backed by ${(film.sample_size ?? film.mentions_total).toLocaleString()} tracked audience signals this cycle.`}
+                : film.confidence === "low"
+                  ? `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index with limited early evidence — ${(film.sample_size ?? film.mentions_total).toLocaleString()} audience ${((film.sample_size ?? film.mentions_total) === 1) ? "signal" : "signals"} tracked so far.`
+                  : `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index, backed by ${(film.sample_size ?? film.mentions_total).toLocaleString()} tracked audience signals this cycle.`}
             </p>
           </div>
         </div>
@@ -842,7 +854,9 @@ function FilmDetailView() {
                   Time on chart
                 </div>
                 <div className="mt-1 font-mono text-xl tabular">
-                  {weeksOnChart} {weeksOnChart === 1 ? "week" : "weeks"}
+                  {isNewEntry
+                    ? "New"
+                    : `${weeksOnChart} ${weeksOnChart === 1 ? "week" : "weeks"}`}
                 </div>
               </div>
               <div>

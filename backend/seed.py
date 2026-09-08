@@ -225,9 +225,16 @@ def run() -> None:
             base_score = 96.4 - (i - 1) * 0.65 + random.uniform(-0.3, 0.3)
             score = round(max(38.0, min(97.8, base_score)), 1)
 
+            # Movement must be consistent with prev_rank: a film that moved up
+            # from #8 to #5 has prev_rank=8, movement=+3. A film with no prior
+            # snapshot is a NEW entry — it must never also carry a random
+            # "weeks on chart" number ("NEW · 8 weeks" is a contradiction the
+            # audit flagged).
             movement = MOVEMENTS[i - 1] if i - 1 < len(MOVEMENTS) else random.choice([-2, -1, 0, 1])
             prev_rank = i - movement if (i - movement) > 0 else None
-            weeks = max(1, min(24, int(16 - i * 0.15 + random.randint(-1, 2))))
+            if prev_rank is None:
+                movement = 0  # a first appearance has no prior movement
+            weeks = 1 if prev_rank is None else max(1, min(24, int(16 - i * 0.15 + random.randint(-1, 2))))
 
             db.add(Ranking(
                 snapshot_at=now,

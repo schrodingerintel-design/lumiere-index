@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { getNewReleaseFilms, type RankedFilm } from "@/lib/apiClient";
+import { getTopFilms, type RankedFilm } from "@/lib/apiClient";
 import { isNewRelease } from "@/lib/filmUtils";
 import { filmTrend } from "@/lib/trend";
 import { PosterCard } from "./PosterCard";
@@ -55,13 +55,15 @@ export function Top100Section() {
     });
   };
 
+  // Canonical ranking feed — the same rows every other page reads, so the
+  // homepage chart always agrees with /top-100 and the film pages.
   const {
     data: films,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["films", "new-releases", 100],
-    queryFn: () => getNewReleaseFilms(100),
+    queryKey: ["films", "top", 100],
+    queryFn: () => getTopFilms(100),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -240,7 +242,7 @@ export function Top100Section() {
 
       {!isLoading && films?.length === 0 && (
         <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
-          No new releases charted yet. Films will appear after the next ingest cycle.
+          No films charted yet. Rankings will appear after the next ingest cycle.
         </div>
       )}
     </section>

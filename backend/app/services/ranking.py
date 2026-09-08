@@ -410,11 +410,38 @@ def recompute_rankings(db: Session) -> datetime:
     # ── 9. Previous snapshot lookup for movement tracking ─────────────────────
     prev_snap = db.scalar(select(func.max(Ranking.snapshot_at)))
     prev_ranks: dict[int, int] = {}
+    prev_movements: dict[int, int | None] = {}
+    prev_prev_ranks: dict[int, int | None] = {}
     prev_peak: dict[int, int] = {}
     if prev_snap:
         for r in db.query(Ranking).filter(Ranking.snapshot_at == prev_snap):
             prev_ranks[r.film_id] = r.rank
+            prev_movements[r.film_id] = r.movement
+            prev_prev_ranks[r.film_id] = r.prev_rank
             prev_peak[r.film_id] = r.peak_rank or r.rank
+
+    def _movement_for(fid: int, rank: int) -> tuple[int | None, int]:
+        """Return (prev_rank, movement) for this snapshot.
+
+        Movement is rank-based and PERSISTENT: the ↑/↓/— indicator keeps
+        showing the last rank change until the rank actually changes again.
+        Comparing only against the immediately-previous snapshot (which fires
+        every refresh cycle) would reset a real move to "—" within minutes
+        whenever a film holds its new position.
+        """
+        prev = prev_ranks.get(fid)
+        if prev is None:
+            return None, 0  # first appearance — a genuine NEW entry
+        if prev != rank:
+            return prev, prev - rank  # rank changed → fresh movement
+        # Rank unchanged from the previous snapshot: carry the last movement
+        # forward until the rank changes again. A debut that held its rank
+        # resolves to steady (movement 0, prev_rank set) instead of showing
+        # a perpetual "New" badge.
+        carried = prev_movements.get(fid)
+        movement = carried if carried is not None else 0
+        last_from = prev_prev_ranks.get(fid)
+        return (last_from if last_from is not None else prev), movement
 
     # ── Weeks on chart: calendar weeks since the film's FIRST chart appearance.
     # The previous implementation carried a counter and incremented it on every
@@ -440,15 +467,15 @@ def recompute_rankings(db: Session) -> datetime:
 
     # ── 10. Persist snapshot ──────────────────────────────────────────────────
     for i, (fid, score) in enumerate(normalized, start=1):
-        prev = prev_ranks.get(fid)
+        prev_rank_out, movement = _movement_for(fid, i)
         peak = min(prev_peak.get(fid, i), i)
         db.add(Ranking(
             snapshot_at=now,
             film_id=fid,
             rank=i,
             score=score,
-            prev_rank=prev,
-            movement=(prev - i) if prev else 0,
+            prev_rank=prev_rank_out,
+            movement=movement,
             peak_rank=peak,
             weeks_on_chart=_weeks_on_chart(fid),
             # Sub-score audit log (stored as normalised 0-1 values)

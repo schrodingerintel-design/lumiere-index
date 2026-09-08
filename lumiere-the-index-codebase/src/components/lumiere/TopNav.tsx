@@ -66,13 +66,16 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch?: ()
             {theme === "dark" ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />}
           </button>
 
-          {/* Live · Updating — the Index recomputes continuously (desktop+) */}
+          {/* Honest pipeline badge: signals are collected continuously, the
+              official Index ranking is published daily, and Rising tracks
+              short-term momentum between snapshots. No hardcoded signal-count
+              claims — the real totals live on the film pages and health view. */}
           <div
-            title="Live signal engine — rankings update continuously from 86,000+ audience signals across Reddit, Letterboxd, news & social channels."
+            title="Audience signals are collected continuously. The official Top 100 Index is published daily. Rising Now tracks short-term momentum between snapshots."
             className="hidden md:flex items-center gap-2 rounded-full border border-live/30 bg-live/10 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-live transition-all hover:bg-live/20 cursor-help"
           >
             <span className="live-dot h-1.5 w-1.5 rounded-full bg-live" />
-            <span>Live · Updating</span>
+            <span>Signals live · Index daily</span>
           </div>
         </div>
       </div>

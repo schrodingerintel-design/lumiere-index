@@ -139,6 +139,50 @@ export interface RefreshMeta {
   interval_minutes: number;
 }
 
+/** Per-source ingest health — the Data/Signal Health view. */
+export interface SourceHealth {
+  key: string;
+  name: string;
+  enabled: boolean;
+  weight: number;
+  last_ingested_at: string | null;
+  last_error: string | null;
+  last_error_at: string | null;
+  mentions_24h: number;
+  key_configured: boolean;
+  records_requested: number;
+  records_received: number;
+  records_processed: number;
+  records_rejected: number;
+  api_errors: number;
+  rate_limit_errors: number;
+}
+
+/** Per-film evidence status (films with too little signal to trust). */
+export interface SignalHealthFilm {
+  slug: string;
+  title: string;
+  rank: number;
+  score: number;
+  sample_size: number;
+  confidence: string;
+  weeks_on_chart: number;
+  last_seen_at: string | null;
+}
+
+/** Aggregate health summary for the Data/Signal Health view. */
+export interface SignalHealthSummary {
+  total_films_tracked: number;
+  films_charted: number;
+  films_with_insufficient_evidence: number;
+  films_with_low_evidence: number;
+  total_mentions_30d: number;
+  pending_unresolved: number;
+  sources_ok: number;
+  sources_error: number;
+  snapshot_at: string | null;
+}
+
 export interface LiveStats {
   total_mentions_24h: number;
   tracked_films: number;
@@ -199,6 +243,14 @@ export const getTrendingFilms = (limit: number = 20) =>
 export const getLiveStats = () => apiFetch<LiveStats>("/api/v1/stats/live");
 
 export const getMetaRefresh = () => apiFetch<RefreshMeta>("/api/v1/meta/refresh");
+
+export const getSourceHealth = () => apiFetch<SourceHealth[]>("/api/v1/meta/sources");
+
+export const getSignalHealthSummary = () =>
+  apiFetch<SignalHealthSummary>("/api/v1/meta/health");
+
+export const getSignalHealthFilms = (limit: number = 100) =>
+  apiFetch<SignalHealthFilm[]>(`/api/v1/meta/health/films?limit=${limit}`);
 
 export const subscribeNewsletter = (email: string) =>
   apiFetch<{ ok: boolean }>("/api/v1/newsletter/subscribe", {

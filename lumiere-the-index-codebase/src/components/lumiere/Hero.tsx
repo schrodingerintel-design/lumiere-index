@@ -117,6 +117,17 @@ export function Hero() {
   const weeks = activeFilm?.weeks_on_chart ?? 0;
   const trend = filmTrend(activeFilm);
 
+  // "Why it's here" — an honest, evidence-gated line. The claim strength is
+  // capped by the confidence tier the ranking engine computed for this title.
+  const sample = activeFilm?.sample_size ?? 0;
+  const confidence = activeFilm?.confidence ?? "insufficient";
+  const whyItsHere =
+    confidence === "insufficient"
+      ? "Just entered tracking — not enough signal yet"
+      : confidence === "low"
+        ? `Limited early signal — ${sample.toLocaleString()} audience ${sample === 1 ? "mention" : "mentions"} tracked so far`
+        : `Backed by ${sample.toLocaleString()} tracked audience signals this cycle`;
+
   return (
     <section
       onClick={handleHeroTap}
@@ -147,19 +158,20 @@ export function Hero() {
 
       {/* ── Content: badges pinned top, text centered, buttons pinned bottom ── */}
       <div className="relative z-10 flex min-h-[460px] flex-col px-5 py-6 sm:px-8 sm:py-7 lg:min-h-[540px] lg:px-10 lg:py-8 lg:pr-72">
-        {/* ── Top: rank + Index Score badges ── */}
+        {/* ── Top: rank badge only — the score gets its own dominant block ── */}
         <div className="flex flex-wrap items-center gap-2 animate-fade-up">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-live px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ink sm:text-[11px]">
             <Trophy className="h-3 w-3" />
-            #{activeFilm?.rank ?? 1} · Top Index
+            #{activeFilm?.rank ?? 1} ON THE INDEX
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-white/75 backdrop-blur-sm sm:text-[11px]">
-            Index Score
-            <span className="font-bold text-primary">{score?.toFixed(1) ?? "—"}</span>
-          </span>
+          {!isNew && weeks > 0 && (
+            <span className="inline-flex items-center rounded-full border border-white/15 bg-black/45 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-white/70 backdrop-blur-sm sm:text-[11px]">
+              {weeks} {weeks === 1 ? "week" : "weeks"} on chart
+            </span>
+          )}
         </div>
 
-        {/* ── Middle: eyebrow → title → trend line, vertically centered ── */}
+        {/* ── Middle: eyebrow → title → score, vertically centered ── */}
         <div className="flex flex-1 flex-col justify-center py-6 animate-fade-up delay-100">
           {/* Director eyebrow */}
           <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-white/70">
@@ -171,36 +183,49 @@ export function Hero() {
             {activeFilm?.title}
           </h1>
 
-          {/* Trend indicator — compact symbols: #3 ↑ 3 / #2 ↓ 1 / #3 — */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5">
-            {trend === "new" ? (
-              <span className="flex items-center gap-1.5 font-mono text-sm font-medium text-live">
-                <ArrowUp className="h-4 w-4" /> New this week
-              </span>
-            ) : trend === "rise" ? (
-              <span className="flex items-center gap-1.5 font-mono text-sm">
-                <span className="text-white/85">#{activeFilm?.rank}</span>
-                <ArrowUp className="h-4 w-4 text-up" />
-                <span className="font-medium text-up">{move}</span>
-              </span>
-            ) : trend === "fall" ? (
-              <span className="flex items-center gap-1.5 font-mono text-sm">
-                <span className="text-white/85">#{activeFilm?.rank}</span>
-                <ArrowDown className="h-4 w-4 text-down" />
-                <span className="font-medium text-down">{Math.abs(move)}</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 font-mono text-sm">
-                <span className="text-white/85">#{activeFilm?.rank}</span>
-                <span className="font-medium text-primary" title="Held its rank">—</span>
-              </span>
-            )}
-            {!isNew && weeks > 0 && (
-              <span className="font-mono text-sm text-white/75">
-                {weeks} {weeks === 1 ? "week" : "weeks"} on chart
-              </span>
-            )}
+          {/* Index Score — THE product. Visually dominant: oversized number,
+              explicit label, movement symbol. Secondary info sits underneath. */}
+          <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-3">
+            <div>
+              <div
+                className="font-mono text-6xl font-bold leading-none tracking-tight text-primary tabular-nums sm:text-7xl lg:text-8xl"
+                style={{ textShadow: "0 2px 12px rgba(0,0,0,0.55), 0 1px 0 rgba(0,0,0,0.4)" }}
+              >
+                {score?.toFixed(1) ?? "—"}
+              </div>
+              <div className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.28em] text-white/80">
+                Index Score
+              </div>
+            </div>
+
+            {/* Movement — rank-anchored symbols: #3 ↑ 3 / #2 ↓ 1 / #3 — */}
+            <div className="pb-1.5">
+              {trend === "new" ? (
+                <span className="flex items-center gap-1.5 font-mono text-base font-medium text-live">
+                  <ArrowUp className="h-5 w-5" /> New
+                </span>
+              ) : trend === "rise" ? (
+                <span className="flex items-center gap-1.5 font-mono text-base">
+                  <ArrowUp className="h-5 w-5 text-up" />
+                  <span className="font-semibold text-up">{move}</span>
+                </span>
+              ) : trend === "fall" ? (
+                <span className="flex items-center gap-1.5 font-mono text-base">
+                  <ArrowDown className="h-5 w-5 text-down" />
+                  <span className="font-semibold text-down">{Math.abs(move)}</span>
+                </span>
+              ) : (
+                <span className="flex items-center font-mono text-base font-medium text-yellow-300/90" title="Held its rank">
+                  —
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Why it's here — evidence-gated, honest */}
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/75">
+            {whyItsHere}
+          </p>
         </div>
 
         {/* ── Bottom: action buttons pinned to the base of the card ── */}

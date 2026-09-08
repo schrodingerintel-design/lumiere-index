@@ -383,3 +383,85 @@ def test_recompute_empty_db(db_session):
     # db_session from conftest seeds two films but no mentions/daily scores
     snap = recompute_rankings(db_session)
     assert snap is not None
+
+
+# ── 11. Persistent movement ────────────────────────────────────────────────────
+
+def test_movement_persists_until_rank_changes(db_session):
+    """A film that rises and then holds its new rank keeps showing the same
+    movement — the ↑/↓ indicator persists until the rank actually changes
+    again, instead of resetting to 0 on the next snapshot.
+    """
+    src = _add_source(db_session)
+    today = date.today()
+
+    a = _add_film(db_session, "mov-a", "Mover A", release_date=today - timedelta(days=2))
+    b = _add_film(db_session, "mov-b", "Mover B", release_date=today - timedelta(days=2))
+
+    # Snapshot 1: A ranks above B
+    snap1 = recompute_rankings(db_session)
+    for i in range(3):
+        _add_mention(db_session, a.id, src.id, 1 + i, engagement=500, ext_id_suffix=f"s1-a{i}")
+        _add_mention(db_session, b.id, src.id, 1 + i, engagement=5, ext_id_suffix=f"s1-b{i}")
+    db_session.commit()
+    snap2 = recompute_rankings(db_session)
+
+    r_a_1 = db_session.query(Ranking).filter(
+        Ranking.film_id == a.id, Ranking.snapshot_at == snap2).one()
+    r_b_1 = db_session.query(Ranking).filter(
+        Ranking.film_id == b.id, Ranking.snapshot_at == snap2).one()
+    assert r_a_1.rank < r_b_1.rank
+
+    # Snapshot 2: B surges above A → B gains movement, A falls
+    for i in range(3):
+        _add_mention(db_session, b.id, src.id, 30 + i, engagement=5000, ext_id_suffix=f"s2-b{i}")
+    db_session.commit()
+    snap3 = recompute_rankings(db_session)
+
+    r_a_2 = db_session.query(Ranking).filter(
+        Ranking.film_id == a.id, Ranking.snapshot_at == snap3).one()
+    r_b_2 = db_session.query(Ranking).filter(
+        Ranking.film_id == b.id, Ranking.snapshot_at == snap3).one()
+    assert r_b_2.rank < r_a_2.rank
+    assert r_b_2.movement > 0
+    assert r_a_2.movement < 0
+
+    # Snapshot 3: no new data — ranks hold. Movement must be CARRIED FORWARD,
+    # not reset to 0, and prev_rank must still point at the rank before the
+    # last change.
+    snap4 = recompute_rankings(db_session)
+    r_a_3 = db_session.query(Ranking).filter(
+        Ranking.film_id == a.id, Ranking.snapshot_at == snap4).one()
+    r_b_3 = db_session.query(Ranking).filter(
+        Ranking.film_id == b.id, Ranking.snapshot_at == snap4).one()
+    assert r_a_3.rank == r_a_2.rank
+    assert r_b_3.rank == r_b_2.rank
+    assert r_b_3.movement == r_b_2.movement, (
+        f"Held-rank film must keep its movement (expected {r_b_2.movement}, got {r_b_3.movement})"
+    )
+    assert r_a_3.movement == r_a_2.movement
+    assert r_b_3.prev_rank == r_b_2.prev_rank
+    assert r_a_3.prev_rank == r_a_2.prev_rank
+
+
+def test_debut_that_holds_rank_becomes_steady(db_session):
+    """A film that debuts and then holds its rank resolves to steady (movement 0,
+    prev_rank set) instead of showing a perpetual NEW badge."""
+    src = _add_source(db_session)
+    today = date.today()
+    film = _add_film(db_session, "debut", "Debut Film", release_date=today - timedelta(days=1))
+    for i in range(3):
+        _add_mention(db_session, film.id, src.id, 1 + i, engagement=100, ext_id_suffix=f"d{i}")
+    db_session.commit()
+
+    snap1 = recompute_rankings(db_session)
+    r1 = db_session.query(Ranking).filter(
+        Ranking.film_id == film.id, Ranking.snapshot_at == snap1).one()
+    assert r1.prev_rank is None  # debut
+
+    snap2 = recompute_rankings(db_session)
+    r2 = db_session.query(Ranking).filter(
+        Ranking.film_id == film.id, Ranking.snapshot_at == snap2).one()
+    assert r2.rank == r1.rank
+    assert r2.prev_rank is not None
+    assert r2.movement == 0

@@ -9,5 +9,7 @@ from .schemas import (
     LiveStats,
     RefreshMeta,
     SourceHealth,
+    SignalHealthFilm,
+    SignalHealthSummary,
     NewsletterIn,
 )

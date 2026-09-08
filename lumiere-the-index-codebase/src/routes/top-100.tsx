@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import { getNewReleaseFilms } from "@/lib/apiClient";
+import { getTopFilms } from "@/lib/apiClient";
 import { isNewRelease } from "@/lib/filmUtils";
 import { filmTrend } from "@/lib/trend";
 import { RouteError } from "@/lib/route-error";
@@ -22,8 +22,8 @@ export const Route = createFileRoute("/top-100")({
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({
-      queryKey: ["films", "new-releases", 100],
-      queryFn: () => getNewReleaseFilms(100),
+      queryKey: ["films", "top", 100],
+      queryFn: () => getTopFilms(100),
     });
   },
   component: Top100,
@@ -36,8 +36,8 @@ function Top100() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["films", "new-releases", 100],
-    queryFn: () => getNewReleaseFilms(100),
+    queryKey: ["films", "top", 100],
+    queryFn: () => getTopFilms(100),
     staleTime: 5 * 60 * 1000,
   });
 

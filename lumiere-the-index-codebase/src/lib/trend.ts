@@ -6,10 +6,15 @@ export type Trend = "new" | "rise" | "steady" | "fall";
 /**
  * Classify a film's chart trend from its snapshot data.
  *
- *  new     — no previous snapshot (first appearance)
- *  rise    — moved up at least one position
- *  fall    — moved down at least one position
- *  steady  — held the same rank
+ *  new     — no previous rank at all (first appearance)
+ *  rise    — last rank change was upward (persistent until the next change)
+ *  fall    — last rank change was downward (persistent until the next change)
+ *  steady  — rank has never changed since charting
+ *
+ * The backend carries movement forward across snapshots, so a film that rose
+ * 3 positions and then held its new rank keeps showing "↑ 3" until its rank
+ * changes again — the indicator reflects the last real movement, not the
+ * snapshot-to-snapshot delta.
  */
 export function filmTrend(film: RankedFilm | null | undefined): Trend {
   if (!film) return "steady";

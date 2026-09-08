@@ -117,6 +117,38 @@ class SourceHealth(BaseModel):
     last_error_at: datetime | None = None
     mentions_24h: int = 0
     key_configured: bool = False
+    # Per-run ingest counters (Data/Signal Health view)
+    records_requested: int = 0
+    records_received: int = 0
+    records_processed: int = 0
+    records_rejected: int = 0
+    api_errors: int = 0
+    rate_limit_errors: int = 0
+
+
+class SignalHealthFilm(BaseModel):
+    """Per-film evidence status for the Data/Signal Health view."""
+    slug: str
+    title: str
+    rank: int = 0
+    score: float = 0.0
+    sample_size: int = 0
+    confidence: str = "insufficient"
+    weeks_on_chart: int = 0
+    last_seen_at: datetime | None = None
+
+
+class SignalHealthSummary(BaseModel):
+    """Aggregate health summary for the Data/Signal Health view."""
+    total_films_tracked: int
+    films_charted: int
+    films_with_insufficient_evidence: int
+    films_with_low_evidence: int
+    total_mentions_30d: int
+    pending_unresolved: int
+    sources_ok: int
+    sources_error: int
+    snapshot_at: datetime | None = None
 
 
 class NewsletterIn(BaseModel):

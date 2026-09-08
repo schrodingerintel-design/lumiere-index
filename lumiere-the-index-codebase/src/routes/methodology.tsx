@@ -120,6 +120,24 @@ function Methodology() {
         </p>
       </Section>
 
+      <Section title="Data Collection vs. The Official Ranking">
+        <p>
+          Three different clocks run the Index, and they are not the same thing:
+        </p>
+        <List
+          items={[
+            "Signal collection — continuous. Audience observations are ingested from every source around the clock.",
+            "The official Top 100 — a published ranking cycle. Each cycle writes one immutable snapshot; ranks, movement, and weeks-on-chart are computed between consecutive snapshots only.",
+            "Rising Now — short-term momentum between ranking cycles. It highlights titles climbing fastest right now; it is not a separate ranking with separate math.",
+          ]}
+        />
+        <p>
+          Movement (↑/↓) is computed from rank change between the two most recent snapshots —
+          never from Index Score changes — so a film that moves from #20 to #15 shows ↑ 5
+          even if its score barely moved.
+        </p>
+      </Section>
+
       <Section title="Index Score">
         <p>
           Every title receives a Lumière Index Score representing its current cultural momentum. The
@@ -136,24 +154,35 @@ function Methodology() {
           <Lock className="h-5 w-5" />
           <span>How the Index Score (0–100) is Calculated</span>
         </div>
+        <p className="mt-3 text-xs text-foreground/70">
+          The pipeline runs in one direction — raw observations are never edited to change a
+          score, and no number is ever synthesized:
+        </p>
         <ul className="mt-3 space-y-2 font-mono text-xs text-foreground/80">
           <li>
-            • <strong>Weighted Signal Volume:</strong> Every mention counts by source weight (Reddit,
-            Letterboxd, news, YouTube, TikTok, Wikipedia, Google Trends), with engagement log-scaled
-            so genuine reach outranks spam.
+            • <strong>Raw observations:</strong> real audience mentions and engagements are ingested
+            from Reddit, Letterboxd, news, YouTube, TikTok, Wikipedia, and Google Trends, deduped
+            per source.
           </li>
           <li>
-            • <strong>Recency Decay:</strong> Fresh conversation is weighted higher via a 24-hour
-            half-life over a 48-hour rolling window.
+            • <strong>Signal extraction:</strong> observations roll into daily per-film series —
+            mention volume, sentiment, and which platforms are actively discussing the title.
           </li>
           <li>
-            • <strong>Sentiment Multiplier:</strong> Average audience sentiment adjusts the score up
-            to ±25%, rewarding films people actually feel strongly about.
+            • <strong>Five weighted components:</strong> Current Attention (30%), Momentum (25%),
+            Recency (20%), Audience Engagement (15%), and Cross-Platform Reach (10%). Every
+            component is time-windowed, so a film released this week is never structurally
+            disadvantaged against one tracked for months.
           </li>
           <li>
-            • <strong>Relative Normalization:</strong> Scores are normalized so top-performing
-            releases sit near 97.8 and everything else ranks relative to them. Recalculated every 15
-            minutes.
+            • <strong>Relative normalization:</strong> components are percentile-normalized within
+            the active pool, then blended and scaled to 0–100. The score is relative cultural
+            momentum — not a review score.
+          </li>
+          <li>
+            • <strong>Evidence floor:</strong> every score carries a confidence tier from its raw
+            sample size. Titles with insufficient evidence get hedged copy — or no claims at all —
+            never invented ones.
           </li>
         </ul>
       </div>

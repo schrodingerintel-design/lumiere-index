@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.models import Ranking, Mention, Film, CountryScore, Source
-from app.schemas import RefreshMeta, LiveStats, SourceHealth
+from app.models import Ranking, Mention, Film, CountryScore, Source, PendingMention
+from app.schemas import RefreshMeta, LiveStats, SourceHealth, SignalHealthFilm, SignalHealthSummary
 
 router = APIRouter()
 
@@ -50,6 +50,12 @@ def source_health(db: Session = Depends(get_db)):
             Source.last_ingested_at,
             Source.last_error,
             Source.last_error_at,
+            Source.records_requested,
+            Source.records_received,
+            Source.records_processed,
+            Source.records_rejected,
+            Source.api_errors,
+            Source.rate_limit_errors,
             func.count(Mention.id),
         )
         .outerjoin(Mention, Mention.source_id == Source.id)
@@ -58,7 +64,10 @@ def source_health(db: Session = Depends(get_db)):
     ).all()
 
     by_key = {}
-    for key, name, enabled, weight, last_at, last_err, last_err_at, mentions in rows:
+    for (
+        key, name, enabled, weight, last_at, last_err, last_err_at,
+        requested, received, processed, rejected, api_err, rl_err, mentions,
+    ) in rows:
         by_key[key] = {
             "key": key,
             "name": name,
@@ -68,6 +77,12 @@ def source_health(db: Session = Depends(get_db)):
             "last_error": last_err,
             "last_error_at": last_err_at,
             "mentions_24h": int(mentions),
+            "records_requested": int(requested or 0),
+            "records_received": int(received or 0),
+            "records_processed": int(processed or 0),
+            "records_rejected": int(rejected or 0),
+            "api_errors": int(api_err or 0),
+            "rate_limit_errors": int(rl_err or 0),
         }
 
     result = []
@@ -87,6 +102,121 @@ def source_health(db: Session = Depends(get_db)):
                 )
             )
     return result
+
+
+@router.get("/meta/health", response_model=SignalHealthSummary)
+def signal_health_summary(db: Session = Depends(get_db)):
+    """Aggregate health summary for the Data/Signal Health view.
+
+    Shows how much real evidence the Index is operating on — film coverage,
+    evidence confidence, the pending (unresolved) candidate queue, and how
+    many sources are currently erroring. Missing data is reported as missing;
+    it is never synthesized.
+    """
+    now = datetime.now(timezone.utc)
+    since_30d = now - timedelta(days=30)
+    snap = db.scalar(select(func.max(Ranking.snapshot_at)))
+
+    total_films = db.scalar(select(func.count(Film.id))) or 0
+
+    films_charted = 0
+    insufficient = 0
+    low = 0
+    if snap:
+        rows = db.execute(
+            select(Ranking.film_id, Ranking.sample_size, Ranking.confidence)
+            .where(Ranking.snapshot_at == snap)
+        ).all()
+        films_charted = len(rows)
+        for _, sample, conf in rows:
+            tier = conf or ("insufficient" if (sample or 0) < 5 else "low")
+            if tier == "insufficient":
+                insufficient += 1
+            elif tier == "low":
+                low += 1
+
+    total_mentions_30d = db.scalar(
+        select(func.count(Mention.id)).where(Mention.created_at >= since_30d)
+    ) or 0
+
+    pending = db.scalar(
+        select(func.count(PendingMention.id)).where(PendingMention.status == "pending")
+    ) or 0
+
+    sources = db.query(Source).all()
+    sources_ok = 0
+    sources_error = 0
+    for s in sources:
+        if s.last_error:
+            sources_error += 1
+        else:
+            sources_ok += 1
+
+    return SignalHealthSummary(
+        total_films_tracked=total_films,
+        films_charted=films_charted,
+        films_with_insufficient_evidence=insufficient,
+        films_with_low_evidence=low,
+        total_mentions_30d=total_mentions_30d,
+        pending_unresolved=pending,
+        sources_ok=sources_ok,
+        sources_error=sources_error,
+        snapshot_at=snap,
+    )
+
+
+@router.get("/meta/health/films", response_model=list[SignalHealthFilm])
+def signal_health_films(
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Per-film evidence status — the films with too little signal to trust.
+
+    Ordered weakest evidence first so the Data/Signal Health view surfaces
+    exactly which titles need more observations.
+    """
+    snap = db.scalar(select(func.max(Ranking.snapshot_at)))
+    if not snap:
+        return []
+
+    rows = (
+        db.query(Film, Ranking)
+        .join(Ranking, Ranking.film_id == Film.id)
+        .filter(Ranking.snapshot_at == snap)
+        .order_by(
+            Ranking.sample_size.asc().nullsfirst(),
+            Ranking.score.desc(),
+        )
+        .offset(0)
+        .limit(limit)
+        .all()
+    )
+
+    # Last seen mention timestamp per film (30d) for stale-data detection.
+    since_30d = datetime.now(timezone.utc) - timedelta(days=30)
+    last_seen_rows = db.execute(
+        select(
+            Mention.film_id,
+            func.max(Mention.created_at),
+        )
+        .where(Mention.film_id.in_([f.id for f, _ in rows]), Mention.created_at >= since_30d)
+        .group_by(Mention.film_id)
+    ).all()
+    last_seen = {fid: ts for fid, ts in last_seen_rows}
+
+    return [
+        SignalHealthFilm(
+            slug=f.slug,
+            title=f.title,
+            rank=r.rank,
+            score=r.score,
+            sample_size=r.sample_size or 0,
+            confidence=r.confidence or "insufficient",
+            weeks_on_chart=r.weeks_on_chart or 0,
+            last_seen_at=last_seen.get(f.id),
+        )
+        for f, r in rows
+    ]
 
 
 @router.get("/stats/live", response_model=LiveStats)

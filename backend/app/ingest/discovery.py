@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import Film, FilmAlias, Mention, PendingMention, Source
 from app.services.sentiment import score_text
-from app.ingest.tmdb import GRADIENT_PALETTES, _unique_slug
+from app.ingest.tmdb import GRADIENT_PALETTES, _unique_slug, genre_tag_from_tmdb, _east_asian_tag
 from app.ingest.pipeline import invalidate_matcher_cache
 
 _QUOTE_RE = re.compile(r'"([^"]{2,80})"')
@@ -178,6 +178,11 @@ def _create_film(db: Session, item: dict, candidate: str) -> Film:
     overview = item.get("overview") or f"{title} film."
     g1, g2 = random.choice(GRADIENT_PALETTES)
 
+    # Canonical genre tag from TMDB genre ids — never leave NULL, or the film
+    # falls outside every real shelf and ends up in a mislabeled collection.
+    raw_genre = genre_tag_from_tmdb(item.get("genre_ids"))
+    genre_tag = raw_genre or _east_asian_tag(country)
+
     film = Film(
         slug=_unique_slug(db, slugify(title), item.get("id")),
         title=title,
@@ -191,6 +196,7 @@ def _create_film(db: Session, item: dict, candidate: str) -> Film:
         gradient_from=g1,
         gradient_to=g2,
         release_date=parsed_release_date,
+        genre_tag=genre_tag,
     )
     db.add(film)
     db.flush()

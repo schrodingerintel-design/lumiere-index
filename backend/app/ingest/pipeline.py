@@ -57,6 +57,33 @@ def record_ingest(db: Session, source_key: str, error: str | None = None) -> Non
     db.commit()
 
 
+def record_ingest_stats(
+    db: Session,
+    source_key: str,
+    *,
+    requested: int = 0,
+    received: int = 0,
+    processed: int = 0,
+    rejected: int = 0,
+    api_errors: int = 0,
+    rate_limit_errors: int = 0,
+) -> None:
+    """Record per-run ingest counters on the source row (Data/Signal Health).
+
+    Counters are absolute for the run (the adapter reports what it fetched), so
+    the health view can distinguish "upstream returned nothing" from "pipeline
+    dropped everything".
+    """
+    src = _ensure_source(db, source_key)
+    src.records_requested = max(requested, 0)
+    src.records_received = max(received, 0)
+    src.records_processed = max(processed, 0)
+    src.records_rejected = max(rejected, 0)
+    src.api_errors = max(api_errors, 0)
+    src.rate_limit_errors = max(rate_limit_errors, 0)
+    db.commit()
+
+
 def _enqueue_pending(db: Session, src: Source, r: RawMention) -> bool:
     """Queue an unmatched mention for candidate discovery. Returns True if queued."""
     existing = db.query(PendingMention.id).filter_by(source_id=src.id, external_id=r.external_id).first()
@@ -86,11 +113,16 @@ def ingest_batch(db: Session, source_key: str, raws: list[RawMention]) -> int:
     matcher = _get_matcher(db)
     inserted = 0
     errors = 0
+    incoming = len(raws)
+    rejected = 0
     for r in raws:
         try:
             fid = matcher.match(r.text)
             if not fid:
+                # Unmatched mentions are queued for discovery, not dropped — but
+                # they ARE rejected by this pipeline step and must count as such.
                 _enqueue_pending(db, src, r)
+                rejected += 1
                 continue
             score, label = score_text(r.text)
             m = Mention(
@@ -105,9 +137,23 @@ def ingest_batch(db: Session, source_key: str, raws: list[RawMention]) -> int:
             inserted += 1
         except IntegrityError:
             db.rollback()
+            rejected += 1  # duplicate external_id — not a new observation
         except Exception:
             db.rollback()
             errors += 1
 
+    rejected += errors
+    # Surface the raw API outcome so the health view can distinguish upstream
+    # silence from pipeline rejection.
     record_ingest(db, source_key, error=f"{errors} items failed" if errors else None)
+    record_ingest_stats(
+        db,
+        source_key,
+        requested=incoming,
+        received=incoming,
+        processed=inserted,
+        rejected=rejected,
+        api_errors=errors,
+        rate_limit_errors=0,
+    )
     return inserted
