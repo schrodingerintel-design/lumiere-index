@@ -5,7 +5,6 @@ import {
   Flame,
   Sparkles,
   Hash,
-  Globe2,
   Film,
   Calendar,
   Trophy,
@@ -13,7 +12,6 @@ import {
   Info,
   X,
   Bookmark,
-  Activity,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { subscribeNewsletter } from "@/lib/apiClient";
@@ -30,7 +28,6 @@ export const NAV_ITEMS = [
   { to: "/calendar", label: "Now & Next", icon: Calendar },
   { to: "/compare", label: "Compare Films", icon: Scale },
   { to: "/about", label: "About Index", icon: Info },
-  { to: "/health", label: "Signal Health", icon: Activity },
 ] as const;
 
 export function SidebarContent({

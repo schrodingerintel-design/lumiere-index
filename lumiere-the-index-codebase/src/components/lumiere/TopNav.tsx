@@ -22,8 +22,7 @@ const topLinks = NAV_ITEMS.filter(
     item.to !== "/genres" &&
     item.to !== "/calendar" &&
     item.to !== "/compare" &&
-    item.to !== "/about" &&
-    item.to !== "/health",
+    item.to !== "/about",
 ).map(({ to, label }) => ({ to, label }));
 
 export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch?: () => void }) {

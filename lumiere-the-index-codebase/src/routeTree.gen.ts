@@ -17,7 +17,6 @@ import { Route as RisingRouteImport } from './routes/rising'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NewEntriesRouteImport } from './routes/new-entries'
 import { Route as MethodologyRouteImport } from './routes/methodology'
-import { Route as HealthRouteImport } from './routes/health'
 import { Route as GenresRouteImport } from './routes/genres'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as CalendarRouteImport } from './routes/calendar'
@@ -65,11 +64,6 @@ const MethodologyRoute = MethodologyRouteImport.update({
   path: '/methodology',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const GenresRoute = GenresRouteImport.update({
   id: '/genres',
   path: '/genres',
@@ -107,7 +101,6 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
-  '/health': typeof HealthRoute
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -124,7 +117,6 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
-  '/health': typeof HealthRoute
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -142,7 +134,6 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
-  '/health': typeof HealthRoute
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -161,7 +152,6 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
-    | '/health'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -178,7 +168,6 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
-    | '/health'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -195,7 +184,6 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
-    | '/health'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -213,7 +201,6 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CompareRoute: typeof CompareRoute
   GenresRoute: typeof GenresRoute
-  HealthRoute: typeof HealthRoute
   MethodologyRoute: typeof MethodologyRoute
   NewEntriesRoute: typeof NewEntriesRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -283,13 +270,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MethodologyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/genres': {
       id: '/genres'
       path: '/genres'
@@ -341,7 +321,6 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CompareRoute: CompareRoute,
   GenresRoute: GenresRoute,
-  HealthRoute: HealthRoute,
   MethodologyRoute: MethodologyRoute,
   NewEntriesRoute: NewEntriesRoute,
   PrivacyRoute: PrivacyRoute,

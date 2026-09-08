@@ -4,13 +4,11 @@ import { Layout } from "@/components/lumiere/Layout";
 import { RouteError } from "@/lib/route-error";
 import { Hero } from "@/components/lumiere/Hero";
 import { Top100Section } from "@/components/lumiere/Top100Section";
-import { EditorialInsight } from "@/components/lumiere/EditorialInsight";
 import { PulseRow } from "@/components/lumiere/Pulse";
 import { GenreSections } from "@/components/lumiere/GenreSections";
 import { QuoteBanner } from "@/components/lumiere/QuoteBanner";
 import {
   getNewReleaseFilms,
-  getTrendingFilms,
   getLiveStats,
 } from "@/lib/apiClient";
 
@@ -38,11 +36,6 @@ export const Route = createFileRoute("/")({
         queryKey: ["films", "new-releases", 100],
         queryFn: () => getNewReleaseFilms(100),
       }),
-      // 20 not 6: /trending needs 20 and PulseRow slices its share anyway.
-      queryClient.prefetchQuery({
-        queryKey: ["trending", "films"],
-        queryFn: () => getTrendingFilms(20),
-      }),
     ]);
   },
   component: Home,
@@ -50,20 +43,13 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { data: trendingFilms = [] } = useQuery({
-    queryKey: ["trending", "films"],
-    queryFn: () => getTrendingFilms(20),
-    staleTime: 5 * 60 * 1000,
-  });
-
   // Homepage rhythm — the story the page tells:
-  // What's #1 → the full chart → what's moving → what's being discussed → what to explore.
+  // What's #1 → the full chart → what's moving → what to explore.
   return (
     <Layout>
       <Hero />
       <Top100Section />
       <PulseRow />
-      <EditorialInsight films={trendingFilms.slice(0, 3)} />
       <GenreSections />
       <QuoteBanner />
     </Layout>

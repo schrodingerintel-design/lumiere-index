@@ -1,9 +1,6 @@
-import { Link } from "@tanstack/react-router";
-
-const COMPANY_LINKS = [
+import { Link } from "@tanstack/react-router";const COMPANY_LINKS = [
   { to: "/about", label: "About" },
   { to: "/methodology", label: "Methodology" },
-  { to: "/health", label: "Signal Health (internal)" },
   { to: "/privacy", label: "Privacy Policy" },
   { to: "/terms", label: "Terms & Conditions" },
 ] as const;
