@@ -1,5 +1,14 @@
 from datetime import datetime, date
-from pydantic import BaseModel, EmailStr, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator, model_validator
+
+
+def _coerce_content_type(v: Any) -> str:
+    """Treat NULL/unknown content_type as MOVIE (legacy catalog rows)."""
+    if not v:
+        return "MOVIE"
+    return str(v).upper() if str(v).upper() in ("MOVIE", "TV_SHOW") else "MOVIE"
 
 
 class FilmBase(BaseModel):
@@ -9,8 +18,10 @@ class FilmBase(BaseModel):
     title: str
     original_title: str | None = None
     # First-class content type: MOVIE or TV_SHOW. Every consumer branches on
-    # this instead of inferring from dates or shapes.
+    # this instead of inferring from dates or shapes. NULL (pre-migration
+    # rows) coerces to MOVIE so legacy data serializes instead of erroring.
     content_type: str = "MOVIE"
+    _coerce_ct = field_validator("content_type", mode="before")(_coerce_content_type)
     director: str | None = None
     year: int | None = None
     country_origin: str | None = None
@@ -207,6 +218,7 @@ class IndexEntryOut(BaseModel):
     title: str
     original_title: str | None = None
     content_type: str = "MOVIE"
+    _coerce_ct = field_validator("content_type", mode="before")(_coerce_content_type)
     director: str | None = None
     year: int | None = None
     poster_url: str | None = None
@@ -252,6 +264,7 @@ class WeeklyEntryOut(BaseModel):
     title: str
     original_title: str | None = None
     content_type: str = "MOVIE"
+    _coerce_ct = field_validator("content_type", mode="before")(_coerce_content_type)
     director: str | None = None
     year: int | None = None
     poster_url: str | None = None
@@ -294,6 +307,7 @@ class MoverOut(BaseModel):
     title: str
     original_title: str | None = None
     content_type: str = "MOVIE"
+    _coerce_ct = field_validator("content_type", mode="before")(_coerce_content_type)
     poster_url: str | None = None
     direction: str                     # "up" | "down"
     movement: int                      # absolute rank positions
@@ -316,6 +330,7 @@ class NewEntryOut(BaseModel):
     title: str
     original_title: str | None = None
     content_type: str = "MOVIE"
+    _coerce_ct = field_validator("content_type", mode="before")(_coerce_content_type)
     director: str | None = None
     year: int | None = None
     poster_url: str | None = None

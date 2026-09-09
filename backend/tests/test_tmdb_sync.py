@@ -194,3 +194,73 @@ def test_sync_tmdb_catalog_backfills_legacy_row(db_session, monkeypatch):
     assert row.content_type == "MOVIE"
     assert db_session.query(Film).filter_by(tmdb_id=1001).count() == 1
     assert db_session.query(Film).filter_by(tmdb_id=1002).count() == 1
+
+
+# ── schema convergence (production self-heal) ───────────────────────────────
+
+
+def test_backfill_adds_missing_columns_with_defaults():
+    """A stale DB (missing the new film columns) must converge on boot — and
+    NOT NULL columns must get their model default, never bare NULL rows."""
+    from sqlalchemy import create_engine, inspect, text
+    from sqlalchemy.pool import StaticPool
+
+    from app.db import Base
+    from app.startup_schema import backfill_missing_columns
+
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    with engine.begin() as conn:
+        conn.execute(text(
+            "CREATE TABLE films (id INTEGER PRIMARY KEY, slug VARCHAR(160) UNIQUE NOT NULL, "
+            "title VARCHAR(255) NOT NULL, tmdb_id INTEGER, director VARCHAR(255), year INTEGER, "
+            "runtime_min INTEGER, country_origin VARCHAR(4), poster_url VARCHAR(500), "
+            "backdrop_url VARCHAR(500), synopsis TEXT, gradient_from VARCHAR(20), "
+            "gradient_to VARCHAR(20), release_date DATE, genre_tag VARCHAR(40), "
+            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+        ))
+        conn.execute(text("INSERT INTO films (slug, title, director, year) VALUES ('x', 'X', 'd', 2024)"))
+
+    added = backfill_missing_columns(engine)
+    names = {a.split(".")[1] for a in added}
+    assert {"content_type", "original_title", "first_air_date"} <= names
+
+    # Every existing row must carry the model default, not NULL.
+    row = engine.connect().exec_driver_sql(
+        "SELECT content_type, original_title, first_air_date FROM films"
+    ).first()
+    assert row[0] == "MOVIE", f"content_type backfilled as {row[0]!r}, expected 'MOVIE'"
+    engine.dispose()
+
+
+def test_converge_never_raises():
+    from sqlalchemy import create_engine
+    from app.startup_schema import converge
+
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
+    converge(engine)  # must not raise even on an empty/no-table DB
+    engine.dispose()
+
+
+def test_normalize_null_defaults_repairs_bare_null_backfills():
+    """A previous deploy that added content_type WITHOUT its default left every
+    row NULL — normalization must repair those rows to the model default."""
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.pool import StaticPool
+
+    from app.startup_schema import normalize_null_defaults
+
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    with engine.begin() as conn:
+        conn.execute(text(
+            "CREATE TABLE films (id INTEGER PRIMARY KEY, slug VARCHAR(160) UNIQUE NOT NULL, "
+            "title VARCHAR(255) NOT NULL, content_type VARCHAR(16), created_at DATETIME)"
+        ))
+        conn.execute(text("INSERT INTO films (slug, title, content_type) VALUES ('a', 'A', NULL)"))
+        conn.execute(text("INSERT INTO films (slug, title, content_type) VALUES ('b', 'B', 'MOVIE')"))
+
+    normalize_null_defaults(engine)
+
+    rows = engine.connect().exec_driver_sql("SELECT slug, content_type FROM films ORDER BY slug").all()
+    assert rows[0][1] == "MOVIE", "NULL content_type must be repaired to 'MOVIE'"
+    assert rows[1][1] == "MOVIE", "existing values must be untouched"
+    engine.dispose()
