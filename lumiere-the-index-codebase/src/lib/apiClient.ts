@@ -26,11 +26,16 @@ export function getApiBase(): string {
     return configured;
   }
 
-  // In a built (non-dev) bundle, prefer a runtime env var injected by the host.
+  // SSR (Nitro/Vercel Node runtime) has no `window` — referencing it here made
+  // every server-side query prefetch throw `window is not defined`, which is
+  // why the deployed site served skeletons with zero film data. Guard the
+  // runtime lookup so server rendering falls through to the prod backend.
   if (import.meta.env.PROD) {
-    const runtime =
-      (window as unknown as { __API_BASE_URL__?: string }).__API_BASE_URL__;
-    if (runtime) return runtime;
+    if (typeof window !== "undefined") {
+      const runtime = (window as unknown as { __API_BASE_URL__?: string })
+        .__API_BASE_URL__;
+      if (runtime) return runtime;
+    }
     // Known production backend. (The page origin only hosts the SSR function,
     // never the FastAPI service, so origin-relative calls 404.)
     return PROD_FALLBACK_BASE;
