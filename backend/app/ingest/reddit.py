@@ -1,14 +1,18 @@
 """Reddit ingestion.
 
 Two complementary channels:
-  1. Subreddit /new feeds (r/movies, r/TrueFilm, r/flicks) — broad conversation
-     scan, matched to films by title.
-  2. Per-film search via reddit's public JSON search API — finds threads
-     *about* a film even when they never hit the big subreddits.
+  1. Subreddit /new feeds (r/movies, r/TrueFilm, r/flicks, r/television) —
+     broad conversation scan, matched to tracked titles by name.
+  2. Per-title search via reddit's public JSON search API — finds threads
+     *about* a tracked film or TV show even when they never hit the big
+     subreddits.
 
 Both run at the cadence set by the scheduler; every record carries real
-engagement (score + num_comments + upvote_ratio weighted) and per-film
-searches are throttled to stay well inside reddit's rate limits.
+engagement (score + num_comments + upvote_ratio weighted) and per-title
+searches are throttled to stay well inside reddit's rate limits. The
+per-title search window ROTATES across runs so the whole catalog — TV
+shows included, which were previously starved by a fixed first-120 window —
+gets searched on a regular cycle.
 """
 from datetime import datetime, timezone
 import time
@@ -22,9 +26,28 @@ from app.ingest.base import RawMention
 
 log = structlog.get_logger()
 
-SUBS = ["movies", "TrueFilm", "flicks", "boxoffice"]
-_SEARCH_SLEEP = 0.35  # seconds between per-film searches (rate-limit friendly)
+SUBS = ["movies", "TrueFilm", "flicks", "boxoffice", "television"]
+_SEARCH_SLEEP = 0.35  # seconds between per-title searches (rate-limit friendly)
 _MAX_FILMS_PER_RUN = 120  # keep a full run inside ~1 minute
+
+# Round-robin cursor over the tracked catalog: each run searches the next
+# window of 120 titles, so TV shows (synced after movies, high ids) are no
+# longer permanently outside the search window.
+_search_cursor = 0
+
+
+def _next_search_window(
+    film_tuples: list[tuple], n: int
+) -> list[tuple]:
+    """Return the next rotating window of `n` tuples across the catalog."""
+    global _search_cursor
+    if not film_tuples:
+        return []
+    total = len(film_tuples)
+    _search_cursor %= total
+    window = [film_tuples[(_search_cursor + i) % total] for i in range(min(n, total))]
+    _search_cursor = (_search_cursor + len(window)) % total
+    return window
 
 
 def _headers() -> dict:
@@ -40,9 +63,9 @@ def _fetch_sub_new(sub: str, limit: int = 100) -> dict:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential())
-def _search_film(title: str, year: int | None) -> dict:
-    """Search all of reddit for threads about a specific film."""
-    query = f'"{title}"' + (f" {year}" if year else "")
+def _search_film(title: str, year: int | None, suffix: str = "") -> dict:
+    """Search reddit for threads about a specific film or TV show."""
+    query = f'"{title}"' + (f" {year}" if year else "") + suffix
     r = httpx.get(
         "https://www.reddit.com/search.json",
         params={"q": query, "sort": "new", "limit": 25, "t": "month"},
@@ -103,11 +126,15 @@ def fetch_reddit(film_tuples: list[tuple[int, str, int | None]] | None = None) -
         for child in data.get("data", {}).get("children", []):
             _add(_mention_from_post(child.get("data", {}), sub))
 
-    # 2. Per-film search — finds dedicated threads about each tracked film.
+    # 2. Per-title search — rotating window over the WHOLE catalog (movies AND
+    #    TV shows), so later-synced content is searched on a regular cycle.
     if film_tuples:
-        for _, title, year in film_tuples[:_MAX_FILMS_PER_RUN]:
+        for tup in _next_search_window(film_tuples, _MAX_FILMS_PER_RUN):
+            _, title, year = tup[:3]
+            ct = tup[3] if len(tup) > 3 else "MOVIE"
+            suffix = " tv" if ct == "TV_SHOW" else ""
             try:
-                data = _search_film(title, year)
+                data = _search_film(title, year if ct != "TV_SHOW" else None, suffix)
             except Exception as e:
                 log.warning("reddit.search.failed", title=title, error=str(e))
                 continue

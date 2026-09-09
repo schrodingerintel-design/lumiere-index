@@ -26,7 +26,8 @@ def fetch_letterboxd(film_tuples: list[tuple[int, str, int | None]]) -> list[Raw
     """Fetch recent Letterboxd reviews for tracked films."""
     out: list[RawMention] = []
 
-    for _, title, _ in film_tuples:
+    for tup in film_tuples:
+        _, title, _ = tup[:3]
         film_slug = slugify(title)
         rss_content = None
         try:

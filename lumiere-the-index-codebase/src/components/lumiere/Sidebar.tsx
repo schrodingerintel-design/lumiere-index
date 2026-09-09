@@ -12,6 +12,7 @@ import {
   Info,
   X,
   Bookmark,
+  CalendarDays,
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { subscribeNewsletter } from "@/lib/apiClient";
@@ -20,6 +21,7 @@ import { SearchBox } from "./SearchBox";
 export const NAV_ITEMS = [
   { to: "/", label: "Home", icon: Home },
   { to: "/top-100", label: "Top 100", icon: Trophy },
+  { to: "/weekly-index", label: "Weekly Index", icon: CalendarDays },
   { to: "/rising", label: "Biggest Movers", icon: MoveVertical },
   { to: "/watchlist", label: "Watchlist", icon: Bookmark },
   { to: "/new-entries", label: "New Entries", icon: Sparkles },

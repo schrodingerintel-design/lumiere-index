@@ -33,8 +33,12 @@ def _build_queries(film_tuples: list[tuple[int, str, int | None]]) -> list[tuple
     queries: list[tuple[str, str | None]] = [
         ("film OR movie OR cinema", None),
         ("film release OR box office", None),
+        # TV shows are first-class tracked content — give them a general
+        # coverage query too, or per-show rotation is their only news channel.
+        ("TV show OR series OR episode OR season finale", None),
     ]
-    for _, title, year in film_tuples:
+    for tup in film_tuples:
+        _, title, year = tup[:3]
         queries.append((f'"{title}"', title))
     return queries
 

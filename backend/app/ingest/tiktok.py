@@ -147,7 +147,8 @@ def fetch_tiktok(film_titles: list[tuple[int, str, Optional[int]]]) -> list[RawM
 
     out: list[RawMention] = []
 
-    for film_id, title, year in film_titles:
+    for tup in film_titles:
+        film_id, title, year = tup[:3]
         mention = fetch_tiktok_for_film(film_id, title, year)
         if mention:
             out.append(mention)

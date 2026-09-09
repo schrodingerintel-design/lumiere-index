@@ -25,8 +25,14 @@ def _ingest(db, source_key: str, fetch_fn) -> int:
 
 
 def _film_tuples(db):
-    films = db.query(Film.id, Film.title, Film.year).all()
-    return [(f.id, f.title, f.year) for f in films]
+    """(id, title, year, content_type) for the whole tracked catalog.
+
+    Movies and TV shows are both first-class signal targets: every adapter
+    receives the full list so TV shows collect signals exactly like films.
+    The 4th element lets each adapter shape its query for the content type
+    (e.g. Wikipedia resolves "... TV series" articles for shows)."""
+    films = db.query(Film.id, Film.title, Film.year, Film.content_type).all()
+    return [(f.id, f.title, f.year, f.content_type or "MOVIE") for f in films]
 
 
 @celery.task

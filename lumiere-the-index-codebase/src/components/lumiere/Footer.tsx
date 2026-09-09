@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";const COMPANY_LINKS = [
 
 const EXPLORE_LINKS = [
   { to: "/top-100", label: "The Top 100" },
+  { to: "/weekly-index", label: "Weekly Index" },
   { to: "/rising", label: "Rising Now" },
   { to: "/new-entries", label: "New Entries" },
   { to: "/trending", label: "Trending Topics" },

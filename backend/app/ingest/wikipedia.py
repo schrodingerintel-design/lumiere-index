@@ -27,11 +27,33 @@ def _headers() -> dict:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential())
-def _resolve_article(title: str, year: int | None) -> str | None:
-    """Find the film's Wikipedia article title via opensearch (film first)."""
-    queries = [f"{title} {year} film" if year else f"{title} film", f"{title} film", title]
+def _resolve_article(
+    title: str, year: int | None, content_type: str = "MOVIE"
+) -> str | None:
+    """Find the article via opensearch, preferring the right content type.
+
+    Movies resolve against "... film" pages; TV shows against "... (TV series)"
+    pages. Without this, shows resolved to nothing (or a same-name film) and
+    never received pageview signals."""
     title_lower = title.lower()
+    if content_type == "TV_SHOW":
+        queries = [
+            f"{title} (TV series)",
+            f"{title} TV series",
+            f"{title} {year} TV series" if year else None,
+            title,
+        ]
+        accept = ("tv series", "tv mini", "web series", "tv programme", "talk show")
+    else:
+        queries = [
+            f"{title} {year} film" if year else f"{title} film",
+            f"{title} film",
+            title,
+        ]
+        accept = ("film",)
     for q in queries:
+        if not q:
+            continue
         try:
             r = httpx.get(
                 _WIKI_API,
@@ -50,11 +72,15 @@ def _resolve_article(title: str, year: int | None) -> str | None:
             candidates = results[1] if results and len(results) > 1 else []
             if not candidates:
                 continue
-            # Prefer an article that looks like the film page over a
-            # disambiguation or the novel page.
+            # Prefer an article that looks like the right content page over a
+            # disambiguation or an unrelated same-name page.
             for candidate in candidates:
                 low = candidate.lower()
-                if "film" in low or str(year) in low or title_lower in low:
+                if (
+                    any(a in low for a in accept)
+                    or (year is not None and str(year) in low)
+                    or title_lower in low
+                ):
                     return candidate
             return candidates[0]
         except Exception:
@@ -82,8 +108,10 @@ def fetch_wikipedia(film_tuples: list[tuple[int, str, int | None]]) -> list[RawM
     """Given a list of (film_id, title, year), fetch daily Wikipedia pageviews."""
     out: list[RawMention] = []
 
-    for _, title, year in film_tuples:
-        article = _resolve_article(title, year)
+    for tup in film_tuples:
+        _, title, year = tup[:3]
+        ct = tup[3] if len(tup) > 3 else "MOVIE"
+        article = _resolve_article(title, year, ct)
         if not article:
             continue
 
