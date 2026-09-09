@@ -553,7 +553,7 @@ function FilmDetailView() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between border border-foreground/10 bg-surface px-4 py-3">
+              <div className="flex items-center justify-between rounded-full border border-foreground/10 bg-surface px-4 py-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   Official Trailer
                 </span>
@@ -743,7 +743,7 @@ function FilmDetailView() {
                 value={watchRegion}
                 onChange={(e) => setWatchRegion(e.target.value)}
                 aria-label="Watch region"
-                className="rounded-lg border border-foreground/15 bg-foreground/5 px-2 py-1 font-mono text-[10px] text-muted-foreground outline-none focus:border-primary/40"
+                className="rounded-full border border-foreground/15 bg-foreground/5 px-3 py-1 font-mono text-[10px] text-muted-foreground outline-none focus:border-primary/40"
               >
                 {WATCH_REGIONS.map((r) => (
                   <option key={r.code} value={r.code}>
@@ -857,7 +857,7 @@ function FilmDetailView() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={handleToggleSave}
-              className={`flex items-center justify-center gap-2 border py-3 text-sm font-medium transition ${
+              className={`flex items-center justify-center gap-2 rounded-full border py-3 text-sm font-medium transition ${
                 saved
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-foreground/15 bg-surface hover:bg-foreground/10"
@@ -868,7 +868,7 @@ function FilmDetailView() {
             </button>
             <Link
               to="/compare"
-              className="flex items-center justify-center gap-2 border border-foreground/15 bg-surface py-3 text-sm font-medium transition hover:bg-foreground/10"
+              className="flex items-center justify-center gap-2 rounded-full border border-foreground/15 bg-surface py-3 text-sm font-medium transition hover:bg-foreground/10"
             >
               <Scale className="h-4 w-4" />
               Compare

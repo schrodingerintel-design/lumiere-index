@@ -210,7 +210,7 @@ export function Hero() {
           <Link
             to="/films/$slug"
             params={{ slug: activeFilm?.slug ?? "" }}
-            className="inline-flex min-h-11 items-center gap-2 bg-cream px-5 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cream px-6 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
           >
             <Scale className="h-4 w-4" />
             Compare
@@ -220,7 +220,7 @@ export function Hero() {
               to="/films/$slug"
               params={{ slug: activeFilm?.slug ?? "" }}
               hash="trailer"
-              className="inline-flex min-h-11 items-center gap-2 border border-white/35 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/35 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
             >
               <Play className="h-4 w-4" />
               Trailer

@@ -97,12 +97,12 @@ export function SidebarContent({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="w-full rounded-md border border-foreground/15 bg-background/60 px-3 py-2 text-xs outline-none placeholder:text-muted-foreground focus:border-primary transition"
+                className="w-full rounded-full border border-foreground/15 bg-background/60 px-4 py-2 text-xs outline-none placeholder:text-muted-foreground focus:border-primary transition"
               />
               <button
                 type="submit"
                 disabled={subscribe.isPending}
-                className="w-full rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                className="w-full rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
               >
                 {subscribe.isPending ? "Subscribing…" : "Subscribe"}
               </button>

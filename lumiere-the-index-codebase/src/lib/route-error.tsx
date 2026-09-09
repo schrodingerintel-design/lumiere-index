@@ -15,13 +15,13 @@ export function RouteError({ error, reset }: { error: Error; reset: () => void }
               reset();
               window.location.reload();
             }}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
           >
             Try again
           </button>
           <Link
             to="/"
-            className="rounded-md border border-foreground/15 px-4 py-2 text-sm font-medium text-foreground"
+            className="rounded-full border border-foreground/15 px-5 py-2 text-sm font-medium text-foreground"
           >
             Go home
           </Link>

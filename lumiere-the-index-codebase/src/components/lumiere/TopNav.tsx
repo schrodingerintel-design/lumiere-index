@@ -68,7 +68,7 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch?: ()
             type="button"
             onClick={onSearch}
             aria-label="Search films"
-            className="flex h-10 items-center gap-2 border border-foreground/20 px-3 text-sm text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
+            className="flex h-10 items-center gap-2 rounded-full border border-foreground/20 px-4 text-sm text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="hidden truncate md:inline">Search</span>

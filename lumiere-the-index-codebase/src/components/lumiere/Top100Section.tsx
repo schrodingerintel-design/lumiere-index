@@ -87,14 +87,14 @@ export function Top100Section() {
           <div className="hidden gap-1.5 sm:flex">
             <button
               onClick={() => scrollStrip("left")}
-              className="flex h-9 w-9 items-center justify-center border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground"
               aria-label="Scroll posters left"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={() => scrollStrip("right")}
-              className="flex h-9 w-9 items-center justify-center border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground"
               aria-label="Scroll posters right"
             >
               <ChevronRight className="h-4 w-4" />
