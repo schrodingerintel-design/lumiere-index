@@ -244,11 +244,13 @@ def test_trending_moderate_and_high_tiers_allow_confident_copy():
 
 
 def test_trending_platform_never_internal_name():
-    """Internal (TMDB) sources must never masquerade as a platform.
+    """TMDB (catalog-only) mentions must never count as evidence or masquerade
+    as a platform.
 
-    A 3-mention tmdb-only film is insufficient → omitted entirely.  A 30-mention
-    tmdb-only film has no real platform to cite: its platform field stays None
-    and its copy never claims a platform or the engine's own name.
+    A tmdb-only film has ZERO real evidence under the signal firewall →
+    omitted entirely.  A film with real Reddit conversation surfaces, cites
+    the real platform, and its sample_size counts only real conversation —
+    TMDB rows are invisible to the whole pipeline.
     """
     engine = create_engine(
         "sqlite:///:memory:",
@@ -260,45 +262,51 @@ def test_trending_platform_never_internal_name():
     session = session_factory()
 
     today = datetime.now(timezone.utc).date()
-    f_small = Film(slug="film-tmdb-small", title="Film Internal A", year=2025,
-                   release_date=today - timedelta(days=5))
-    f_big = Film(slug="film-tmdb-big", title="Film Internal B", year=2025,
-                 release_date=today - timedelta(days=5))
-    session.add_all([f_small, f_big])
+    f_internal = Film(slug="film-tmdb-only", title="Film Catalog Only", year=2025,
+                      release_date=today - timedelta(days=5))
+    f_real = Film(slug="film-real", title="Film Real Conversation", year=2025,
+                  release_date=today - timedelta(days=5))
+    session.add_all([f_internal, f_real])
     session.commit()
     snap = datetime.now(timezone.utc)
     session.add_all([
-        Ranking(film_id=f_small.id, snapshot_at=snap, rank=1, score=95.0, movement=0,
+        Ranking(film_id=f_internal.id, snapshot_at=snap, rank=1, score=95.0, movement=0,
                 ca_score=0.5, momentum_score=0.5, recency_score=0.4, ae_score=0.5, cp_score=0.5),
-        Ranking(film_id=f_big.id, snapshot_at=snap, rank=2, score=90.0, movement=0,
+        Ranking(film_id=f_real.id, snapshot_at=snap, rank=2, score=90.0, movement=0,
                 ca_score=0.5, momentum_score=0.5, recency_score=0.4, ae_score=0.5, cp_score=0.5),
     ])
-    src = Source(key="tmdb", name="TMDB", weight=1.0)
-    session.add(src)
+    tmdb_src = Source(key="tmdb", name="TMDB", weight=1.0)
+    reddit_src = Source(key="reddit", name="Reddit", weight=1.0)
+    session.add_all([tmdb_src, reddit_src])
     session.commit()
     now = datetime.now(timezone.utc)
-    for i in range(3):
-        session.add(Mention(film_id=f_small.id, source_id=src.id, external_id=f"ts-{i}",
-                            text="Trailer posted", created_at=now))
+    # 30 TMDB "mentions" — metadata noise that must count as nothing.
     for i in range(30):
-        session.add(Mention(film_id=f_big.id, source_id=src.id, external_id=f"tb-{i}",
-                            text="Trailer posted", created_at=now))
+        session.add(Mention(film_id=f_internal.id, source_id=tmdb_src.id,
+                            external_id=f"ti-{i}", text="Trailer posted", created_at=now))
+        session.add(Mention(film_id=f_real.id, source_id=tmdb_src.id,
+                            external_id=f"tr-{i}", text="Trailer posted", created_at=now))
+    # 30 REAL conversation mentions on the second film.
+    for i in range(30):
+        session.add(Mention(film_id=f_real.id, source_id=reddit_src.id,
+                            external_id=f"rr-{i}", text="Discussion thread", created_at=now))
     session.commit()
 
     try:
         with _client_with(session) as client:
             data = client.get("/api/v1/trending/films?limit=10").json()
             slugs = {f["film_slug"] for f in data}
-            # 3-mention film is insufficient → omitted from the trending feed
-            assert "film-tmdb-small" not in slugs
-            big = next(f for f in data if f["film_slug"] == "film-tmdb-big")
-            assert big["confidence"] == "moderate"
-            assert big["top_platform"] is None
-            reason = big["trend_reason"].lower()
-            assert "audience signals" not in reason
-            assert "audience" not in reason
+            # tmdb-only film has zero real evidence → omitted from the feed
+            assert "film-tmdb-only" not in slugs
+            real = next(f for f in data if f["film_slug"] == "film-real")
+            # Evidence comes ONLY from real conversation
+            assert real["sample_size"] == 30
+            assert real["confidence"] == "moderate"
+            # The cited platform is the REAL one — TMDB is never a platform
+            assert real["top_platform"] == "reddit"
+            reason = real["trend_reason"].lower()
             assert "tmdb" not in reason
-            assert "reddit" not in reason and "tiktok" not in reason
+            assert "tiktok" not in reason
     finally:
         app.dependency_overrides.clear()
         session.close()
@@ -326,11 +334,12 @@ def test_trending_specificity_cap_downgrades_to_low():
     snap = datetime.now(timezone.utc)
     session.add(Ranking(film_id=f.id, snapshot_at=snap, rank=1, score=90.0, movement=0,
                         ca_score=0.5, momentum_score=0.5, recency_score=0.4, ae_score=0.5, cp_score=0.5))
-    src = Source(key="tmdb", name="TMDB", weight=1.0)
+    src = Source(key="audience", name="Audience Signals", weight=1.0)
     session.add(src)
     session.commit()
     # All 30 mentions sit just inside the 30-day window but outside the 6-day
-    # delta window → 0 in the last 24h, no delta baseline, no real platform.
+    # delta window → 0 in the last 24h, no delta baseline, no citable platform
+    # ("audience" is internal and never masquerades as one).
     old = datetime.now(timezone.utc) - timedelta(days=20)
     for i in range(30):
         session.add(Mention(film_id=f.id, source_id=src.id, external_id=f"o-{i}",

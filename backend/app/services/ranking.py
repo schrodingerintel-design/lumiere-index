@@ -43,7 +43,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import DailyScore, Film, Mention, Ranking, Source
-from app.services.confidence import confidence_tier
+from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS, confidence_tier
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -97,8 +97,10 @@ class _FilmData(NamedTuple):
     total_mentions: int
     # Daily sentiment averages within AE window, oldest-first
     sentiment_series: list[float]
-    # Release date (or None)
-    release_date: date | None
+    # Air date — release_date for movies, first_air_date for shows (the date
+    # this title entered the world; feeds the recency component).
+    air_date: date | None
+    content_type: str = "MOVIE"
 
 
 # ── main entry point ─────────────────────────────────────────────────────────
@@ -125,25 +127,64 @@ def recompute_rankings(db: Session) -> datetime:
     if not films:
         return now
 
+    # ── TMDB firewall ─────────────────────────────────────────────────────────
+    # Catalog-only sources ("tmdb") must never feed a ranking component.  The
+    # exclusion is applied once, to every Mention/DailyScore aggregation below.
+    catalog_source_ids: list[int] = [
+        sid for (sid,) in db.query(Source.id).filter(Source.key.in_(CATALOG_ONLY_SOURCE_KEYS)).all()
+    ]
+    has_catalog_rows = bool(catalog_source_ids)
+
     # ── 2. Load daily mention counts and sentiment (CA + M + AE window) ────────
     cutoff_ca = today - timedelta(days=W)
     cutoff_ae = today - timedelta(days=ae_win)
     cutoff_dt = now - timedelta(days=W)
 
-    ds_rows = (
-        db.query(DailyScore.film_id, DailyScore.day, DailyScore.mentions_count, DailyScore.sentiment_avg)
-        .filter(DailyScore.day >= cutoff_ca)
-        .all()
-    )
+    ds_q = db.query(
+        DailyScore.film_id, DailyScore.day, DailyScore.mentions_count, DailyScore.sentiment_avg
+    ).filter(DailyScore.day >= cutoff_ca)
+    if has_catalog_rows:
+        # DailyScore rows that came purely from catalog-only sources are not
+        # signals; subtract their per-day contribution.
+        catalog_ds_rows = (
+            db.query(
+                Mention.film_id,
+                func.date(Mention.created_at).label("day"),
+                func.count(Mention.id).label("cnt"),
+                func.avg(Mention.sentiment_score).label("savg"),
+            )
+            .filter(Mention.source_id.in_(catalog_source_ids), Mention.created_at >= cutoff_dt)
+            .group_by(Mention.film_id, func.date(Mention.created_at))
+            .all()
+        )
+        catalog_ds: dict[tuple[int, date], tuple[int, float]] = {}
+        for fid, day_val, cnt, savg in catalog_ds_rows:
+            d = day_val if isinstance(day_val, date) else datetime.strptime(str(day_val), "%Y-%m-%d").date()
+            catalog_ds[(fid, d)] = (int(cnt or 0), float(savg or 0.0))
+
+    ds_rows = ds_q.all()
     mentions_by_film: dict[int, dict[date, int]] = defaultdict(dict)
     sentiment_by_film: dict[int, dict[date, float]] = defaultdict(dict)
     for fid, day, cnt, savg in ds_rows:
+        key = (fid, day)
+        if has_catalog_rows and key in catalog_ds:
+            # Strip the catalog-only contribution out of the rolled-up counts.
+            c_cnt, c_savg = catalog_ds[key]
+            real_cnt = int(cnt or 0) - c_cnt
+            if real_cnt <= 0:
+                continue  # this day's row was purely catalog data — not a signal
+            # Recompute the real sentiment average without the catalog rows
+            # (weighted by counts, capped to [-1, 1] for safety).
+            total = int(cnt or 0)
+            real_savg = ((float(savg or 0.0) * total) - (c_savg * c_cnt)) / real_cnt
+            real_savg = max(-1.0, min(1.0, real_savg))
+            cnt, savg = real_cnt, real_savg
         mentions_by_film[fid][day] = int(cnt or 0)
         if savg is not None:
             sentiment_by_film[fid][day] = float(savg)
 
     # Directly aggregate from Mention table for real-time coverage
-    m_rows = (
+    m_q = (
         db.query(
             Mention.film_id,
             func.date(Mention.created_at).label("day"),
@@ -151,9 +192,10 @@ def recompute_rankings(db: Session) -> datetime:
             func.avg(Mention.sentiment_score).label("savg"),
         )
         .filter(Mention.created_at >= cutoff_dt)
-        .group_by(Mention.film_id, func.date(Mention.created_at))
-        .all()
     )
+    if has_catalog_rows:
+        m_q = m_q.filter(~Mention.source_id.in_(catalog_source_ids))
+    m_rows = m_q.group_by(Mention.film_id, func.date(Mention.created_at)).all()
     for fid, day_val, cnt, savg in m_rows:
         d = day_val if isinstance(day_val, date) else datetime.strptime(str(day_val), "%Y-%m-%d").date()
         mentions_by_film[fid][d] = max(mentions_by_film[fid].get(d, 0), int(cnt or 0))
@@ -166,16 +208,17 @@ def recompute_rankings(db: Session) -> datetime:
     # was active weeks ago and silent since stops counting toward CP, exactly as
     # it already stops counting toward CA.  Raw volume never matters here: a
     # thousand old mentions on one day weigh the same as a single old mention.
-    cp_rows = (
+    cp_rows_q = (
         db.query(
             Mention.film_id,
             func.date(Mention.created_at).label("day"),
             Mention.source_id,
         )
         .filter(Mention.created_at >= (now - timedelta(days=W)))
-        .distinct()
-        .all()
     )
+    if has_catalog_rows:
+        cp_rows_q = cp_rows_q.filter(~Mention.source_id.in_(catalog_source_ids))
+    cp_rows = cp_rows_q.distinct().all()
     cp_days_by_source: dict[int, dict[int, set[date]]] = defaultdict(lambda: defaultdict(set))
     for fid, day_val, sid in cp_rows:
         d = day_val if isinstance(day_val, date) else datetime.strptime(str(day_val), "%Y-%m-%d").date()
@@ -231,7 +274,13 @@ def recompute_rankings(db: Session) -> datetime:
             active_days=active_days,
             total_mentions=total_m,
             sentiment_series=sentiment_series,
-            release_date=film.release_date,
+            # first_air_date for TV_SHOW, release_date for MOVIE
+            air_date=(
+                film.first_air_date
+                if film.content_type == "TV_SHOW" and film.first_air_date is not None
+                else film.release_date
+            ),
+            content_type=film.content_type or "MOVIE",
         ))
 
     # ── 6. Compute raw scores per component ───────────────────────────────────
@@ -266,7 +315,9 @@ def recompute_rankings(db: Session) -> datetime:
         film = films[fid]
 
         # ── R: linear recency decay ───────────────────────────────────────────
-        release = fd.release_date
+        # Movies decay from their release date; TV shows from their first-air
+        # date — the same recency window, the same treatment.
+        release = fd.air_date
         if release is None:
             created = film.created_at
             if created:
@@ -361,12 +412,12 @@ def recompute_rankings(db: Session) -> datetime:
     WEIGHTS = dict(ca=0.30, m=0.25, r=0.20, ae=0.15, cp=0.10)
     MAX_INDEX_SCORE = 98.5
 
-    # Recency gate: films released more than recency_win days ago cannot
-    # participate in CA, M, or AE pools.  They keep only R (which is 0
+    # Recency gate: titles whose air date is more than recency_win days ago
+    # cannot participate in CA, M, or AE pools.  They keep only R (which is 0
     # past the window) and CP, so they naturally drop to the bottom.
     stale_fids = {
         fd.film_id for fd in film_data
-        if fd.release_date is not None and (today - fd.release_date).days > recency_win
+        if fd.air_date is not None and (today - fd.air_date).days > recency_win
     }
     # Also exclude films with no release date AND no recent mentions (7d)
     recent_cutoff = today - timedelta(days=7)

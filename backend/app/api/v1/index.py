@@ -50,6 +50,8 @@ def _entry_out(film: Film, row: DailyIndexSnapshot) -> IndexEntryOut:
         film_id=row.film_id,
         slug=film.slug,
         title=film.title,
+        original_title=film.original_title,
+        content_type=film.content_type,
         director=film.director,
         year=film.year,
         poster_url=film.poster_url,
@@ -57,6 +59,7 @@ def _entry_out(film: Film, row: DailyIndexSnapshot) -> IndexEntryOut:
         gradient_from=film.gradient_from,
         gradient_to=film.gradient_to,
         release_date=film.release_date,
+        first_air_date=film.first_air_date,
         genre_tag=film.genre_tag,
         rank=row.rank,
         score=row.score,
@@ -78,6 +81,8 @@ def _weekly_entry_out(film: Film, row: WeeklyIndexSnapshot) -> WeeklyEntryOut:
         film_id=row.film_id,
         slug=film.slug,
         title=film.title,
+        original_title=film.original_title,
+        content_type=film.content_type,
         director=film.director,
         year=film.year,
         poster_url=film.poster_url,
@@ -85,6 +90,7 @@ def _weekly_entry_out(film: Film, row: WeeklyIndexSnapshot) -> WeeklyEntryOut:
         gradient_from=film.gradient_from,
         gradient_to=film.gradient_to,
         release_date=film.release_date,
+        first_air_date=film.first_air_date,
         genre_tag=film.genre_tag,
         rank=row.rank,
         score=row.score,
@@ -192,27 +198,27 @@ def index_movers(
     Movement is rank-position based; score delta is reported separately.
     """
     result = biggest_movers(db, limit=limit)
+
+    # Films for content_type/original_title — movers stay rank-based products.
+    film_ids = [m.film_id for side in (result["gainers"], result["decliners"]) for m in side]
+    film_map = _film_map(db, film_ids)
+
+    def _mover_out(m) -> MoverOut:
+        film = film_map.get(m.film_id)
+        return MoverOut(
+            slug=m.slug, title=m.title,
+            original_title=film.original_title if film else None,
+            content_type=film.content_type if film else "MOVIE",
+            poster_url=m.poster_url,
+            direction=m.direction, movement=m.movement,
+            previous_rank=m.previous_rank, current_rank=m.current_rank,
+            current_score=m.current_score, previous_score=m.previous_score,
+            score_delta=m.score_delta, confidence=m.confidence,
+        )
+
     return MoversOut(
-        gainers=[
-            MoverOut(
-                slug=m.slug, title=m.title, poster_url=m.poster_url,
-                direction=m.direction, movement=m.movement,
-                previous_rank=m.previous_rank, current_rank=m.current_rank,
-                current_score=m.current_score, previous_score=m.previous_score,
-                score_delta=m.score_delta, confidence=m.confidence,
-            )
-            for m in result["gainers"]
-        ],
-        decliners=[
-            MoverOut(
-                slug=m.slug, title=m.title, poster_url=m.poster_url,
-                direction=m.direction, movement=m.movement,
-                previous_rank=m.previous_rank, current_rank=m.current_rank,
-                current_score=m.current_score, previous_score=m.previous_score,
-                score_delta=m.score_delta, confidence=m.confidence,
-            )
-            for m in result["decliners"]
-        ],
+        gainers=[_mover_out(m) for m in result["gainers"]],
+        decliners=[_mover_out(m) for m in result["decliners"]],
     )
 
 
@@ -242,12 +248,15 @@ def index_new_entries(
         out.append(NewEntryOut(
             slug=film.slug,
             title=film.title,
+            original_title=film.original_title,
+            content_type=film.content_type,
             director=film.director,
             year=film.year,
             poster_url=film.poster_url,
             gradient_from=film.gradient_from,
             gradient_to=film.gradient_to,
             release_date=film.release_date,
+            first_air_date=film.first_air_date,
             debut_date=debut.debut_date,
             debut_rank=debut.debut_rank,
             debut_score=debut.debut_score,

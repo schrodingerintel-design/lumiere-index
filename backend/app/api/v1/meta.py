@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_db
 from app.models import Ranking, Mention, Film, CountryScore, Source, PendingMention
+from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
 from app.schemas import RefreshMeta, LiveStats, SourceHealth, SignalHealthFilm, SignalHealthSummary
 
 router = APIRouter()
@@ -137,18 +138,25 @@ def signal_health_summary(db: Session = Depends(get_db)):
             elif tier == "low":
                 low += 1
 
-    total_mentions_30d = db.scalar(
-        select(func.count(Mention.id)).where(Mention.created_at >= since_30d)
-    ) or 0
+    # 30-day signal totals exclude catalog-only sources ("tmdb") — their rows
+    # are metadata sync artifacts, not observations of cultural attention.
+    catalog_ids = [
+        sid for (sid,) in db.query(Source.id).filter(Source.key.in_(CATALOG_ONLY_SOURCE_KEYS)).all()
+    ]
+    mentions_30d_q = select(func.count(Mention.id)).where(Mention.created_at >= since_30d)
+    observations_30d_q = select(func.coalesce(func.sum(Mention.observations), 0)).where(
+        Mention.created_at >= since_30d
+    )
+    if catalog_ids:
+        mentions_30d_q = mentions_30d_q.where(~Mention.source_id.in_(catalog_ids))
+        observations_30d_q = observations_30d_q.where(~Mention.source_id.in_(catalog_ids))
+
+    total_mentions_30d = db.scalar(mentions_30d_q) or 0
 
     # Raw observation volume vs ingest record count. Observations come from
     # aggregate sources (YouTube views, Wikipedia pageviews, Trends units) or
     # fall back to engagement for per-item sources; records are just rows.
-    total_observations_30d = db.scalar(
-        select(func.coalesce(func.sum(Mention.observations), 0)).where(
-            Mention.created_at >= since_30d
-        )
-    ) or 0
+    total_observations_30d = db.scalar(observations_30d_q) or 0
 
     pending = db.scalar(
         select(func.count(PendingMention.id)).where(PendingMention.status == "pending")
@@ -210,15 +218,22 @@ def signal_health_films(
     )
 
     # Last seen mention timestamp per film (30d) for stale-data detection.
+    # Catalog-only sources are excluded so a TMDB metadata sync never makes a
+    # dormant title look recently active.
     since_30d = datetime.now(timezone.utc) - timedelta(days=30)
-    last_seen_rows = db.execute(
+    catalog_ids = [
+        sid for (sid,) in db.query(Source.id).filter(Source.key.in_(CATALOG_ONLY_SOURCE_KEYS)).all()
+    ]
+    last_seen_select = (
         select(
             Mention.film_id,
             func.max(Mention.created_at),
         )
         .where(Mention.film_id.in_([f.id for f, _ in rows]), Mention.created_at >= since_30d)
-        .group_by(Mention.film_id)
-    ).all()
+    )
+    if catalog_ids:
+        last_seen_select = last_seen_select.where(~Mention.source_id.in_(catalog_ids))
+    last_seen_rows = db.execute(last_seen_select.group_by(Mention.film_id)).all()
     last_seen = {fid: ts for fid, ts in last_seen_rows}
 
     return [
@@ -239,7 +254,15 @@ def signal_health_films(
 @router.get("/stats/live", response_model=LiveStats)
 def live_stats(db: Session = Depends(get_db)):
     since = datetime.now(timezone.utc) - timedelta(hours=24)
-    total_mentions = db.scalar(select(func.count(Mention.id)).where(Mention.created_at >= since)) or 0
+    # Live stats count real cultural signals only — catalog-only sources
+    # ("tmdb") are metadata and must never inflate the public counters.
+    catalog_ids = [
+        sid for (sid,) in db.query(Source.id).filter(Source.key.in_(CATALOG_ONLY_SOURCE_KEYS)).all()
+    ]
+    mentions_q = select(func.count(Mention.id)).where(Mention.created_at >= since)
+    if catalog_ids:
+        mentions_q = mentions_q.where(~Mention.source_id.in_(catalog_ids))
+    total_mentions = db.scalar(mentions_q) or 0
     tracked = db.scalar(select(func.count(Film.id))) or 0
     countries = db.scalar(select(func.count(func.distinct(CountryScore.country_code)))) or 0
     snap = db.scalar(select(func.max(Ranking.snapshot_at))) or datetime.now(timezone.utc)

@@ -73,12 +73,18 @@ def ingest_letterboxd() -> int:
 
 @celery.task
 def ingest_tmdb_catalog(max_films: int = 400) -> int:
-    """Scheduled catalog sync — keeps the index discovering new films."""
+    """Scheduled catalog sync — keeps the index discovering new content.
+
+    One unified, parameterized job syncs BOTH content types (movies and TV
+    shows) — no duplicate schedulers for a second content type. TV gets a
+    smaller share because its metadata changes less often."""
     from app.ingest.tmdb import sync_tmdb_catalog
 
     with SessionLocal() as db:
-        films = sync_tmdb_catalog(db, max_films=max_films)
-        return len(films)
+        synced = sync_tmdb_catalog(db, max_films=max_films)
+        # Same session, same job — TV shares the unified scheduler.
+        synced += sync_tmdb_catalog(db, max_films=max(max_films // 3, 40), content_type="TV_SHOW")
+        return len(synced)
 
 
 @celery.task

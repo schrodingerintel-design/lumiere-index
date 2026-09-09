@@ -125,6 +125,18 @@ async def search_movie(
     return await _proxy_get("/search/movie", params)
 
 
+@router.get("/tmdb/search/tv")
+async def search_tv(
+    query: str = Query(...),
+    first_air_date_year: int | None = Query(None, alias="year"),
+):
+    """Search TV shows — TV is first-class catalog content, not a movie variant."""
+    params: dict[str, str] = {"query": query}
+    if first_air_date_year:
+        params["first_air_date_year"] = str(first_air_date_year)
+    return await _proxy_get("/search/tv", params)
+
+
 @router.get("/tmdb/movie/upcoming")
 async def movie_upcoming(page: int = Query(1)):
     return await _cached_get("/movie/upcoming", {"page": str(page)})
@@ -168,7 +180,49 @@ async def discover_movie(
 
 @router.get("/tmdb/discover/tv")
 async def discover_tv(
+    with_genres: str | None = Query(None),
     sort_by: str = Query("popularity.desc"),
     page: int = Query(1),
 ):
-    return await _cached_get("/discover/tv", {"sort_by": sort_by, "page": str(page)})
+    params: dict[str, str] = {"sort_by": sort_by, "page": str(page)}
+    if with_genres:
+        params["with_genres"] = with_genres
+    return await _cached_get("/discover/tv", params)
+
+
+@router.get("/tmdb/tv/on_the_air")
+async def tv_on_the_air(page: int = Query(1)):
+    """Shows currently airing within the next 7 days."""
+    return await _cached_get("/tv/on_the_air", {"page": str(page)})
+
+
+@router.get("/tmdb/tv/airing_today")
+async def tv_airing_today(page: int = Query(1)):
+    return await _cached_get("/tv/airing_today", {"page": str(page)})
+
+
+@router.get("/tmdb/tv/popular")
+async def tv_popular(page: int = Query(1)):
+    return await _cached_get("/tv/popular", {"page": str(page)})
+
+
+@router.get("/tmdb/tv/top_rated")
+async def tv_top_rated(page: int = Query(1)):
+    return await _cached_get("/tv/top_rated", {"page": str(page)})
+
+
+@router.get("/tmdb/tv/{tmdb_id}")
+async def tv_details(tmdb_id: int):
+    return await _proxy_get(f"/tv/{tmdb_id}", {"append_to_response": "keywords,content_ratings"})
+
+
+@router.get("/tmdb/tv/{tmdb_id}/videos")
+async def tv_videos(tmdb_id: int):
+    """Trailer/video keys for a show — same YouTube-id payload shape as movies."""
+    return await _proxy_get(f"/tv/{tmdb_id}/videos")
+
+
+@router.get("/tmdb/tv/{tmdb_id}/watch/providers")
+async def tv_watch_providers(tmdb_id: int):
+    """Streaming / rent / buy availability for a show, keyed by country code."""
+    return await _proxy_get(f"/tv/{tmdb_id}/watch/providers")

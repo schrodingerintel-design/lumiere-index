@@ -22,6 +22,8 @@ def _run_tmdb_sync_sync():
     from app.ingest.tmdb import sync_tmdb_catalog
     with SessionLocal() as db:
         sync_tmdb_catalog(db, max_films=800)
+        # TV shows are first-class content — same sync, same boot path.
+        sync_tmdb_catalog(db, max_films=200, content_type="TV_SHOW")
 
 
 async def _run_tmdb_sync_async():

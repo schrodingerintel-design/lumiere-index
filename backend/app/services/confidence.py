@@ -62,6 +62,14 @@ def driver_label(driver: str | None) -> str | None:
 # ingest sources (e.g. the TMDB catalog sync) are not platforms audiences use.
 INTERNAL_SOURCE_KEYS = frozenset({"tmdb", "audience"})
 
+# ── TMDB firewall ────────────────────────────────────────────────────────────
+# TMDB is a catalog/metadata provider, NOT a cultural signal.  Its key lives
+# here so every aggregation surface (ranking components, weekly aggregates,
+# source coverage, sentiment splits, the signal funnel) applies the same
+# exclusion — TMDB rows must never influence the Index Score, movers, debuts,
+# or any public metric.
+CATALOG_ONLY_SOURCE_KEYS = frozenset({"tmdb"})
+
 PLATFORM_LABELS: dict[str, str] = {
     "reddit": "Reddit",
     "news": "news outlets",

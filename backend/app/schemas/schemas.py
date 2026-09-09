@@ -7,6 +7,10 @@ class FilmBase(BaseModel):
     id: int
     slug: str
     title: str
+    original_title: str | None = None
+    # First-class content type: MOVIE or TV_SHOW. Every consumer branches on
+    # this instead of inferring from dates or shapes.
+    content_type: str = "MOVIE"
     director: str | None = None
     year: int | None = None
     country_origin: str | None = None
@@ -16,6 +20,8 @@ class FilmBase(BaseModel):
     gradient_from: str | None = None
     gradient_to: str | None = None
     release_date: date | None = None
+    # TV first-air date — the TV analogue of release_date.
+    first_air_date: date | None = None
     # Canonical genre tag — the frontend groups collections by this field.
     genre_tag: str | None = None
 
@@ -199,6 +205,8 @@ class IndexEntryOut(BaseModel):
     film_id: int
     slug: str
     title: str
+    original_title: str | None = None
+    content_type: str = "MOVIE"
     director: str | None = None
     year: int | None = None
     poster_url: str | None = None
@@ -206,6 +214,7 @@ class IndexEntryOut(BaseModel):
     gradient_from: str | None = None
     gradient_to: str | None = None
     release_date: date | None = None
+    first_air_date: date | None = None
     genre_tag: str | None = None
     rank: int
     score: float
@@ -241,6 +250,8 @@ class WeeklyEntryOut(BaseModel):
     film_id: int
     slug: str
     title: str
+    original_title: str | None = None
+    content_type: str = "MOVIE"
     director: str | None = None
     year: int | None = None
     poster_url: str | None = None
@@ -248,6 +259,7 @@ class WeeklyEntryOut(BaseModel):
     gradient_from: str | None = None
     gradient_to: str | None = None
     release_date: date | None = None
+    first_air_date: date | None = None
     genre_tag: str | None = None
     rank: int
     score: float
@@ -280,6 +292,8 @@ class MoverOut(BaseModel):
     """Biggest Movers entry — rank-position change between published dailies."""
     slug: str
     title: str
+    original_title: str | None = None
+    content_type: str = "MOVIE"
     poster_url: str | None = None
     direction: str                     # "up" | "down"
     movement: int                      # absolute rank positions
@@ -300,12 +314,15 @@ class NewEntryOut(BaseModel):
     """New Entries — films entering The Index for the first time."""
     slug: str
     title: str
+    original_title: str | None = None
+    content_type: str = "MOVIE"
     director: str | None = None
     year: int | None = None
     poster_url: str | None = None
     gradient_from: str | None = None
     gradient_to: str | None = None
     release_date: date | None = None
+    first_air_date: date | None = None
     debut_date: date
     debut_rank: int
     debut_score: float

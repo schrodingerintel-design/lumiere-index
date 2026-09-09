@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta, date, timezone
 from difflib import SequenceMatcher
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, or_, and_
 from sqlalchemy.orm import Session
 
 
 from app.db import get_db
 from app.models import Film, Ranking, Mention, DailyScore, CountryScore, Source
+from app.models.film import normalize_content_type
+from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
 from app.schemas import (
     RankedFilm,
     FilmDetail,
@@ -19,6 +21,14 @@ from app.schemas import (
 from app.utils.cache import cache_response
 
 router = APIRouter()
+
+
+def _catalog_source_ids(db: Session) -> list[int]:
+    """Ids of catalog-only sources ("tmdb") — their rows are metadata, never
+    signal volume, so they are excluded from every public count below."""
+    return [
+        sid for (sid,) in db.query(Source.id).filter(Source.key.in_(CATALOG_ONLY_SOURCE_KEYS)).all()
+    ]
 
 
 def _latest_snapshot(db: Session) -> datetime | None:
@@ -39,11 +49,14 @@ def _ranked_query(db: Session, snapshot: datetime, genre: str | None = None):
 
 def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
     return RankedFilm(
-        id=film.id, slug=film.slug, title=film.title, director=film.director or "Director TBA",
+        id=film.id, slug=film.slug, title=film.title,
+        original_title=film.original_title, content_type=film.content_type,
+        director=film.director or "Director TBA",
         year=film.year, country_origin=film.country_origin,
         poster_url=film.poster_url, backdrop_url=film.backdrop_url,
         synopsis=film.synopsis, gradient_from=film.gradient_from,
         gradient_to=film.gradient_to, release_date=film.release_date,
+        first_air_date=film.first_air_date,
         genre_tag=film.genre_tag,
         rank=r.rank, score=r.score, prev_rank=r.prev_rank,
         movement=r.movement, peak_rank=r.peak_rank, weeks_on_chart=r.weeks_on_chart,
@@ -54,16 +67,21 @@ def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
 
 
 def _mentions_map(db: Session, film_ids: list[int]) -> dict[int, int]:
-    """Bulk mention counts within a 48-hour window, keyed by film id."""
+    """Bulk mention counts within a 48-hour window, keyed by film id.
+
+    Catalog-only sources ("tmdb") are excluded — TMDB metadata rows are not
+    conversation volume."""
     if not film_ids:
         return {}
     since = datetime.now(timezone.utc) - timedelta(hours=48)
-    rows = (
+    q = (
         db.query(Mention.film_id, func.count(Mention.id).label("cnt"))
         .where(Mention.film_id.in_(film_ids), Mention.created_at >= since)
-        .group_by(Mention.film_id)
-        .all()
     )
+    catalog_ids = _catalog_source_ids(db)
+    if catalog_ids:
+        q = q.filter(~Mention.source_id.in_(catalog_ids))
+    rows = q.group_by(Mention.film_id).all()
     return {fid: int(cnt) for fid, cnt in rows}
 
 
@@ -203,16 +221,23 @@ def new_entries(
     today = date.today()
     cutoff = today - timedelta(days=days)
 
+    # Content-type aware: a title's "date" is release_date for movies and
+    # first_air_date for shows. Both content types appear in New Releases.
     films = (
         db.query(Film)
-        .filter(Film.release_date.isnot(None), Film.release_date >= cutoff)
+        .filter(
+            or_(
+                and_(Film.content_type == "MOVIE", Film.release_date.isnot(None), Film.release_date >= cutoff),
+                and_(Film.content_type == "TV_SHOW", Film.first_air_date.isnot(None), Film.first_air_date >= cutoff),
+            )
+        )
         .filter(func.lower(Film.genre_tag) == genre.strip().lower() if genre else True)
         .all()
     )
-    recent = [f for f in films if f.release_date <= today]
-    upcoming = [f for f in films if f.release_date > today]
-    recent.sort(key=lambda f: (f.release_date or today), reverse=True)
-    upcoming.sort(key=lambda f: (f.release_date or today))
+    recent = [f for f in films if f.air_date is not None and f.air_date <= today]
+    upcoming = [f for f in films if f.air_date is not None and f.air_date > today]
+    recent.sort(key=lambda f: (f.air_date or today), reverse=True)
+    upcoming.sort(key=lambda f: (f.air_date or today))
     ordered = (recent + upcoming)[offset : offset + limit]
 
     rankings = {
@@ -231,11 +256,14 @@ def new_entries(
             item = _to_ranked(f, r).model_copy(update={"mentions_total": mentions.get(f.id, 0)})
         else:
             item = RankedFilm(
-                id=f.id, slug=f.slug, title=f.title, director=f.director or "Director TBA",
+                id=f.id, slug=f.slug, title=f.title,
+                original_title=f.original_title, content_type=f.content_type,
+                director=f.director or "Director TBA",
                 year=f.year, country_origin=f.country_origin, poster_url=f.poster_url,
                 backdrop_url=f.backdrop_url, synopsis=f.synopsis,
                 gradient_from=f.gradient_from, gradient_to=f.gradient_to,
-                release_date=f.release_date, genre_tag=f.genre_tag,
+                release_date=f.release_date, first_air_date=f.first_air_date,
+                genre_tag=f.genre_tag,
                 rank=0, score=0.0,
             )
         result.append(item)
@@ -249,6 +277,7 @@ def search_films(
     q: str = Query(..., min_length=1),
     limit: int = Query(20, ge=1, le=50),
     genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
+    content_type: str | None = Query(None, description="Filter by MOVIE or TV_SHOW."),
     db: Session = Depends(get_db),
 ):
     snap = _latest_snapshot(db)
@@ -257,7 +286,8 @@ def search_films(
 
     pattern = f"%{q}%"
     genre_clause = func.lower(Film.genre_tag) == genre.strip().lower() if genre else True
-    films = db.query(Film).filter(Film.title.ilike(pattern), genre_clause).limit(limit).all()
+    ct_clause = Film.content_type == normalize_content_type(content_type) if content_type else True
+    films = db.query(Film).filter(Film.title.ilike(pattern), genre_clause, ct_clause).limit(limit).all()
     if not films:
         # No direct match — surface similar titles (typo tolerance) so a near
         # miss still lands on something relevant. The caller tells the user
@@ -375,9 +405,19 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         select(Ranking).where(Ranking.film_id == film.id, Ranking.snapshot_at == snap)
     ) if snap else None
     mentions_total = _mentions_map(db, [film.id]).get(film.id, 0)
-    pos = db.scalar(select(func.count()).where(Mention.film_id == film.id, Mention.sentiment_label == "positive")) or 0
-    neu = db.scalar(select(func.count()).where(Mention.film_id == film.id, Mention.sentiment_label == "neutral")) or 0
-    neg = db.scalar(select(func.count()).where(Mention.film_id == film.id, Mention.sentiment_label == "negative")) or 0
+    # Sentiment split counts real audience conversation only — catalog-only
+    # sources ("tmdb" vote rows) never contribute.
+    catalog_ids = _catalog_source_ids(db)
+    def _sent_count(label: str) -> int:
+        q = select(func.count()).where(
+            Mention.film_id == film.id, Mention.sentiment_label == label
+        )
+        if catalog_ids:
+            q = q.where(~Mention.source_id.in_(catalog_ids))
+        return db.scalar(q) or 0
+    pos = _sent_count("positive")
+    neu = _sent_count("neutral")
+    neg = _sent_count("negative")
     
     total = pos + neu + neg
     if total >= 1:
@@ -390,11 +430,14 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
     else:
         sentiment = SentimentBreakdown()
     base = _to_ranked(film, r) if r else RankedFilm(
-        id=film.id, slug=film.slug, title=film.title, director=film.director or "Director TBA",
+        id=film.id, slug=film.slug, title=film.title,
+        original_title=film.original_title, content_type=film.content_type,
+        director=film.director or "Director TBA",
         year=film.year, country_origin=film.country_origin, poster_url=film.poster_url,
         backdrop_url=film.backdrop_url, synopsis=film.synopsis,
         gradient_from=film.gradient_from, gradient_to=film.gradient_to,
-        release_date=film.release_date, genre_tag=film.genre_tag,
+        release_date=film.release_date, first_air_date=film.first_air_date,
+        genre_tag=film.genre_tag,
         rank=0, score=0,
     )
     return FilmDetail(

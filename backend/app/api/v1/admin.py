@@ -22,11 +22,14 @@ def _require_admin(x_admin_key: str = Header(default="")):
 
 
 @router.post("/admin/sync/tmdb", dependencies=[Depends(_require_admin)])
-def sync_tmdb(max_films: int = 400, db: Session = Depends(get_db)):
-    """Trigger a live TMDB catalog sync — fetches trending/popular/upcoming films."""
+def sync_tmdb(max_films: int = 400, content_type: str = "MOVIE", db: Session = Depends(get_db)):
+    """Trigger a live TMDB catalog sync.
+
+    ``content_type`` selects MOVIE (default) or TV_SHOW — one parameterized
+    sync handles both content types."""
     from app.ingest.tmdb import sync_tmdb_catalog
-    films = sync_tmdb_catalog(db, max_films=max_films)
-    return {"ok": True, "synced_films": len(films), "source": "tmdb"}
+    films = sync_tmdb_catalog(db, max_films=max_films, content_type=content_type)
+    return {"ok": True, "synced_films": len(films), "source": "tmdb", "content_type": content_type}
 
 
 @router.post("/admin/sync/reddit", dependencies=[Depends(_require_admin)])
@@ -59,9 +62,10 @@ def sync_all(db: Session = Depends(get_db)):
     from app.ingest.tmdb import sync_tmdb_catalog
     results = {}
 
-    # 1. TMDB catalog (creates/updates films + initial mentions)
+    # 1. TMDB catalog (creates/updates content rows — catalog only, no signals)
     try:
         films = sync_tmdb_catalog(db, max_films=400)
+        films += sync_tmdb_catalog(db, max_films=150, content_type="TV_SHOW")
         results["tmdb"] = {"ok": True, "synced_films": len(films)}
     except Exception as exc:
         results["tmdb"] = {"ok": False, "error": str(exc)}

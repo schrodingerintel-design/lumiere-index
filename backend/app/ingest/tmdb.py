@@ -1,4 +1,18 @@
-"""TMDB Movie Catalog Ingestion & Live Sync Adapter."""
+"""TMDB Catalog Adapter — metadata provider only, never a ranking signal.
+
+TMDB answers «"What is this piece of content?"»: titles, posters, dates,
+genres, external ids. It must never answer «"How much cultural attention is
+this getting?"». Accordingly this module ONLY upserts catalog rows — it does
+not write Mention rows, and nothing in the ranking engine may read TMDB
+popularity / vote counts / trending positions. (Popularity is used solely to
+prioritize which catalog candidates get stored — a catalog curation choice,
+not a score input.)
+
+Content types are first-class: the same parameterized sync handles
+``MOVIE`` and ``TV_SHOW``. TV shows are NOT movies with different dates —
+they get their own TMDB feeds, their own genre map, their own creator
+metadata, and their own (content_type, tmdb_id) identity.
+"""
 from datetime import datetime, timezone, date as date_type
 import random
 import time
@@ -6,10 +20,10 @@ import time
 import httpx
 from slugify import slugify
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Film, FilmAlias, Source, Mention, Ranking
+from app.models import Film, FilmAlias, Ranking
+from app.models.film import CONTENT_TYPES, normalize_content_type
 from app.services.ranking import recompute_rankings
 
 GRADIENT_PALETTES = [
@@ -27,9 +41,10 @@ GRADIENT_PALETTES = [
     ("#2d8a86", "#0b2422"),
 ]
 
-# TMDB genre id → canonical Lumière genre tag. Priority order matters: when a
-# film carries several genres the FIRST matching id in this list wins, so an
-# animated sci-fi lands in Animation & Anime, and an action comedy in Action.
+# TMDB MOVIE genre id → canonical Lumière genre tag. Priority order matters:
+# when a title carries several genres the FIRST matching id in this list wins,
+# so an animated sci-fi lands in Animation & Anime, and an action comedy in
+# Action.
 TMDB_GENRE_MAP: list[tuple[int, str]] = [
     (16, "Animation"),     # Animation
     (10751, "Animation"),  # Family → animated features dominate the family shelf
@@ -53,25 +68,47 @@ TMDB_GENRE_MAP: list[tuple[int, str]] = [
     (10759, "Action"),     # Action & Adventure (TV id, appears on movie results)
 ]
 
-# Release-region → East Asian Cinema tag for films whose origin country is
+# TMDB TV genre ids are a DIFFERENT id space from movie genre ids — reusing the
+# movie map would mislabel everything. e.g. 10765 is Sci-Fi & Fantasy (TV),
+# 10759 is Action & Adventure (TV).
+TMDB_TV_GENRE_MAP: list[tuple[int, str]] = [
+    (16, "Animation"),     # Animation
+    (10751, "Animation"),  # Family
+    (10762, "Animation"),  # Kids
+    (10765, "Sci-Fi"),     # Sci-Fi & Fantasy
+    (9648, "Thriller"),    # Mystery
+    (80, "Thriller"),      # Crime
+    (10768, "Thriller"),   # War & Politics
+    (10759, "Action"),     # Action & Adventure
+    (10749, "Romance"),    # Romance (shared id)
+    (35, "Comedy"),        # Comedy (shared id)
+    (18, "Drama"),         # Drama (shared id)
+    (10766, "Drama"),      # Soap
+    (10764, "Drama"),      # Reality → closest shelf
+    (99, "Indie"),         # Documentary (shared id)
+    (37, "Western"),       # Western (shared id)
+]
+
+# Release-region → East Asian Cinema tag for titles whose origin country is
 # Japan, South Korea, China, Taiwan, Hong Kong, or Thailand. These are
 # explicitly mapped so East Asian Cinema is a real shelf, not a label with no data.
 EAST_ASIAN_COUNTRIES = {"JP", "KR", "CN", "TW", "HK", "TH"}
 
 
 def _east_asian_tag(country_code: str | None) -> str | None:
-    """Return 'East Asian Cinema' when the film's origin country is East/Southeast Asian."""
+    """Return 'East Asian Cinema' when the title's origin country is East/Southeast Asian."""
     if not country_code:
         return None
     return "East Asian Cinema" if country_code.upper() in EAST_ASIAN_COUNTRIES else None
 
 
-def genre_tag_from_tmdb(genre_ids: list[int] | None) -> str | None:
+def genre_tag_from_tmdb(genre_ids: list[int] | None, content_type: str = "MOVIE") -> str | None:
     """Map TMDB genre ids to one canonical Lumière genre tag."""
     if not genre_ids:
         return None
+    genre_map = TMDB_TV_GENRE_MAP if content_type == "TV_SHOW" else TMDB_GENRE_MAP
     id_set = set(genre_ids)
-    for tmdb_id, tag in TMDB_GENRE_MAP:
+    for tmdb_id, tag in genre_map:
         if tmdb_id in id_set:
             return tag
     return None
@@ -79,8 +116,8 @@ def genre_tag_from_tmdb(genre_ids: list[int] | None) -> str | None:
 
 # ── Global catalog coverage ───────────────────────────────────────────────────
 # The default TMDB feeds are US-centric. To make the Index genuinely global we
-# additionally pull now-playing/upcoming for a spread of release regions and
-# popular cinema by original language. Kept small enough that a full sync stays
+# additionally pull current/upcoming titles for a spread of release regions and
+# popular content by original language. Kept small enough that a full sync stays
 # well inside TMDB rate limits (~50 req / 10s): ~60 throttled requests total.
 GLOBAL_REGIONS = ["GB", "FR", "DE", "JP", "KR", "IN", "BR", "MX", "ES", "IT", "AU", "NG"]
 ORIGINAL_LANGUAGES = ["ja", "ko", "zh", "hi", "es", "fr", "de", "pt", "it", "tr", "ru", "sv"]
@@ -112,7 +149,7 @@ def fetch_tmdb_movies(api_key: str, pages: int = 5) -> list[dict]:
       4. Popular films by original language via /discover (international cinema
          within the last 3 years, so the catalog stays contemporary).
     """
-    all_movies: dict[int, dict] = {}
+    all_items: dict[int, dict] = {}
 
     def add(path: str, params: dict) -> None:
         data = _tmdb_get(
@@ -123,8 +160,8 @@ def fetch_tmdb_movies(api_key: str, pages: int = 5) -> list[dict]:
             return
         for m in data.get("results", []):
             m_id = m.get("id")
-            if m_id and m_id not in all_movies:
-                all_movies[m_id] = m
+            if m_id and m_id not in all_items:
+                all_items[m_id] = m
         time.sleep(0.12)  # stay comfortably under the rate limit
 
     # 1. Global trending
@@ -157,7 +194,77 @@ def fetch_tmdb_movies(api_key: str, pages: int = 5) -> list[dict]:
             },
         )
 
-    return list(all_movies.values())
+    return list(all_items.values())
+
+
+def fetch_tmdb_tv(api_key: str, pages: int = 3) -> list[dict]:
+    """Fetch a broad, global TV catalog from TMDB.
+
+    TV has its own feeds — reusing the movie endpoints would silently return
+    an empty catalog:
+      1. Global trending TV (week).
+      2. US-default on-the-air / popular / top-rated feeds.
+      3. Popular shows by original language via /discover/tv.
+    """
+    all_items: dict[int, dict] = {}
+
+    def add(path: str, params: dict) -> None:
+        data = _tmdb_get(
+            f"https://api.themoviedb.org/3{path}",
+            {"api_key": api_key, **params},
+        )
+        if not data:
+            return
+        for t in data.get("results", []):
+            t_id = t.get("id")
+            if t_id and t_id not in all_items:
+                all_items[t_id] = t
+        time.sleep(0.12)  # stay comfortably under the rate limit
+
+    # 1. Global trending
+    for page in range(1, min(pages, 2) + 1):
+        add("/trending/tv/week", {"page": page})
+
+    # 2. US-default TV feeds
+    for page in range(1, pages + 1):
+        add("/tv/on_the_air", {"page": page})
+        add("/tv/popular", {"page": page})
+    add("/tv/top_rated", {"page": 1})
+
+    # 3. International popular TV (last 3 years)
+    floor = (datetime.now(timezone.utc).date().replace(year=datetime.now(timezone.utc).year - 3)).isoformat()
+    for lang in ORIGINAL_LANGUAGES:
+        add(
+            "/discover/tv",
+            {
+                "page": 1,
+                "sort_by": "popularity.desc",
+                "with_original_language": lang,
+                "first_air_date.gte": floor,
+                "vote_count.gte": 20,
+            },
+        )
+
+    return list(all_items.values())
+
+
+def _item_title(item: dict) -> str | None:
+    """Title across movie (title/original_title) and TV (name/original_name) shapes."""
+    return item.get("title") or item.get("name") or item.get("original_title") or item.get("original_name")
+
+
+def _item_date_str(item: dict) -> str:
+    """Release/air date string across both content shapes ('' when absent)."""
+    return item.get("release_date") or item.get("first_air_date") or ""
+
+
+def _item_country(item: dict) -> str | None:
+    """Origin country code. TV list results carry ``origin_country`` as a list
+    of country codes; movie list results usually omit it."""
+    oc = item.get("origin_country") or []
+    if oc and isinstance(oc, list):
+        return oc[0] or None
+    return None
 
 
 def fetch_movie_director(api_key: str, tmdb_id: int) -> str:
@@ -175,7 +282,21 @@ def fetch_movie_director(api_key: str, tmdb_id: int) -> str:
     return "Director TBA"
 
 
-def _unique_slug(db: Session, base: str, tmdb_id: int) -> str:
+def fetch_tv_creator(api_key: str, tmdb_id: int) -> str:
+    """Fetch the show's primary creator from TMDB (the TV analogue of a director)."""
+    url = f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={api_key}"
+    try:
+        r = httpx.get(url, timeout=10)
+        if r.status_code == 200:
+            created_by = r.json().get("created_by", [])
+            if created_by:
+                return created_by[0].get("name", "")
+    except Exception:
+        pass
+    return "Creator TBA"
+
+
+def _unique_slug(db, base: str, tmdb_id: int) -> str:
     """Return a slug guaranteed to be unique in the films table."""
     if not db.query(Film).filter_by(slug=base).first():
         return base
@@ -188,160 +309,181 @@ def _unique_slug(db: Session, base: str, tmdb_id: int) -> str:
     return f"{base}-{tmdb_id}-{i}"
 
 
-def sync_tmdb_catalog(db: Session, max_films: int = 800) -> list[Film]:
-    """Fetch live trending movies from TMDB API, persist to DB, and compute initial rankings.
+def _upsert_content(db, item: dict, content_type: str) -> tuple[Film, bool]:
+    """Create or refresh one catalog row from a TMDB list result.
 
-    Upserts are keyed by TMDB id (when available) to avoid slug-collision bugs
-    ("F1" vs "F1: The Movie") and to stay idempotent across scheduled runs.
+    Identity is (content_type, tmdb_id): a movie id 1234 and a TV id 1234 are
+    different titles and must coexist. Returns (film, created).
     """
-    api_key = settings.tmdb_api_key
-    raw_movies = fetch_tmdb_movies(api_key, pages=5)
+    title = _item_title(item)
+    tmdb_id = item.get("id")
+    if not title or not tmdb_id:
+        raise ValueError("TMDB item missing title or id")
 
-    # Ensure tmdb source exists in DB
-    tmdb_src = db.query(Source).filter_by(key="tmdb").first()
-    if not tmdb_src:
-        tmdb_src = Source(key="tmdb", name="TMDB", weight=1.4)
-        db.add(tmdb_src)
+    slug = slugify(title)
+    if not slug:
+        raise ValueError(f"empty slug for {title!r}")
+
+    date_str = _item_date_str(item)
+    year = int(date_str.split("-")[0]) if date_str and "-" in date_str else datetime.now(timezone.utc).year
+
+    poster_path = item.get("poster_path")
+    backdrop_path = item.get("backdrop_path")
+    synopsis = item.get("overview") or f"{title} — {content_type.replace('_', ' ').title().lower()}."
+    country = _item_country(item) or "US"
+    raw_genre = genre_tag_from_tmdb(item.get("genre_ids"), content_type)
+    # East Asian Cinema is a regional shelf, not a TMDB genre id — assign it
+    # when the title's origin country is East/Southeast Asian. If TMDB gave us a
+    # genre tag already we keep that (genre takes priority over region).
+    genre_tag = raw_genre or _east_asian_tag(country)
+
+    poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
+    backdrop_url = f"https://image.tmdb.org/t/p/w1280{backdrop_path}" if backdrop_path else None
+
+    original_title = item.get("original_title") or item.get("original_name") or title
+
+    parsed_date = None
+    if len(date_str) == 10:
+        try:
+            parsed_date = date_type.fromisoformat(date_str)
+        except ValueError:
+            pass
+
+    film = (
+        db.query(Film)
+        .filter(Film.content_type == content_type, Film.tmdb_id == tmdb_id)
+        .first()
+    )
+    if not film:
+        # Legacy rows may exist without a tmdb_id; match on slug/title within
+        # the same content type so we link instead of duplicating.
+        film = (
+            db.query(Film)
+            .filter(Film.content_type == content_type)
+            .filter((Film.slug == slug) | (Film.title == title))
+            .first()
+        )
+
+    if not film:
+        person = (
+            fetch_movie_director(settings.tmdb_api_key, tmdb_id)
+            if content_type == "MOVIE"
+            else fetch_tv_creator(settings.tmdb_api_key, tmdb_id)
+        )
+        g1, g2 = random.choice(GRADIENT_PALETTES)
+
+        film = Film(
+            slug=_unique_slug(db, slug, tmdb_id),
+            title=title,
+            original_title=original_title,
+            content_type=content_type,
+            tmdb_id=tmdb_id,
+            director=person,
+            year=year,
+            country_origin=country,
+            poster_url=poster_url,
+            backdrop_url=backdrop_url,
+            synopsis=synopsis[:2000],
+            gradient_from=g1,
+            gradient_to=g2,
+            release_date=parsed_date if content_type == "MOVIE" else None,
+            first_air_date=parsed_date if content_type == "TV_SHOW" else None,
+            genre_tag=genre_tag,
+        )
+        db.add(film)
         db.commit()
-        db.refresh(tmdb_src)
+        db.refresh(film)
+
+        # Add alias
+        alias = FilmAlias(film_id=film.id, alias=title)
+        if original_title and original_title != title:
+            db.add(FilmAlias(film_id=film.id, alias=original_title))
+        db.add(alias)
+        db.commit()
+        return film, True
+
+    # Update fields (always refresh tmdb_id for legacy rows)
+    changed = False
+    if not film.tmdb_id:
+        film.tmdb_id = tmdb_id
+        changed = True
+    if not film.original_title:
+        film.original_title = original_title
+        changed = True
+    if poster_url and not film.poster_url:
+        film.poster_url = poster_url
+        changed = True
+    if backdrop_url and not film.backdrop_url:
+        film.backdrop_url = backdrop_url
+        changed = True
+    if synopsis and len(synopsis) > len(film.synopsis or ""):
+        film.synopsis = synopsis[:2000]
+        changed = True
+    if genre_tag and not film.genre_tag:
+        film.genre_tag = genre_tag
+        changed = True
+    # Fill the content-type date column if it was previously empty.
+    if parsed_date is not None:
+        if content_type == "MOVIE" and film.release_date is None:
+            film.release_date = parsed_date
+            changed = True
+        elif content_type == "TV_SHOW" and film.first_air_date is None:
+            film.first_air_date = parsed_date
+            changed = True
+    if changed:
+        db.commit()
+    return film, False
+
+
+def sync_tmdb_catalog(
+    db,
+    max_films: int = 800,
+    content_type: str = "MOVIE",
+) -> list[Film]:
+    """Fetch live content from TMDB, persist the catalog, and refresh rankings.
+
+    Catalog-only: this function NEVER writes Mention rows. TMDB popularity is
+    used exclusively to prioritize which candidates are stored (a curation
+    choice) — it is not a ranking input.
+
+    ``content_type`` selects the TMDB feeds and the identity space:
+    ``MOVIE`` (default) or ``TV_SHOW``.
+    """
+    ct = normalize_content_type(content_type)
+    if ct is None:
+        raise ValueError("content_type is required — use MOVIE or TV_SHOW")
+
+    api_key = settings.tmdb_api_key
+    raw_items = (
+        fetch_tmdb_movies(api_key, pages=5)
+        if ct == "MOVIE"
+        else fetch_tmdb_tv(api_key, pages=3)
+    )
 
     synced_films: list[Film] = []
-    newly_added = False  # becomes True if any film or mention is created
+    newly_added = False  # becomes True if any catalog row is created
 
-    # Sort by popularity descending
-    sorted_movies = sorted(raw_movies, key=lambda x: x.get("popularity", 0), reverse=True)[:max_films]
+    # Sort by popularity descending — catalog prioritization ONLY. This decides
+    # which titles get tracked at all; it never feeds a score.
+    sorted_items = sorted(raw_items, key=lambda x: x.get("popularity", 0), reverse=True)[:max_films]
 
-    for item in sorted_movies:
-        title = item.get("title") or item.get("original_title")
-        tmdb_id = item.get("id")
-        if not title or not tmdb_id:
+    for item in sorted_items:
+        try:
+            film, created = _upsert_content(db, item, ct)
+        except ValueError:
             continue
-
-        slug = slugify(title)
-        if not slug:
-            continue
-
-        # Parse release year
-        release_date = item.get("release_date", "")
-        year = int(release_date.split("-")[0]) if release_date and "-" in release_date else datetime.now(timezone.utc).year
-
-        poster_path = item.get("poster_path")
-        backdrop_path = item.get("backdrop_path")
-        synopsis = item.get("overview") or f"{title} film."
-        country = (item.get("origin_country") or ["US"])[0] if item.get("origin_country") else "US"
-        raw_genre = genre_tag_from_tmdb(item.get("genre_ids"))
-        # East Asian Cinema is a regional shelf, not a TMDB genre id — assign it
-        # when the film's origin country is East/Southeast Asian. If TMDB gave us a
-        # genre tag already we keep that (genre takes priority over region).
-        genre_tag = raw_genre or _east_asian_tag(country)
-
-        poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
-        backdrop_url = f"https://image.tmdb.org/t/p/w1280{backdrop_path}" if backdrop_path else None
-
-        # Find by TMDB id first (dedupe), then fall back to slug/title for legacy rows
-        film = db.query(Film).filter_by(tmdb_id=tmdb_id).first()
-        if not film:
-            film = db.query(Film).filter((Film.slug == slug) | (Film.title == title)).first()
-
-        if not film:
-            director = fetch_movie_director(api_key, tmdb_id)
-            g1, g2 = random.choice(GRADIENT_PALETTES)
-
-            parsed_release_date = None
-            if release_date and len(release_date) == 10:
-                try:
-                    parsed_release_date = date_type.fromisoformat(release_date)
-                except ValueError:
-                    pass
-
-            film = Film(
-                slug=_unique_slug(db, slug, tmdb_id),
-                title=title,
-                tmdb_id=tmdb_id,
-                director=director,
-                year=year,
-                country_origin=country,
-                poster_url=poster_url,
-                backdrop_url=backdrop_url,
-                synopsis=synopsis[:2000],
-                gradient_from=g1,
-                gradient_to=g2,
-                release_date=parsed_release_date,
-                genre_tag=genre_tag,
-            )
-            db.add(film)
-            db.commit()
-            db.refresh(film)
+        if created:
             newly_added = True
-
-            # Add alias
-            alias = FilmAlias(film_id=film.id, alias=title)
-            db.add(alias)
-            db.commit()
-        else:
-            # Update fields (always refresh tmdb_id for legacy rows)
-            if not film.tmdb_id:
-                film.tmdb_id = tmdb_id
-            if poster_url and not film.poster_url:
-                film.poster_url = poster_url
-            if backdrop_url and not film.backdrop_url:
-                film.backdrop_url = backdrop_url
-            if synopsis and len(synopsis) > len(film.synopsis or ""):
-                film.synopsis = synopsis[:2000]
-            if genre_tag and not film.genre_tag:
-                film.genre_tag = genre_tag
-            db.commit()
-
         synced_films.append(film)
 
-        # Generate a mention signal for this movie based on TMDB popularity & vote average
-        # Refreshed daily: vote_count/popularity are real platform observations
-        # and they grow over time, so a daily refresh keeps the 30-day window
-        # honest instead of aging out to zero after one month.
-        pop = float(item.get("popularity", 50.0))
-        vote_avg = float(item.get("vote_average", 7.0))
-        vote_count = int(item.get("vote_count", 100))
-
-        # Convert 0-10 vote average to -1 to +1 sentiment score
-        sentiment_score = max(-1.0, min(1.0, (vote_avg - 5.0) / 5.0))
-        sentiment_label = "positive" if sentiment_score > 0.1 else ("negative" if sentiment_score < -0.1 else "neutral")
-
-        day_key = datetime.now(timezone.utc).strftime("%Y%m%d")
-        ext_id = f"tmdb_popular_{film.id}_{tmdb_id}_{day_key}"
-
-        existing_mention = db.query(Mention).filter_by(external_id=ext_id).first()
-        if not existing_mention:
-            newly_added = True
-            m = Mention(
-                film_id=film.id,
-                source_id=tmdb_src.id,
-                external_id=ext_id,
-                url=f"https://www.themoviedb.org/movie/{tmdb_id}",
-                author="TMDB",
-                country_code=country,
-                language="en",
-                text=f"{title} ratings on TMDB: {vote_avg}/10 across {vote_count} reviews. Popularity index: {pop}.",
-                sentiment_score=sentiment_score,
-                sentiment_label=sentiment_label,
-                engagement=int(pop * 10 + vote_count),
-                # Real audience evidence: every TMDB rating is an observation.
-                observations=vote_count,
-                created_at=datetime.now(timezone.utc),
-            )
-            db.add(m)
-            db.commit()
-
-    # Record source health
-    tmdb_src.last_ingested_at = datetime.now(timezone.utc)
-    tmdb_src.last_error = None
-    db.commit()
-
-    # Recompute rankings snapshot immediately — but only when this sync actually
-    # changed the catalog. On every restart the sync re-fetches the same TMDB
-    # pages and adds nothing new; recomputing from identical data produces a
-    # zero-movement snapshot that wipes out real movement between refreshes.
+    # Recompute the ranking snapshot immediately — but only when this sync
+    # actually changed the catalog. On every restart the sync re-fetches the
+    # same TMDB pages and adds nothing new; recomputing from identical data
+    # produces a zero-movement snapshot that wipes out real movement between
+    # refreshes. (New catalog rows with no signals yet simply enter at the
+    # bottom of the next snapshot until real conversation accrues.)
     if newly_added or db.scalar(select(func.max(Ranking.snapshot_at))) is None:
         recompute_rankings(db)
 
-    print(f"Successfully synced {len(synced_films)} live movies from TMDB API to database.")
+    print(f"Successfully synced {len(synced_films)} {ct} titles from TMDB to the catalog.")
     return synced_films

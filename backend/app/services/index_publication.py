@@ -37,6 +37,7 @@ from app.models import (
     Source,
     WeeklyIndexSnapshot,
 )
+from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
 
 log = logging.getLogger(__name__)
 
@@ -135,35 +136,54 @@ def _previous_published_ranks(db: Session, before_date: date) -> dict[int, int]:
     return {fid: rank for fid, rank in rows}
 
 
+def _catalog_source_ids(db: Session) -> list[int]:
+    """Ids of catalog-only sources ("tmdb") — excluded from every signal
+    aggregate below so TMDB can never influence a published Index."""
+    return [
+        sid for (sid,) in db.query(Source.id).filter(Source.key.in_(CATALOG_ONLY_SOURCE_KEYS)).all()
+    ]
+
+
 def _source_coverage(db: Session, film_ids: list[int]) -> dict[int, int]:
-    """Distinct source count per film over the last 30 days."""
+    """Distinct source count per film over the last 30 days.
+
+    Catalog-only sources ("tmdb") never count as coverage — knowing a title's
+    metadata is not evidence of cultural attention."""
     if not film_ids:
         return {}
     since = datetime.now(timezone.utc) - timedelta(days=30)
-    rows = (
+    q = (
         db.query(Mention.film_id, func.count(func.distinct(Mention.source_id)))
         .filter(Mention.film_id.in_(film_ids), Mention.created_at >= since)
-        .group_by(Mention.film_id)
-        .all()
     )
+    catalog_ids = _catalog_source_ids(db)
+    if catalog_ids:
+        q = q.filter(~Mention.source_id.in_(catalog_ids))
+    rows = q.group_by(Mention.film_id).all()
     return {fid: int(cnt or 0) for fid, cnt in rows}
 
 
 def _sentiment_split(db: Session, film_ids: list[int]) -> dict[int, tuple[float, float, float]]:
-    """Positive/neutral/negative percentage split per film (last 30 days)."""
+    """Positive/neutral/negative percentage split per film (last 30 days).
+
+    Catalog-only sources are excluded: TMDB rating rows carry a synthetic
+    sentiment derived from vote averages, which is metadata — not audience
+    conversation."""
     if not film_ids:
         return {}
     since = datetime.now(timezone.utc) - timedelta(days=30)
-    rows = (
+    q = (
         db.query(
             Mention.film_id,
             Mention.sentiment_label,
             func.count(Mention.id),
         )
         .filter(Mention.film_id.in_(film_ids), Mention.created_at >= since)
-        .group_by(Mention.film_id, Mention.sentiment_label)
-        .all()
     )
+    catalog_ids = _catalog_source_ids(db)
+    if catalog_ids:
+        q = q.filter(~Mention.source_id.in_(catalog_ids))
+    rows = q.group_by(Mention.film_id, Mention.sentiment_label).all()
     counts: dict[int, dict[str, int]] = {}
     for fid, label, cnt in rows:
         counts.setdefault(fid, {})[label or "neutral"] = int(cnt or 0)
@@ -376,8 +396,10 @@ def publish_weekly_index(
         avg_sentiment[fid] = float(savg or 0.0)
 
     # Real-time backstop: daily_scores lag the rollup worker, so fill the same
-    # aggregates directly from mentions when the rollup has not run.
-    m_rows = (
+    # aggregates directly from mentions when the rollup has not run.  Catalog-
+    # only sources are excluded — TMDB rows are not weekly signal volume.
+    catalog_ids = _catalog_source_ids(db)
+    m_rows_q = (
         db.query(
             Mention.film_id,
             func.count(func.distinct(func.date(Mention.created_at))),
@@ -385,9 +407,10 @@ def publish_weekly_index(
             func.avg(Mention.sentiment_score),
         )
         .filter(Mention.created_at >= week_start_dt, Mention.created_at < week_end_exclusive)
-        .group_by(Mention.film_id)
-        .all()
     )
+    if catalog_ids:
+        m_rows_q = m_rows_q.filter(~Mention.source_id.in_(catalog_ids))
+    m_rows = m_rows_q.group_by(Mention.film_id).all()
     for fid, days, mentions, savg in m_rows:
         days_present[fid] = max(days_present.get(fid, 0), int(days or 0))
         total_mentions[fid] = max(total_mentions.get(fid, 0), int(mentions or 0))

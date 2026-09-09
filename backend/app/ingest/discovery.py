@@ -24,7 +24,13 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import Film, FilmAlias, Mention, PendingMention, Source
 from app.services.sentiment import score_text
-from app.ingest.tmdb import GRADIENT_PALETTES, _unique_slug, genre_tag_from_tmdb, _east_asian_tag
+from app.ingest.tmdb import (
+    GRADIENT_PALETTES,
+    _unique_slug,
+    genre_tag_from_tmdb,
+    _east_asian_tag,
+    _item_country,
+)
 from app.ingest.pipeline import invalidate_matcher_cache
 
 _QUOTE_RE = re.compile(r'"([^"]{2,80})"')
@@ -118,6 +124,21 @@ def search_tmdb(query: str, api_key: str) -> list[dict]:
     return []
 
 
+def search_tmdb_tv(query: str, api_key: str) -> list[dict]:
+    """Search TMDB TV shows; returns raw result items (empty on error).
+
+    TV results use ``name``/``original_name`` for titles and
+    ``first_air_date`` for dates — the callers below normalise both shapes."""
+    url = "https://api.themoviedb.org/3/search/tv"
+    try:
+        r = httpx.get(url, params={"api_key": api_key, "query": query, "language": "en-US"}, timeout=10)
+        if r.status_code == 200:
+            return r.json().get("results", [])
+    except Exception:
+        pass
+    return []
+
+
 def _token_set(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", text.lower()))
 
@@ -138,14 +159,19 @@ def _find_year(text: str) -> int | None:
 
 
 def _result_year(item: dict) -> int | None:
-    rd = item.get("release_date") or ""
+    rd = item.get("release_date") or item.get("first_air_date") or ""
     if len(rd) >= 4 and rd[:4].isdigit():
         return int(rd[:4])
     return None
 
 
+def _result_title(item: dict) -> str:
+    """Display title across movie (title) and TV (name) result shapes."""
+    return item.get("title") or item.get("name") or item.get("original_title") or item.get("original_name") or ""
+
+
 def _plausible(cand: str, item: dict, text_year: int | None) -> bool:
-    title = item.get("title") or item.get("original_title") or ""
+    title = _result_title(item)
     sim = _title_similarity(cand, title)
     if sim >= _MIN_SIMILARITY:
         if text_year is None:
@@ -158,15 +184,19 @@ def _plausible(cand: str, item: dict, text_year: int | None) -> bool:
     return False
 
 
-def _create_film(db: Session, item: dict, candidate: str) -> Film:
-    """Create a Film from a TMDB result and alias the candidate title."""
-    title = item.get("title") or item.get("original_title") or candidate
-    release_date = item.get("release_date") or ""
-    year = int(release_date.split("-")[0]) if "-" in release_date and release_date.split("-")[0].isdigit() else None
-    parsed_release_date = None
-    if len(release_date) == 10:
+def _create_film(db: Session, item: dict, candidate: str, content_type: str = "MOVIE") -> Film:
+    """Create a Film from a TMDB result and alias the candidate title.
+
+    ``content_type`` selects the identity space and date column: TV results
+    land as TV_SHOW rows with first_air_date — never as movies with a
+    mislabeled release date."""
+    title = _result_title(item) or candidate
+    date_str = item.get("release_date") or item.get("first_air_date") or ""
+    year = int(date_str.split("-")[0]) if "-" in date_str and date_str.split("-")[0].isdigit() else None
+    parsed_date = None
+    if len(date_str) == 10:
         try:
-            parsed_release_date = date.fromisoformat(release_date)
+            parsed_date = date.fromisoformat(date_str)
         except ValueError:
             pass
 
@@ -174,20 +204,25 @@ def _create_film(db: Session, item: dict, candidate: str) -> Film:
     backdrop_path = item.get("backdrop_path")
     poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else None
     backdrop_url = f"https://image.tmdb.org/t/p/w1280{backdrop_path}" if backdrop_path else None
-    country = (item.get("origin_country") or ["US"])[0] if item.get("origin_country") else "US"
+    country = _item_country(item) or "US"
     overview = item.get("overview") or f"{title} film."
     g1, g2 = random.choice(GRADIENT_PALETTES)
 
     # Canonical genre tag from TMDB genre ids — never leave NULL, or the film
     # falls outside every real shelf and ends up in a mislabeled collection.
-    raw_genre = genre_tag_from_tmdb(item.get("genre_ids"))
+    # TV uses its own genre id space.
+    raw_genre = genre_tag_from_tmdb(item.get("genre_ids"), content_type)
     genre_tag = raw_genre or _east_asian_tag(country)
+
+    original_title = item.get("original_title") or item.get("original_name") or title
 
     film = Film(
         slug=_unique_slug(db, slugify(title), item.get("id")),
         title=title,
+        original_title=original_title,
+        content_type=content_type,
         tmdb_id=item.get("id"),
-        director="Director TBA",
+        director="Director TBA" if content_type == "MOVIE" else "Creator TBA",
         year=year,
         country_origin=country,
         poster_url=poster_url,
@@ -195,16 +230,18 @@ def _create_film(db: Session, item: dict, candidate: str) -> Film:
         synopsis=overview[:2000],
         gradient_from=g1,
         gradient_to=g2,
-        release_date=parsed_release_date,
+        release_date=parsed_date if content_type == "MOVIE" else None,
+        first_air_date=parsed_date if content_type == "TV_SHOW" else None,
         genre_tag=genre_tag,
     )
     db.add(film)
     db.flush()
 
-    db.add_all([
-        FilmAlias(film_id=film.id, alias=title),
-        FilmAlias(film_id=film.id, alias=candidate),
-    ])
+    aliases = [FilmAlias(film_id=film.id, alias=title)]
+    if original_title and original_title != title:
+        aliases.append(FilmAlias(film_id=film.id, alias=original_title))
+    aliases.append(FilmAlias(film_id=film.id, alias=candidate))
+    db.add_all(aliases)
     db.commit()
     db.refresh(film)
     return film
@@ -251,20 +288,44 @@ def discover_candidates(db: Session, limit: int = 50, tmdb_limit: int = 30) -> i
             break
 
         text_year = _find_year(p.text or "")
+        # TV indicators: «"season", "episode", "series", "show"» + explicit TV
+        # words. Everything else searches movies first (the Index's home turf),
+        # then TV — one conversation can surface either content type.
+        lowered = (p.text or "").lower()
+        is_tv = bool(re.search(r"\b(tv|series|season|episode|show|showrunner|finale|renewed)\b", lowered))
         resolved = False
         for cand in extract_candidates(p.text):
             if searches >= tmdb_limit:
                 break
             searches += 1
-            results = search_tmdb(cand, settings.tmdb_api_key)
-            for item in results:
+            # Search the primary content type first, then the other — a movie
+            # mention must not fail to resolve just because a show shares the
+            # name, and vice versa. Movie search stays first for movie-leaning
+            # texts; TV-first for TV-leaning ones.
+            if is_tv:
+                primary, secondary = (
+                    [(search_tmdb_tv, "TV_SHOW"), (search_tmdb, "MOVIE")]
+                )
+            else:
+                primary, secondary = (
+                    [(search_tmdb, "MOVIE"), (search_tmdb_tv, "TV_SHOW")]
+                )
+            results = [
+                (item, ct) for search_fn, ct in (primary, secondary)
+                for item in search_fn(cand, settings.tmdb_api_key)
+            ]
+            for item, ct in results:
                 if not _plausible(cand, item, text_year):
                     continue
                 tmdb_id = item.get("id")
-                existing = db.query(Film).filter_by(tmdb_id=tmdb_id).first()
+                existing = (
+                    db.query(Film)
+                    .filter(Film.tmdb_id == tmdb_id, Film.content_type == ct)
+                    .first()
+                )
                 film_id = existing.id if existing else None
                 if film_id is None:
-                    film = _create_film(db, item, cand)
+                    film = _create_film(db, item, cand, content_type=ct)
                     film_id = film.id
                     created += 1
                 _insert_mention(db, p, film_id)

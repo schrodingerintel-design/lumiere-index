@@ -5,12 +5,17 @@ import { Layout } from "@/components/lumiere/Layout";
 import {
   getFilmDetail,
   searchTmdbMovie,
+  searchTmdbTv,
   tmdbPosterUrl,
   getTmdbMovieVideos,
   getTmdbMovieDetails,
   getTmdbWatchProviders,
+  getTmdbTvVideos,
+  getTmdbTvDetails,
+  getTmdbTvWatchProviders,
   TMDB_IMG,
   type RankedFilm,
+  type TmdbWatchProviders,
   type WatchProvider,
 } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
@@ -240,9 +245,19 @@ function FilmDetailView() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: tmdb } = useQuery({
-    queryKey: ["tmdb", film?.title, film?.year],
-    queryFn: () => searchTmdbMovie(film!.title, film?.year ?? undefined),
+  // TV shows are first-class content: their TMDB identity lives in the /tv
+  // endpoints with name/first_air_date shapes. Movies use /movie endpoints.
+  // Explicit generics: movie and TV endpoints return different result shapes,
+  // so the query is typed by the fields this page actually consumes.
+  const isTvShow = film?.content_type === "TV_SHOW";
+  const { data: tmdb } = useQuery<{
+    results: { id: number; poster_path: string | null; overview?: string }[];
+  }>({
+    queryKey: ["tmdb", isTvShow ? "tv" : "movie", film?.title, film?.year],
+    queryFn: () =>
+      isTvShow
+        ? searchTmdbTv(film!.title, film?.year ?? undefined)
+        : searchTmdbMovie(film!.title, film?.year ?? undefined),
     enabled: !!film,
     staleTime: 24 * 60 * 60 * 1000,
   });
@@ -267,23 +282,54 @@ function FilmDetailView() {
     }
   }, [posterUrl]);
 
-  const { data: videos } = useQuery({
-    queryKey: ["tmdb", "videos", tmdbId],
-    queryFn: () => (tmdbId ? getTmdbMovieVideos(tmdbId) : null),
+  const { data: videos } = useQuery<
+    { results: { key: string; site: string; type: string }[] } | null
+  >({
+    queryKey: ["tmdb", "videos", isTvShow ? "tv" : "movie", tmdbId],
+    queryFn: () =>
+      tmdbId
+        ? isTvShow
+          ? getTmdbTvVideos(tmdbId)
+          : getTmdbMovieVideos(tmdbId)
+        : null,
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  const { data: tmdbDetails } = useQuery({
-    queryKey: ["tmdb", "details", tmdbId],
-    queryFn: () => (tmdbId ? getTmdbMovieDetails(tmdbId) : null),
+  // Normalized across both content types — per-type fields are optional.
+  type TmdbDetailsUnion = {
+    vote_count?: number;
+    popularity?: number;
+    genres?: { id: number; name: string }[];
+    // Movie-only
+    runtime?: number;
+    budget?: number;
+    revenue?: number;
+    // TV-only
+    episode_run_time?: number[];
+    number_of_seasons?: number;
+    number_of_episodes?: number;
+  };
+  const { data: tmdbDetails } = useQuery<TmdbDetailsUnion | null>({
+    queryKey: ["tmdb", "details", isTvShow ? "tv" : "movie", tmdbId],
+    queryFn: () =>
+      tmdbId
+        ? isTvShow
+          ? getTmdbTvDetails(tmdbId)
+          : getTmdbMovieDetails(tmdbId)
+        : null,
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  const { data: watchData } = useQuery({
-    queryKey: ["tmdb", "watch-providers", tmdbId],
-    queryFn: () => (tmdbId ? getTmdbWatchProviders(tmdbId) : null),
+  const { data: watchData } = useQuery<TmdbWatchProviders | null>({
+    queryKey: ["tmdb", "watch-providers", isTvShow ? "tv" : "movie", tmdbId],
+    queryFn: () =>
+      tmdbId
+        ? isTvShow
+          ? getTmdbTvWatchProviders(tmdbId)
+          : getTmdbWatchProviders(tmdbId)
+        : null,
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
   });
@@ -348,16 +394,20 @@ function FilmDetailView() {
 
   // TMDB derived metrics
   const tmdbVotes = tmdbDetails?.vote_count ?? 0;
-  const runtime = tmdbDetails?.runtime;
+  // Runtime/length differs per content type: movies have a single runtime,
+  // shows have per-episode runtimes (first value) — plus season/episode counts.
+  const runtime = isTvShow ? tmdbDetails?.episode_run_time?.[0] : tmdbDetails?.runtime;
+  const seasonCount = isTvShow ? tmdbDetails?.number_of_seasons : undefined;
+  const episodeCount = isTvShow ? tmdbDetails?.number_of_episodes : undefined;
   const genres = tmdbDetails?.genres ?? [];
   const tmdbPopularity = tmdbDetails?.popularity ?? 0;
-  const budget = tmdbDetails?.budget ?? 0;
-  const revenue = tmdbDetails?.revenue ?? 0;
+  const budget = isTvShow ? 0 : (tmdbDetails?.budget ?? 0);
+  const revenue = isTvShow ? 0 : (tmdbDetails?.revenue ?? 0);
 
-  const tmdbMovieUrl = tmdbId ? `https://www.themoviedb.org/movie/${tmdbId}` : undefined;
+  const tmdbMovieUrl = tmdbId ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}` : undefined;
   const watchRegionData = watchData?.results?.[watchRegion];
   const watchLink = tmdbId
-    ? `https://www.themoviedb.org/movie/${tmdbId}/watch?locale=${watchRegion}`
+    ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}/watch?locale=${watchRegion}`
     : undefined;
   const regionLabel = WATCH_REGIONS.find((r) => r.code === watchRegion)?.label ?? watchRegion;
   const hasWatchOptions =
@@ -455,7 +505,15 @@ function FilmDetailView() {
             </h1>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-lg text-muted-foreground">
               <span>
-                Directed by <span className="text-foreground">{director}</span>
+                {isTvShow ? (
+                  <>
+                    Created by <span className="text-foreground">{director}</span>
+                  </>
+                ) : (
+                  <>
+                    Directed by <span className="text-foreground">{director}</span>
+                  </>
+                )}
               </span>
               <span>·</span>
               <span>{film.year || "—"}</span>
@@ -463,6 +521,15 @@ function FilmDetailView() {
                 <>
                   <span>·</span>
                   <span>{runtime} min</span>
+                </>
+              )}
+              {seasonCount != null && (
+                <>
+                  <span>·</span>
+                  <span>
+                    {seasonCount} season{seasonCount === 1 ? "" : "s"}
+                    {episodeCount != null ? ` · ${episodeCount} episodes` : ""}
+                  </span>
                 </>
               )}
             </div>

@@ -63,6 +63,11 @@ export interface RankedFilm {
   id: number;
   slug: string;
   title: string;
+  /** Original-language title from the catalog provider. */
+  original_title?: string | null;
+  /** First-class content type — "MOVIE" or "TV_SHOW". TV shows are NOT a
+   *  movie variant: branch on this for dates, TMDB endpoints, and labels. */
+  content_type?: "MOVIE" | "TV_SHOW";
   director: string | null;
   year: number | null;
   country_origin: string | null;
@@ -72,6 +77,8 @@ export interface RankedFilm {
   gradient_from: string | null;
   gradient_to: string | null;
   release_date: string | null;
+  /** First-air date for TV_SHOW content (release_date stays null for TV). */
+  first_air_date?: string | null;
   rank: number;
   score: number;
   prev_rank: number | null;
@@ -205,6 +212,8 @@ export const getRisingFilms = (limit: number = 10, offset: number = 0) =>
 export interface MoverFilm {
   slug: string;
   title: string;
+  original_title?: string | null;
+  content_type?: "MOVIE" | "TV_SHOW";
   poster_url: string | null;
   gradient_from: string | null;
   gradient_to: string | null;
@@ -227,12 +236,15 @@ export const getBiggestMovers = (limit: number = 10) =>
 export interface NewEntryFilm {
   slug: string;
   title: string;
+  original_title?: string | null;
+  content_type?: "MOVIE" | "TV_SHOW";
   director: string | null;
   year: number | null;
   poster_url: string | null;
   gradient_from: string | null;
   gradient_to: string | null;
   release_date: string | null;
+  first_air_date?: string | null;
   debut_date: string;
   debut_rank: number;
   debut_score: number;
@@ -248,11 +260,15 @@ export const getIndexNewEntries = (limit: number = 20) =>
 export interface WeeklyEntry {
   slug: string;
   title: string;
+  original_title?: string | null;
+  content_type?: "MOVIE" | "TV_SHOW";
   director: string | null;
   year: number | null;
   poster_url: string | null;
   gradient_from: string | null;
   gradient_to: string | null;
+  release_date: string | null;
+  first_air_date?: string | null;
   rank: number;
   score: number;
   previous_week_rank: number | null;
@@ -351,6 +367,47 @@ export const getTmdbUpcoming = (page: number = 1) =>
 
 export const getTmdbNowPlaying = (page: number = 1) =>
   apiFetch<{ results: TmdbMovie[] }>(`/api/v1/tmdb/movie/now_playing?page=${page}`);
+
+// ─── TV via backend proxy (TV shows are first-class content) ────────────────
+
+/** TV result shape: name/original_name + first_air_date, not title/release_date. */
+export interface TmdbTv {
+  id: number;
+  name: string;
+  original_name?: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  first_air_date: string;
+  overview: string;
+  popularity?: number;
+  vote_average?: number;
+  vote_count?: number;
+}
+
+export const searchTmdbTv = (title: string, year?: number) =>
+  apiFetch<{ results: TmdbTv[] }>(
+    `/api/v1/tmdb/search/tv?query=${encodeURIComponent(title)}${year ? `&year=${year}` : ""}`,
+  );
+
+export const getTmdbTvVideos = (tmdbId: number) =>
+  apiFetch<{ results: { key: string; site: string; type: string }[] }>(
+    `/api/v1/tmdb/tv/${tmdbId}/videos`,
+  );
+
+export const getTmdbTvDetails = (tmdbId: number) =>
+  apiFetch<{
+    episode_run_time: number[];
+    number_of_seasons: number;
+    number_of_episodes: number;
+    genres: { id: number; name: string }[];
+    production_countries: { iso_3166_1: string; name: string }[];
+    vote_average: number;
+    vote_count: number;
+    popularity: number;
+  }>(`/api/v1/tmdb/tv/${tmdbId}`);
+
+export const getTmdbTvWatchProviders = (tmdbId: number) =>
+  apiFetch<TmdbWatchProviders>(`/api/v1/tmdb/tv/${tmdbId}/watch/providers`);
 
 export const discoverTmdbMovies = (params: {
   genres?: string;

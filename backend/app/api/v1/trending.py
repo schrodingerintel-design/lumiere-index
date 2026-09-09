@@ -35,7 +35,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Sequence
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, or_, and_
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -48,6 +48,7 @@ from app.services.confidence import (
     tier_at_least,
     PLATFORM_LABELS,
     INTERNAL_SOURCE_KEYS,
+    CATALOG_ONLY_SOURCE_KEYS,
 )
 
 router = APIRouter()
@@ -279,13 +280,18 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
         return []
 
     # ── bulk 24h mention counts ───────────────────────────────────────────────
+    # Catalog-only sources ("tmdb") are never conversation volume.
+    catalog_ids = [
+        sid for (sid,) in db.query(Source.id).filter(Source.key.in_(CATALOG_ONLY_SOURCE_KEYS)).all()
+    ]
     since_24h = now - timedelta(hours=24)
-    count_rows = (
+    count_q = (
         db.query(Mention.film_id, func.count(Mention.id).label("cnt"))
         .where(Mention.film_id.in_(film_ids), Mention.created_at >= since_24h)
-        .group_by(Mention.film_id)
-        .all()
     )
+    if catalog_ids:
+        count_q = count_q.filter(~Mention.source_id.in_(catalog_ids))
+    count_rows = count_q.group_by(Mention.film_id).all()
     mention_counts_24h: dict[int, int] = {fid: int(cnt) for fid, cnt in count_rows}
 
     # ── 3-day attention delta from LIVE mentions (recent 3d vs prior 3d) ──────
@@ -323,7 +329,7 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
     # sources (e.g. TMDB catalog sync) are excluded from platform attribution:
     # they are not platforms audiences use, and must never render as one.
     since_30d = now - timedelta(days=30)
-    platform_rows = (
+    platform_rows_q = (
         db.query(
             Mention.film_id,
             Source.key,
@@ -331,9 +337,14 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
         )
         .join(Source, Source.id == Mention.source_id)
         .filter(Mention.film_id.in_(film_ids), Mention.created_at >= since_30d)
-        .group_by(Mention.film_id, Source.key)
-        .all()
     )
+    # ── TMDB firewall: the live sample_size fallback and platform attribution
+    # must ignore catalog-only sources ("tmdb") — metadata rows are not
+    # conversation volume and TMDB is never a "platform".
+    # (catalog_ids already resolved above for the 24h counts.)
+    if catalog_ids:
+        platform_rows_q = platform_rows_q.filter(~Mention.source_id.in_(catalog_ids))
+    platform_rows = platform_rows_q.group_by(Mention.film_id, Source.key).all()
     sample_size_map: dict[int, int] = {fid: 0 for fid in film_ids}
     top_platform_map: dict[int, str | None] = {}
     _platform_counts: dict[int, dict[str, int]] = {fid: {} for fid in film_ids}
@@ -395,10 +406,11 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
         if tier_at_least(confidence, "moderate") and not has_specific_signal:
             confidence = "low"
 
-        # Days since release (for recency framing)
+        # Days since release (for recency framing) — air_date covers both
+        # content types (release_date for movies, first_air_date for shows).
         days_since: int | None = None
-        if film.release_date:
-            days_since = max((today - film.release_date).days, 0)
+        if film.air_date is not None:
+            days_since = max((today - film.air_date).days, 0)
 
         driver = _dominant_driver(
             ca=ranking.ca_score,
@@ -478,14 +490,17 @@ def trending_films(limit: int = 20, db: Session = Depends(get_db)):
 
     # Pass 1: top-ranked films at the latest snapshot, restricted to recent
     # releases so old catalog titles don't crowd out currently relevant films.
+    # Content-type aware: movies use release_date, shows use first_air_date.
     cutoff_release = today - timedelta(days=90)
     rows = (
         db.query(Film, Ranking)
         .join(Ranking, Ranking.film_id == Film.id)
         .filter(
             Ranking.snapshot_at == snap,
-            Film.release_date.isnot(None),
-            Film.release_date >= cutoff_release,
+            or_(
+                and_(Film.content_type == "MOVIE", Film.release_date.isnot(None), Film.release_date >= cutoff_release),
+                and_(Film.content_type == "TV_SHOW", Film.first_air_date.isnot(None), Film.first_air_date >= cutoff_release),
+            ),
         )
         .order_by(desc(Ranking.score))
         .limit(max(limit * 5, 60))  # fetch deep; evidence filtering happens below
