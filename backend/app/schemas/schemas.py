@@ -188,3 +188,127 @@ class SignalHealthSummary(BaseModel):
 
 class NewsletterIn(BaseModel):
     email: EmailStr
+
+
+# ── Official Index contracts (published snapshots) ───────────────────────────
+
+class IndexEntryOut(BaseModel):
+    """One row of the official Daily Index."""
+    model_config = ConfigDict(from_attributes=True)
+
+    film_id: int
+    slug: str
+    title: str
+    director: str | None = None
+    year: int | None = None
+    poster_url: str | None = None
+    backdrop_url: str | None = None
+    gradient_from: str | None = None
+    gradient_to: str | None = None
+    release_date: date | None = None
+    genre_tag: str | None = None
+    rank: int
+    score: float
+    previous_rank: int | None = None
+    rank_delta: int = 0
+    score_delta: float | None = None
+    signal_volume: int = 0
+    confidence: str | None = None
+    source_coverage: int = 0
+    sentiment_positive: float | None = None
+    sentiment_neutral: float | None = None
+    sentiment_negative: float | None = None
+    snapshot_date: date
+
+
+class IndexMetaOut(BaseModel):
+    """Metadata about the published Index being returned."""
+    snapshot_date: date
+    published_at: datetime | None = None
+    entry_count: int = 0
+
+
+class DailyIndexOut(BaseModel):
+    """The official Daily Index — a published, immutable snapshot."""
+    meta: IndexMetaOut
+    entries: list[IndexEntryOut]
+
+
+class WeeklyEntryOut(BaseModel):
+    """One row of the official Weekly Index."""
+    model_config = ConfigDict(from_attributes=True)
+
+    film_id: int
+    slug: str
+    title: str
+    director: str | None = None
+    year: int | None = None
+    poster_url: str | None = None
+    backdrop_url: str | None = None
+    gradient_from: str | None = None
+    gradient_to: str | None = None
+    release_date: date | None = None
+    genre_tag: str | None = None
+    rank: int
+    score: float
+    previous_week_rank: int | None = None
+    rank_delta: int = 0
+    avg_daily_mentions: float = 0
+    total_signal_volume: int = 0
+    avg_sentiment: float | None = None
+    peak_daily_rank: int | None = None
+    source_coverage: int = 0
+    confidence: str | None = None
+    week_start: date
+    week_end: date
+
+
+class WeeklyMetaOut(BaseModel):
+    week_start: date
+    week_end: date
+    published_at: datetime | None = None
+    entry_count: int = 0
+
+
+class WeeklyIndexOut(BaseModel):
+    """The official Weekly Index — a published, immutable weekly snapshot."""
+    meta: WeeklyMetaOut
+    entries: list[WeeklyEntryOut]
+
+
+class MoverOut(BaseModel):
+    """Biggest Movers entry — rank-position change between published dailies."""
+    slug: str
+    title: str
+    poster_url: str | None = None
+    direction: str                     # "up" | "down"
+    movement: int                      # absolute rank positions
+    previous_rank: int | None
+    current_rank: int
+    current_score: float
+    previous_score: float | None = None
+    score_delta: float | None = None
+    confidence: str | None = None
+
+
+class MoversOut(BaseModel):
+    gainers: list[MoverOut]
+    decliners: list[MoverOut]
+
+
+class NewEntryOut(BaseModel):
+    """New Entries — films entering The Index for the first time."""
+    slug: str
+    title: str
+    director: str | None = None
+    year: int | None = None
+    poster_url: str | None = None
+    gradient_from: str | None = None
+    gradient_to: str | None = None
+    release_date: date | None = None
+    debut_date: date
+    debut_rank: int
+    debut_score: float
+    current_rank: int | None = None
+    confidence: str | None = None
+    signal_volume: int = 0

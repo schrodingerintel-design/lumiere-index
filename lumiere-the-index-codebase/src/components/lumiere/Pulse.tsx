@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUp, Sparkles, TrendingUp } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { getRisingFilms, getNewEntries, getTrendingFilms } from "@/lib/apiClient";
+import { getBiggestMovers, getIndexNewEntries, getTrendingFilms } from "@/lib/apiClient";
 import { PulseRowSkeleton } from "./Skeletons";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 
@@ -22,17 +22,15 @@ function SectionHead({ label, accent }: { label: string; accent: string }) {
 }
 
 export function PulseRow() {
-  const { data: rising, isLoading: risingLoading } = useQuery({
-    queryKey: ["films", "rising"],
-    // Arrow wrapper: React Query passes its context object as the first arg,
-    // which would otherwise become `limit=[object Object]` → 422.
-    queryFn: () => getRisingFilms(),
+  const { data: movers, isLoading: risingLoading } = useQuery({
+    queryKey: ["index", "movers"],
+    queryFn: () => getBiggestMovers(),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: newEntries } = useQuery({
-    queryKey: ["films", "new-entries"],
-    queryFn: () => getNewEntries(),
+    queryKey: ["index", "new-entries"],
+    queryFn: () => getIndexNewEntries(),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -44,8 +42,9 @@ export function PulseRow() {
 
   if (risingLoading) return <PulseRowSkeleton />;
 
-  const big = rising?.[0];
-  const topRising = rising?.slice(0, 3) ?? [];
+  const gainers = movers?.gainers ?? [];
+  const big = gainers[0];
+  const topRising = gainers.slice(0, 3);
   const topEntries = newEntries?.slice(0, 5) ?? [];
   const topTrending = trendingFilms?.slice(0, 3) ?? [];
   const maxMentions = Math.max(...topTrending.map((f) => f.mentions_24h), 1);
@@ -54,7 +53,7 @@ export function PulseRow() {
     <section className="mt-14 grid grid-cols-1 gap-8 px-4 md:grid-cols-2 xl:grid-cols-3 lg:px-6">
       {/* Biggest Mover + Rising Now */}
       <div className="flex h-full flex-col">
-        <SectionHead accent="Momentum" label="Rising Now" />
+        <SectionHead accent="Movement" label="Biggest Movers" />
         {big && (
           <Link
             to="/films/$slug"
@@ -82,13 +81,12 @@ export function PulseRow() {
             <div className="absolute inset-x-4 bottom-3 text-white">
               <div className="font-display text-2xl leading-tight">{big.title}</div>
               <div className="mt-0.5 text-xs text-white/80">
-                {big.director} ·{" "}
-                {big.prev_rank && big.prev_rank > 0 ? (
+                {big.previous_rank != null ? (
                   <>
-                    {big.prev_rank} to #{big.rank}
+                    #{big.previous_rank} → #{big.current_rank} · ↑{big.movement}
                   </>
                 ) : (
-                  <>New entry — debuts at #{big.rank}</>
+                  <>Now #{big.current_rank}</>
                 )}
               </div>
             </div>
@@ -104,18 +102,14 @@ export function PulseRow() {
               >
                 <div className="min-w-0">
                   <div className="truncate font-display">{r.title}</div>
-                  <div className="truncate text-xs text-muted-foreground">{r.director}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    #{r.previous_rank} → #{r.current_rank}
+                  </div>
                 </div>
-                {r.is_fallback ? (
-                  <span className="font-mono text-[10px] tabular text-muted-foreground/50">
-                    Charted
-                  </span>
-                ) : (r.movement ?? 0) > 0 ? (
-                  <span className="flex items-center gap-0.5 font-mono text-xs tabular text-up">
-                    <ArrowUp className="h-3 w-3" />
-                    {r.movement}
-                  </span>
-                ) : null}
+                <span className="flex items-center gap-0.5 font-mono text-xs tabular text-up">
+                  <ArrowUp className="h-3 w-3" />
+                  {r.movement}
+                </span>
               </Link>
             </li>
           ))}
@@ -142,12 +136,8 @@ export function PulseRow() {
                   <div className="truncate text-xs text-muted-foreground">{n.director}</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono text-sm font-semibold tabular">#{n.rank}</div>
-                  {n.is_fallback ? (
-                    <div className="font-mono text-[10px] text-muted-foreground/50">On Chart</div>
-                  ) : (
-                    <div className="font-mono text-[10px] font-semibold text-live">NEW</div>
-                  )}
+                  <div className="font-mono text-sm font-semibold tabular">#{n.debut_rank}</div>
+                  <div className="font-mono text-[10px] font-semibold text-live">NEW</div>
                 </div>
               </Link>
             </li>

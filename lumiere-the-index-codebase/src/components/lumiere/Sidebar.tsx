@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Home,
-  Flame,
+  MoveVertical,
   Sparkles,
   Hash,
   Film,
@@ -20,7 +20,7 @@ import { SearchBox } from "./SearchBox";
 export const NAV_ITEMS = [
   { to: "/", label: "Home", icon: Home },
   { to: "/top-100", label: "Top 100", icon: Trophy },
-  { to: "/rising", label: "Rising", icon: Flame },
+  { to: "/rising", label: "Biggest Movers", icon: MoveVertical },
   { to: "/watchlist", label: "Watchlist", icon: Bookmark },
   { to: "/new-entries", label: "New Entries", icon: Sparkles },
   { to: "/trending", label: "Trending Topics", icon: Hash },

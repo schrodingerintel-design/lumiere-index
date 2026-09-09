@@ -14,4 +14,13 @@ from .schemas import (
     SourceSignalBreakdown,
     SignalFunnel,
     NewsletterIn,
+    IndexEntryOut,
+    IndexMetaOut,
+    DailyIndexOut,
+    WeeklyEntryOut,
+    WeeklyMetaOut,
+    WeeklyIndexOut,
+    MoverOut,
+    MoversOut,
+    NewEntryOut,
 )

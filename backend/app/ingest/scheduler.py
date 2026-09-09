@@ -36,6 +36,11 @@ _INTERVALS = {
     "discover_candidates": 600,
     "recompute_rankings": 900,
     "rollup_daily": 3600,
+    # Official publication cadence — idempotent per date/week, so checking
+    # hourly is the safe way to guarantee a same-day publication without
+    # duplicates (the publish job itself is a no-op once published).
+    "publish_daily_index": 3600,
+    "publish_weekly_index": 6 * 3600,
 }
 
 _last_run: dict[str, float] = {}
@@ -95,6 +100,8 @@ async def _loop() -> None:
         "ingest_youtube": 180,
         "ingest_tiktok": 210,
         "rollup_daily": 240,
+        "publish_daily_index": 300,
+        "publish_weekly_index": 330,
     }
     booted_at = time.monotonic()
     for task, delay in start_delays.items():

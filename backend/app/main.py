@@ -6,7 +6,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres
+from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres, index
 from app.utils.logging_config import setup_logging
 from app.utils.rate_limit import SimpleRateLimiterMiddleware
 
@@ -130,6 +130,7 @@ async def add_cache_headers(request, call_next):
     return response
 
 app.include_router(films.router, prefix="/api/v1", tags=["films"])
+app.include_router(index.router, prefix="/api/v1", tags=["index"])
 app.include_router(trending.router, prefix="/api/v1", tags=["trending"])
 app.include_router(meta.router, prefix="/api/v1", tags=["meta"])
 app.include_router(newsletter.router, prefix="/api/v1", tags=["newsletter"])

@@ -200,6 +200,76 @@ export const getNewReleaseFilms = (limit: number = 100, offset: number = 0) =>
 export const getRisingFilms = (limit: number = 10, offset: number = 0) =>
   apiFetch<RankedFilm[]>(`/api/v1/films/rising?limit=${limit}&offset=${offset}`);
 
+// ── Official Index (published snapshots) ───────────────────────────────────
+
+export interface MoverFilm {
+  slug: string;
+  title: string;
+  poster_url: string | null;
+  gradient_from: string | null;
+  gradient_to: string | null;
+  direction: "up" | "down";
+  movement: number;
+  previous_rank: number | null;
+  current_rank: number;
+  current_score: number;
+  previous_score: number | null;
+  score_delta: number | null;
+  confidence: string | null;
+}
+
+/** Biggest Movers — largest rank changes between published Daily Indexes. */
+export const getBiggestMovers = (limit: number = 10) =>
+  apiFetch<{ gainers: MoverFilm[]; decliners: MoverFilm[] }>(
+    `/api/v1/index/movers?limit=${limit}`,
+  );
+
+export interface NewEntryFilm {
+  slug: string;
+  title: string;
+  director: string | null;
+  year: number | null;
+  poster_url: string | null;
+  gradient_from: string | null;
+  gradient_to: string | null;
+  release_date: string | null;
+  debut_date: string;
+  debut_rank: number;
+  debut_score: number;
+  current_rank: number | null;
+  confidence: string | null;
+  signal_volume: number;
+}
+
+/** New Entries — films entering The Index for the first time. */
+export const getIndexNewEntries = (limit: number = 20) =>
+  apiFetch<NewEntryFilm[]>(`/api/v1/index/new-entries?limit=${limit}`);
+
+export interface WeeklyEntry {
+  slug: string;
+  title: string;
+  director: string | null;
+  year: number | null;
+  poster_url: string | null;
+  gradient_from: string | null;
+  gradient_to: string | null;
+  rank: number;
+  score: number;
+  previous_week_rank: number | null;
+  rank_delta: number;
+  total_signal_volume: number;
+  confidence: string | null;
+  week_start: string;
+  week_end: string;
+}
+
+/** The official Weekly Index — a published weekly Top 100. */
+export const getWeeklyIndex = (limit: number = 100) =>
+  apiFetch<{
+    meta: { week_start: string; week_end: string; published_at: string | null; entry_count: number };
+    entries: WeeklyEntry[];
+  }>(`/api/v1/index/weekly?limit=${limit}`);
+
 export const getNewEntries = (limit: number = 100, offset: number = 0) =>
   apiFetch<RankedFilm[]>(`/api/v1/films/new-entries?limit=${limit}&offset=${offset}`);
 

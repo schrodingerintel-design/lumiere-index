@@ -21,6 +21,15 @@ celery.conf.beat_schedule = {
         "schedule": settings.refresh_interval_minutes * 60.0,
     },
     "rollup-daily": {"task": "app.workers.tasks.rollup_daily", "schedule": crontab(minute=0)},
+    # Official publication cadence — the public chart layer.
+    "publish-daily-index": {
+        "task": "app.workers.tasks.publish_daily_index",
+        "schedule": crontab(hour=6, minute=30),
+    },
+    "publish-weekly-index": {
+        "task": "app.workers.tasks.publish_weekly_index",
+        "schedule": crontab(day_of_week=1, hour=7, minute=0),
+    },
 }
 
 import app.workers.tasks  # noqa: E402,F401

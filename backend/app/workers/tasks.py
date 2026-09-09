@@ -105,3 +105,27 @@ def recompute_rankings() -> str:
 def rollup_daily() -> None:
     with SessionLocal() as db:
         _rollup(db)
+
+
+# ── Official Index publication jobs ─────────────────────────────────────────
+# The public chart is published once per day / once per week even though signal
+# ingestion and the continuous ranking computation keep their own cadences.
+
+@celery.task
+def publish_daily_index() -> str | None:
+    """Publish the official Daily Index (idempotent per date)."""
+    from app.services.index_publication import publish_daily_index as _publish
+
+    with SessionLocal() as db:
+        result = _publish(db)
+        return result.isoformat() if result else None
+
+
+@celery.task
+def publish_weekly_index() -> str | None:
+    """Publish the official Weekly Index (idempotent per week)."""
+    from app.services.index_publication import publish_weekly_index as _publish
+
+    with SessionLocal() as db:
+        result = _publish(db)
+        return result.isoformat() if result else None

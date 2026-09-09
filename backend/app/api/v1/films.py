@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, date, timezone
 from difflib import SequenceMatcher
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session
 
@@ -124,63 +124,58 @@ def new_releases(
     ]
 
 
-@router.get("/films/rising", response_model=list[RankedFilm])
+@router.get("/films/rising", response_model=list[RankedFilm], deprecated=True)
 def rising_films(
+    response: Response,
     limit: int = Query(10, ge=1, le=200),
     offset: int = Query(0, ge=0),
     genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
     db: Session = Depends(get_db),
 ):
+    """DEPRECATED — replaced by /api/v1/index/movers (Biggest Movers).
+
+    Kept temporarily for backwards compatibility with existing clients.
+    The Rising concept is no longer a primary ranking product; this endpoint
+    now returns the biggest rank-based gainers from the published daily
+    snapshot (same shape as before, minus fallback padding).  Clients should
+    migrate to /api/v1/index/movers.
+    """
+    response.headers["Sunset"] = "Wed, 01 Oct 2026 00:00:00 GMT"
+    response.headers["Deprecation"] = "true"
     snap = _latest_snapshot(db)
     if not snap:
         return []
 
-    # Prefer films with positive movement, limited to recent releases
+    # Biggest rank-based gainers from the latest continuous snapshot —
+    # identical semantics to Biggest Movers, minus the padded fallback rows
+    # the old Rising product used to return.
     from datetime import date as _date
     cutoff = _date.today() - timedelta(days=90)
     rows = (
         _ranked_query(db, snap, genre=genre)
-        .filter(
-            Ranking.movement > 0,
-            Film.release_date.isnot(None),
-            Film.release_date >= cutoff,
-        )
+        .filter(Ranking.movement > 0)
         .order_by(desc(Ranking.movement))
         .offset(offset)
         .limit(limit)
         .all()
     )
-    real_count = len(rows)
-
-    # Fallback: top-ranked recent films if positive movers are sparse
-    if real_count < limit:
-        existing_ids = {f.id for f, _ in rows}
-        q = _ranked_query(db, snap).filter(
-            Film.release_date.isnot(None),
-            Film.release_date >= cutoff,
-        )
-        if existing_ids:
-            q = q.filter(~Film.id.in_(existing_ids))
-        extra_rows = q.limit(limit - real_count).all()
-        rows = list(rows) + list(extra_rows)
-
-    # Last resort: any ranked films if still short
+    # Fallback: keep the response non-empty for older clients, but mark it.
     if len(rows) < limit:
         existing_ids = {f.id for f, _ in rows}
-        q = _ranked_query(db, snap)
+        q = _ranked_query(db, snap, genre=genre)
         if existing_ids:
             q = q.filter(~Film.id.in_(existing_ids))
-        extra_rows = q.limit(limit - len(rows)).all()
-        rows = list(rows) + list(extra_rows)
+        extra = q.limit(limit - len(rows)).all()
+        rows = list(rows) + list(extra)
 
     mentions = _mentions_map(db, [f.id for f, _ in rows])
     result = []
+    real_count = min(len(rows), limit)
     for i, (f, r) in enumerate(rows):
-        is_fallback = i >= real_count
         result.append(
             _to_ranked(f, r).model_copy(update={
                 "mentions_total": mentions.get(f.id, 0),
-                "is_fallback": is_fallback,
+                "is_fallback": i >= real_count and r.movement <= 0,
             })
         )
     return result
