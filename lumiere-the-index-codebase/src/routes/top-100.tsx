@@ -121,7 +121,7 @@ function Top100() {
                                 {Math.abs(change)}
                               </span>
                             ) : (
-                              <span className="font-mono text-[11px] text-primary" title="Held its rank">
+                              <span className="font-mono text-[11px] text-muted-foreground" title="Held its rank">
                                 —
                               </span>
                             )}
@@ -145,7 +145,7 @@ function Top100() {
                             </span>
                           ) : (
                             <span
-                              className="font-mono text-sm text-primary"
+                              className="font-mono text-sm text-muted-foreground"
                               title="Held its rank"
                             >
                               —

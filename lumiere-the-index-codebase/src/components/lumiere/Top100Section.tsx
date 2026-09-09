@@ -36,7 +36,7 @@ function MovementBadge({ film }: { film: RankedFilm }) {
     );
   }
   return (
-    <span className="font-mono text-sm text-yellow-300/90" title="Held its rank">
+    <span className="font-mono text-sm text-muted-foreground" title="Held its rank">
       —
     </span>
   );

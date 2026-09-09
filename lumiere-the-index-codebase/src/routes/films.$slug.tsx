@@ -619,7 +619,7 @@ function FilmDetailView() {
                     <ArrowDown className="h-5 w-5" /> {Math.abs(film.movement ?? 0)}
                   </span>
                 ) : (
-                  <span className="font-medium text-yellow-300/90" title="Held its rank">—</span>
+                  <span className="font-medium text-muted-foreground" title="Held its rank">—</span>
                 )}
               </div>
             </div>
@@ -814,7 +814,7 @@ function FilmDetailView() {
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               Lumière Index Score
             </div>
-            <div className="mt-2 font-mono text-6xl tabular text-primary">
+            <div className="mt-2 font-mono text-6xl tabular text-cream">
               {film.score?.toFixed(1) || "0.0"}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-foreground/10 pt-4">

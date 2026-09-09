@@ -82,7 +82,7 @@ function MoverCard({
           >
             {up ? "↑" : "↓"} {film.movement} {film.movement === 1 ? "position" : "positions"}
           </span>
-          <span className="font-mono text-2xl tabular text-primary font-semibold">
+          <span className="font-mono text-2xl tabular text-cream font-semibold">
             {film.current_score?.toFixed(1)}
           </span>
         </div>

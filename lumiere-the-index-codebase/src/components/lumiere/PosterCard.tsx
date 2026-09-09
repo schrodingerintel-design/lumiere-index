@@ -89,7 +89,7 @@ export function PosterCard({
               <ArrowDown className="h-3 w-3" />{Math.abs(change)}
             </span>
           ) : trend === "steady" ? (
-            <span className="font-mono text-[10px] text-yellow-300/80">—</span>
+            <span className="font-mono text-[10px] text-muted-foreground">—</span>
           ) : null}
         </div>
         <div className="mt-0.5 truncate font-display text-sm font-medium leading-snug">

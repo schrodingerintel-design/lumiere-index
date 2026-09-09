@@ -56,20 +56,21 @@
 :root {
   --radius: 0.5rem;
 
-  /* Brand palette — deep black with a violet undertone. Near-true black like
-     a theater with the lights fully out; the violet accent carries the glow. */
-  --cream:       oklch(0.955 0.012 300);  /* violet-tinted off-white */
-  --ink:         oklch(0.06 0.012 295);   /* deep black, faint violet soul */
-  --surface:     oklch(0.105 0.02 295);   /* card/panel surface */
-  --surface-alt: oklch(0.14 0.026 295);   /* slightly lighter surface */
-  --border-col:  oklch(1 0 0 / 0.09);
+  /* Brand palette — black canvas, ivory type, red editorial accents.
+     Deep black like a theater with the lights out; ivory carries the text;
+     cinematic red is reserved for emphasis, never the default. */
+  --cream:       oklch(0.955 0.008 90);   /* warm ivory — #F4F1EA */
+  --ink:         oklch(0.09 0 0);         /* deep black — #080808 */
+  --surface:     oklch(0.155 0 0);        /* near-black cards — #111111 */
+  --surface-alt: oklch(0.20 0 0);         /* elevated surface — #1a1a1a */
+  --border-col:  oklch(1 0 0 / 0.085);    /* dividers — #242424 on black */
 
-  /* Accent: violet — the neon marquee glow */
-  --forest:      oklch(0.72 0.19 300);    /* vivid violet primary */
-  --forest-deep: oklch(0.62 0.17 300);    /* deeper violet */
-  --live:        oklch(0.74 0.16 152);
-  --up:          oklch(0.74 0.16 152);
-  --down:        oklch(0.65 0.22 27);
+  /* Accent: cinematic red — the editorial exclamation mark */
+  --forest:      oklch(0.58 0.2 27);      /* brand red — #E52B2B */
+  --forest-deep: oklch(0.68 0.13 152);    /* positive green — #4CAF72 */
+  --live:        oklch(0.68 0.13 152);
+  --up:          oklch(0.68 0.13 152);
+  --down:        oklch(0.62 0.15 25);     /* negative red — #D95353 */
 
   /* Semantic tokens → dark mode */
   --background:            var(--ink);
@@ -79,13 +80,13 @@
   --popover:               var(--surface);
   --popover-foreground:    var(--cream);
   --primary:               var(--forest);
-  --primary-foreground:    oklch(0.06 0.012 295);
+  --primary-foreground:    oklch(0.98 0.005 90);
   --secondary:             var(--surface-alt);
   --secondary-foreground:  var(--cream);
   --muted:                 var(--surface);
-  --muted-foreground:      oklch(0.68 0.03 290);
+  --muted-foreground:      oklch(0.72 0.005 90);
   --accent:                var(--forest);
-  --accent-foreground:     oklch(0.06 0.012 295);
+  --accent-foreground:     oklch(0.98 0.005 90);
   --destructive:           var(--down);
   --destructive-foreground: var(--cream);
   --border:                var(--border-col);
@@ -159,13 +160,14 @@
 }
 
 /* Index Score — the product. Typography carries the authority: tabular mono,
-   tight tracking, brand gold. No glow, no shadow — the number is the hero. */
+   tight tracking, warm ivory. The number itself is NEVER the brand red — red
+   lives in the labels and accents around it. No glow, no shadow. */
 @utility index-score {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   letter-spacing: -0.03em;
-  color: var(--forest);
+  color: var(--cream);
   line-height: 1;
 }
 
@@ -247,15 +249,15 @@
   will-change: transform, opacity;
 }
 .orb-violet {
-  background: radial-gradient(circle, oklch(0.45 0.2 300 / 0.5), transparent 70%);
+  background: radial-gradient(circle, oklch(0.45 0.16 27 / 0.28), transparent 70%);
   animation: driftA 26s ease-in-out infinite alternate;
 }
 .orb-violet-deep {
-  background: radial-gradient(circle, oklch(0.35 0.16 285 / 0.55), transparent 70%);
+  background: radial-gradient(circle, oklch(0.3 0.1 27 / 0.32), transparent 70%);
   animation: driftB 34s ease-in-out infinite alternate;
 }
 .orb-magenta {
-  background: radial-gradient(circle, oklch(0.4 0.16 330 / 0.32), transparent 70%);
+  background: radial-gradient(circle, oklch(0.38 0.08 60 / 0.2), transparent 70%);
   animation: driftC 40s ease-in-out infinite alternate;
 }
 @keyframes driftA {
@@ -275,13 +277,13 @@
    Nav and sidebar sit over the ambient orbs, so a real backdrop blur lets
    the live violet light glow through: frosted glass, not a flat highlight. */
 @utility frost {
-  background-color: oklch(0.06 0.012 295 / 0.65);
+  background-color: oklch(0.09 0 0 / 0.65);
   backdrop-filter: blur(22px) saturate(1.35);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
 }
 /* Softer tier for the sidebar rail and drawer. */
 @utility frost-soft {
-  background-color: oklch(0.06 0.012 295 / 0.5);
+  background-color: oklch(0.09 0 0 / 0.5);
   backdrop-filter: blur(18px) saturate(1.25);
   -webkit-backdrop-filter: blur(18px) saturate(1.25);
 }
@@ -347,7 +349,7 @@
 
 /* Selection highlight */
 ::selection {
-  background: oklch(0.55 0.2 300 / 0.4);
+  background: oklch(0.58 0.2 27 / 0.45);
   color: var(--cream);
 }
 

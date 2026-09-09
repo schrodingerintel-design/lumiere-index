@@ -215,7 +215,7 @@ function CalendarPage() {
                       <span
                         className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
                           countdown.isPast
-                            ? "bg-forest-deep/20 text-forest-deep"
+                            ? "bg-foreground/10 text-muted-foreground"
                             : "bg-primary/15 text-primary"
                         }`}
                       >
@@ -298,7 +298,7 @@ function CalendarPage() {
                         <span
                           className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
                             countdown.isPast
-                              ? "bg-forest-deep/20 text-forest-deep"
+                              ? "bg-foreground/10 text-muted-foreground"
                               : "bg-primary/15 text-primary"
                           }`}
                         >

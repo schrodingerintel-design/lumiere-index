@@ -204,7 +204,7 @@ function FilmPicker({
                     {f.director || "Director TBA"} · {f.year}
                   </div>
                 </div>
-                <div className="ml-auto font-mono text-sm text-primary">{f.score?.toFixed(1)}</div>
+                <div className="ml-auto font-mono text-sm text-cream">{f.score?.toFixed(1)}</div>
               </button>
             ))
           )}

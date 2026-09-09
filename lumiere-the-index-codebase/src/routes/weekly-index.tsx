@@ -78,7 +78,7 @@ function WeeklyMovement({ entry }: { entry: WeeklyEntry }) {
     );
   }
   return (
-    <span className="font-mono text-sm text-primary" title="Held last week's rank">
+    <span className="font-mono text-sm text-muted-foreground" title="Held last week's rank">
       —
     </span>
   );

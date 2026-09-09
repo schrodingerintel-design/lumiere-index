@@ -172,7 +172,7 @@ export function Hero() {
               <ArrowDown className="h-3.5 w-3.5" /> {Math.abs(move)}
             </span>
           ) : (
-            <span className="text-yellow-300/90" title="Held its rank">—</span>
+            <span className="text-muted-foreground" title="Held its rank">—</span>
           )}
           {!isNew && weeks > 0 && <span>{weeks} {weeks === 1 ? "week" : "weeks"} on chart</span>}
           <span className="hidden sm:inline">{todayLabel()}</span>
@@ -191,7 +191,7 @@ export function Hero() {
           {/* Index Score — the product. Big number in brand gold, label underneath. */}
           <div className="mt-6 flex items-end gap-4">
             <div>
-              <div className="font-mono text-6xl font-bold leading-none tracking-tight text-primary sm:text-7xl lg:text-8xl">
+              <div className="font-mono text-6xl font-bold leading-none tracking-tight text-cream sm:text-7xl lg:text-8xl">
                 {score?.toFixed(1) ?? "—"}
               </div>
               <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.3em] text-white/80">
