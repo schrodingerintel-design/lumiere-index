@@ -10,9 +10,12 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: str = Field(
-        default="http://localhost:8080,https://lumiere-index.vercel.app",
+        # "*" by default: this is a public, read-only, keyless API (no cookies,
+        # no sessions) with its own rate limiting — any frontend host (Vercel,
+        # Railway, Freebuff, custom domains) must be able to read it.
+        default="*",
         validation_alias=AliasChoices("cors_origins", "CORS_ORIGINS"),
-        description="Comma-separated list of allowed CORS origins",
+        description="Comma-separated list of allowed CORS origins, or * for all",
     )
 
     # -- MySQL ---------------------------------------------------------------

@@ -109,11 +109,14 @@ app.add_middleware(SimpleRateLimiterMiddleware, requests_per_minute=120)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_list,
+    # Public read-only API: "*" reflects any origin (no credentials are ever
+    # sent, so the wildcard is safe and lets any frontend host integrate).
+    allow_origins=settings.cors_list if "*" not in settings.cors_list else ["*"],
     allow_origin_regex=(
         r"https://lumiere-index.*\.vercel\.app"
         r"|https://lumiere-index-production\.up\.railway\.app"
         r"|http://localhost(:\d+)?"
+        r"|https://.*"   # any https frontend host — the API is public and keyless
     ),
     allow_methods=["*"],
     allow_headers=["*"],
