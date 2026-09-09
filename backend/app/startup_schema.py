@@ -113,6 +113,15 @@ def backfill_missing_columns(engine: Engine) -> list[str]:
     try:
         from app.db import Base
 
+        # Phase 0 — create any entirely missing model tables. A history-less
+        # DB gets stamped head (no migration replay), which means migrations
+        # that would have created new tables never run — create_all brings
+        # exactly those into existence (no-op for tables already present).
+        missing = [t for t in Base.metadata.sorted_tables if not inspect(engine).has_table(t.name)]
+        if missing:
+            Base.metadata.create_all(bind=engine, tables=missing)
+            log.info("startup_schema: created missing tables: %s", [t.name for t in missing])
+
         # Phase 1 — reflect the plan and CLOSE the connection before writing.
         # A live inspector holding a pooled connection (StaticPool reuses one
         # DBAPI connection!) must never overlap with the write connection, or
@@ -121,7 +130,7 @@ def backfill_missing_columns(engine: Engine) -> list[str]:
         inspector = inspect(engine)
         for table in Base.metadata.sorted_tables:
             if not inspector.has_table(table.name):
-                continue  # fresh tables are alembic's job
+                continue  # just created above; anything else is unreachable
             existing = {c["name"] for c in inspector.get_columns(table.name)}
             for column in table.columns:
                 if column.name in existing:
