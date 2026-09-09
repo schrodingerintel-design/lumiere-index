@@ -24,7 +24,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -577,19 +577,34 @@ def biggest_movers(db: Session, limit: int = 10) -> dict[str, list[MoverRow]]:
     # Movers are computed against the previous PUBLISHED daily, not just the
     # immediately-prior snapshot date — using the last rank each film held
     # keeps movement correct across skipped publication days.
-    latest_published_before = db.query(
-        DailyIndexSnapshot.film_id,
-        DailyIndexSnapshot.rank,
-        DailyIndexSnapshot.score,
-        func.max(DailyIndexSnapshot.snapshot_date),
-    ).filter(
-        DailyIndexSnapshot.snapshot_date < latest_date
-    ).group_by(DailyIndexSnapshot.film_id).all()
-    by_film_prior = {fid: (rank, score) for fid, rank, score, _ in latest_published_before}
-    if prior_date is None:
-        by_film_prior = {
-            fid: (rank, score) for fid, (rank, score) in by_film_prior.items()
-        }
+    # Two-step (max date per film, then fetch those rows): selecting bare
+    # rank/score next to an aggregate would violate MySQL 8's default
+    # ONLY_FULL_GROUP_BY mode and 500 in production.
+    max_dates = dict(
+        db.query(
+            DailyIndexSnapshot.film_id,
+            func.max(DailyIndexSnapshot.snapshot_date),
+        )
+        .filter(DailyIndexSnapshot.snapshot_date < latest_date)
+        .group_by(DailyIndexSnapshot.film_id)
+        .all()
+    )
+    by_film_prior: dict[int, tuple[int, float]] = {}
+    if max_dates:
+        prior_rows = (
+            db.query(
+                DailyIndexSnapshot.film_id,
+                DailyIndexSnapshot.rank,
+                DailyIndexSnapshot.score,
+            )
+            .filter(
+                tuple_(DailyIndexSnapshot.film_id, DailyIndexSnapshot.snapshot_date).in_(
+                    list(max_dates.items())
+                )
+            )
+            .all()
+        )
+        by_film_prior = {fid: (rank, score) for fid, rank, score in prior_rows}
 
     film_ids = list(by_film_latest.keys())
     films = {
