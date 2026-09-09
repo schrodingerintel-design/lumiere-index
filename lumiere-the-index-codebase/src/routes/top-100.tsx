@@ -81,7 +81,7 @@ function Top100() {
               : films?.map((f) => {
                   const change = f.movement ?? null;
                   const director =
-                    f.director && f.director !== "Unknown" ? f.director : "Director TBA";
+                    f.director && f.director !== "Unknown" ? f.director : null;
                   // NEW entries have no previous snapshot — a week count would be
                   // meaningless (and contradictory) next to the NEW badge.
                   const weeks = f.prev_rank == null ? null : (f.weeks_on_chart ?? 1);
@@ -159,7 +159,7 @@ function Top100() {
                               {f.title}
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
-                              {director} · {f.year}
+                              {director ? `${director} · ${f.year}` : f.year}
                               <span className="sm:hidden">
                                 {weeks != null ? ` · ${weeks} ${weeks === 1 ? "wk" : "wks"}` : ""}
                               </span>

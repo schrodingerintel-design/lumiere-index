@@ -128,7 +128,7 @@ function Methodology() {
           items={[
             "Signal collection — continuous. Audience observations are ingested from every source around the clock.",
             "The official Top 100 — a published ranking cycle. Each cycle writes one immutable snapshot; ranks, movement, and weeks-on-chart are computed between consecutive snapshots only.",
-            "Rising Now — short-term momentum between ranking cycles. It highlights titles climbing fastest right now; it is not a separate ranking with separate math.",
+            "Biggest Movers — derived from rank changes between consecutive published Indexes. It highlights the titles climbing or falling fastest; it is not a separate ranking with separate math.",
           ]}
         />
         <p>

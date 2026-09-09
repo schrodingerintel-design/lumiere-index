@@ -38,7 +38,7 @@ function formatDate(iso: string | null): string {
 }
 
 function FilmCard({ film }: { film: import("@/lib/apiClient").NewEntryFilm }) {
-  const director = film.director && film.director !== "Unknown" ? film.director : "Director TBA";
+  const director = film.director && film.director !== "Unknown" ? film.director : null;
   return (
     <div className="glass card-lift overflow-hidden rounded-2xl">
       <div className="relative aspect-[2/3] overflow-hidden">
@@ -59,7 +59,7 @@ function FilmCard({ film }: { film: import("@/lib/apiClient").NewEntryFilm }) {
         </div>
       </div>
       <div className="p-3 text-xs text-muted-foreground">
-        {director} · Index Score {film.debut_score?.toFixed(1)}
+        {director ? `${director} · ` : ""}Index Score {film.debut_score?.toFixed(1)}
       </div>
     </div>
   );

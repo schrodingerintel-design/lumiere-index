@@ -179,7 +179,7 @@ function GenresPage() {
             </div>
           ) : (
             <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
-              No movies found for {selectedGenre.name}.
+              No titles found for {selectedGenre.name} yet.
             </div>
           )}
         </div>

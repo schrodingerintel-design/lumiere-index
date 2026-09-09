@@ -75,21 +75,21 @@ function About() {
           <Compass className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For Audiences</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            A platform audiences use to discover what's happening.
+            See which films the world is talking about — ranked by real signals, not promotion.
           </p>
         </div>
         <div className="glass rounded-2xl border border-foreground/10 p-5">
           <TrendingUp className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For Creators</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            A platform creators use to understand their impact.
+            Follow how your work is landing across search, social, and community — as it happens.
           </p>
         </div>
         <div className="glass rounded-2xl border border-foreground/10 p-5">
           <Eye className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For The Industry</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            A platform the industry uses to understand audiences.
+            Track cultural momentum before it shows up at the box office.
           </p>
         </div>
       </div>

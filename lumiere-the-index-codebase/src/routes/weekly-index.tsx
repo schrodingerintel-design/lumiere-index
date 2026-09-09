@@ -91,7 +91,7 @@ function signalLabel(volume: number): string {
 /** The week's #1 — the Index Score leads, everything else supports it. */
 function WeeklyChampion({ entry }: { entry: WeeklyEntry }) {
   const director =
-    entry.director && entry.director !== "Unknown" ? entry.director : "Director TBA";
+    entry.director && entry.director !== "Unknown" ? entry.director : null;
   const isNew = entry.previous_week_rank == null;
 
   return (
@@ -105,7 +105,7 @@ function WeeklyChampion({ entry }: { entry: WeeklyEntry }) {
             {entry.title}
           </h2>
           <div className="mt-1.5 text-sm text-muted-foreground">
-            {director} · {entry.year ?? "—"}
+            {director ? `${director} · ${entry.year ?? "—"}` : (entry.year ?? "")}
             {isNew ? " · First week on the chart" : ""}
           </div>
 
@@ -206,7 +206,7 @@ function WeeklyIndex() {
                   const director =
                     entry.director && entry.director !== "Unknown"
                       ? entry.director
-                      : "Director TBA";
+                      : null;
                   return (
                     <li key={entry.slug}>
                       <Link
@@ -234,7 +234,9 @@ function WeeklyIndex() {
                               {entry.title}
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
-                              {director} · {entry.year ?? "—"}
+                              {director
+                                ? `${director} · ${entry.year ?? "—"}`
+                                : (entry.year ?? "")}
                             </div>
                           </div>
                         </div>

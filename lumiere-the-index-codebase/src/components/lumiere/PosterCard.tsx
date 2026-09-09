@@ -63,8 +63,8 @@ export function PosterCard({
             }}
           />
         )}
-        {/* Index Score — gold, quiet, on the artwork. */}
-        <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-bold leading-none text-primary">
+        {/* Index Score — ivory, quiet, on the artwork. */}
+        <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-bold leading-none text-cream">
           {film.score?.toFixed(1)}
         </div>
         {trend === "new" && (

@@ -148,7 +148,7 @@ function FilmPicker({
           <div className="absolute inset-x-2 bottom-2 text-white">
             <div className="font-serif text-sm leading-tight">{value.title}</div>
             <div className="font-mono text-[10px] text-white/70">
-              {value.director || "Director TBA"} · {value.year}
+              {value.director ? `${value.director} · ${value.year}` : String(value.year)}
             </div>
           </div>
         </div>
@@ -201,7 +201,7 @@ function FilmPicker({
                 <div className="min-w-0">
                   <div className="truncate font-serif">{f.title}</div>
                   <div className="font-mono text-[10px] text-muted-foreground">
-                    {f.director || "Director TBA"} · {f.year}
+                    {f.director ? `${f.director} · ${f.year}` : String(f.year)}
                   </div>
                 </div>
                 <div className="ml-auto font-mono text-sm text-cream">{f.score?.toFixed(1)}</div>
@@ -239,13 +239,13 @@ function CompareRow({
         {label}
       </div>
       <div
-        className={`text-left font-mono text-lg tabular sm:col-start-1 sm:row-start-1 sm:text-right ${aWins ? "text-primary font-semibold" : "text-foreground/70"}`}
+        className={`text-left font-mono text-lg tabular sm:col-start-1 sm:row-start-1 sm:text-right ${aWins ? "text-cream font-semibold" : "text-foreground/70"}`}
       >
         {a !== null ? format(a) : "—"}
         {aWins && <span className="ml-1.5 text-[10px] text-primary">▲</span>}
       </div>
       <div
-        className={`text-right font-mono text-lg tabular sm:col-start-3 sm:row-start-1 sm:text-left ${bWins ? "text-primary font-semibold" : "text-foreground/70"}`}
+        className={`text-right font-mono text-lg tabular sm:col-start-3 sm:row-start-1 sm:text-left ${bWins ? "text-cream font-semibold" : "text-foreground/70"}`}
       >
         {b !== null ? format(b) : "—"}
         {bWins && <span className="ml-1.5 text-[10px] text-primary">▲</span>}

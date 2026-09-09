@@ -15,7 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative min-h-screen">
-      {/* Live blur — ambient violet light drifting behind everything. Pure
+      {/* Live blur — ambient light drifting behind everything. Pure
           atmosphere: fixed, pointer-transparent, behind all content (z-0). */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="ambient-orb orb-violet left-[-10%] top-[-15%] h-[55vmax] w-[55vmax]" />

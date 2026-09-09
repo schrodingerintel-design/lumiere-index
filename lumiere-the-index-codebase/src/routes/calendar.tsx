@@ -320,7 +320,7 @@ function CalendarPage() {
                       </div>
 
                       <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {m.overview || "Overview coming soon."}
+                        {m.overview || "Synopsis not yet available."}
                       </p>
                     </div>
 

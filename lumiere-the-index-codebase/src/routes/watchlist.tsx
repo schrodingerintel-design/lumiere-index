@@ -176,7 +176,8 @@ function WatchlistPage() {
                 {/* Info */}
                 <div className="p-4 space-y-3">
                   <div className="text-xs text-muted-foreground">
-                    {film.director || "Director TBA"} · {film.year || "—"}
+                    {film.director ? `${film.director} · ` : ""}
+                    {film.year || "—"}
                   </div>
                   <div className="flex items-center gap-1.5 font-mono text-sm text-primary font-semibold">
                     <ShieldCheck className="h-4 w-4" />

@@ -8,7 +8,7 @@ import { Link } from "@tanstack/react-router";const COMPANY_LINKS = [
 const EXPLORE_LINKS = [
   { to: "/top-100", label: "The Top 100" },
   { to: "/weekly-index", label: "Weekly Index" },
-  { to: "/rising", label: "Rising Now" },
+  { to: "/rising", label: "Biggest Movers" },
   { to: "/new-entries", label: "New Entries" },
   { to: "/trending", label: "Trending Topics" },
   { to: "/calendar", label: "Now & Next" },
@@ -35,8 +35,8 @@ export function Footer() {
             Lumière<span className="text-primary">.</span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            The cultural momentum index for cinema. The official Top 100 is refreshed
-            daily; Rising Now tracks short-term momentum between snapshots.
+            The cultural momentum index for cinema. The official Top 100 is published
+            daily, the Weekly Index every week; Biggest Movers tracks the movement between them.
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export function Footer() {
 
       <div className="mt-12 flex flex-col gap-2 border-t border-foreground/10 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span>© {new Date().getFullYear()} Lumière — The Index. All rights reserved.</span>
-        <span className="font-mono">0% critic weight · audience-driven · daily official Index</span>
+        <span className="font-mono">0% critic weight · audience-driven · published daily</span>
       </div>
     </footer>
   );

@@ -326,7 +326,7 @@ function FilmDetailView() {
   }
 
   // ── Derived values ────────────────────────────────────────────────────────
-  const director = film.director && film.director !== "Unknown" ? film.director : "Director TBA";
+  const director = film.director && film.director !== "Unknown" ? film.director : null;
   const synopsis = tmdbFilm?.overview || film.synopsis || "No synopsis available.";
   const trailerKey =
     videos?.results?.find((v) => v.site === "YouTube" && v.type === "Trailer")?.key ??
@@ -337,17 +337,14 @@ function FilmDetailView() {
   const rawSentiment = film.sentiment;
   const hasBackendSentiment = rawSentiment?.sufficient_data === true && rawSentiment.positive != null;
 
-  const scoreVal = film.score || 70;
-  const calibPositive = Math.min(94, Math.max(45, Math.round((scoreVal / 100) * 85 + 10)));
-  const calibNegative = Math.min(28, Math.max(5, Math.round((1 - scoreVal / 100) * 35)));
-  const calibNeutral = Math.max(5, 100 - calibPositive - calibNegative);
-
+  // Real backend sentiment only — a fabricated breakdown would erode trust, so
+  // titles without sufficient signals show the honest empty state instead.
   const sentiment = {
-    positive: hasBackendSentiment ? rawSentiment.positive! : calibPositive,
-    neutral: hasBackendSentiment ? rawSentiment.neutral! : calibNeutral,
-    negative: hasBackendSentiment ? rawSentiment.negative! : calibNegative,
+    positive: rawSentiment?.positive ?? null,
+    neutral: rawSentiment?.neutral ?? null,
+    negative: rawSentiment?.negative ?? null,
   };
-  const hasSentimentData = true;
+  const hasSentimentData = hasBackendSentiment;
 
   // TMDB derived metrics
   // Runtime/length differs per content type: movies have a single runtime,
@@ -470,18 +467,20 @@ function FilmDetailView() {
               {film.title}
             </h1>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-lg text-muted-foreground">
-              <span>
-                {isTvShow ? (
-                  <>
-                    Created by <span className="text-foreground">{director}</span>
-                  </>
-                ) : (
-                  <>
-                    Directed by <span className="text-foreground">{director}</span>
-                  </>
-                )}
-              </span>
-              <span>·</span>
+              {director && (
+                <span>
+                  {isTvShow ? (
+                    <>
+                      Created by <span className="text-foreground">{director}</span>
+                    </>
+                  ) : (
+                    <>
+                      Directed by <span className="text-foreground">{director}</span>
+                    </>
+                  )}
+                </span>
+              )}
+              {director && <span>·</span>}
               <span>{film.year || "—"}</span>
               {runtime && (
                 <>
@@ -521,7 +520,7 @@ function FilmDetailView() {
           <div id="trailer" className="scroll-mt-24">
             {trailerKey ? (
               <div className="relative">
-                {/* Ambient violet aura — the player floats on the page instead
+                {/* Ambient aura — the player floats on the page instead
                     of sitting in a bordered box. No highlight, no frame. */}
                 <div
                   aria-hidden
@@ -656,7 +655,7 @@ function FilmDetailView() {
                 Audience Sentiment Breakdown
               </div>
               <span className="font-mono text-[10px] text-muted-foreground">
-                {hasBackendSentiment ? "Verified Audience Signals" : "Signal-Calibrated Sentiment"}
+                {hasBackendSentiment ? "Verified Audience Signals" : "Awaiting Data"}
               </span>
             </div>
             {hasSentimentData && sentiment.positive != null ? (
@@ -775,6 +774,11 @@ function FilmDetailView() {
 
             {/* Universal Theater & Streaming Finder */}
             <div className="mt-4 pt-3 border-t border-foreground/10 space-y-2">
+              {watchData && !hasWatchOptions && (
+                <p className="pb-1 text-xs text-muted-foreground">
+                  No streaming options listed for this region yet.
+                </p>
+              )}
               <a
                 href={`https://www.google.com/search?q=${encodeURIComponent(`${film.title} showtimes tickets`)}`}
                 target="_blank"

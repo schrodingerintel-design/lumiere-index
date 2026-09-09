@@ -116,7 +116,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                   setHighlighted(0);
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Search films…"
+                placeholder="Search films & shows…"
                 aria-label="Search films"
                 className="w-full border-0 bg-transparent py-4 pl-12 pr-12 text-base outline-none placeholder:text-muted-foreground"
               />
@@ -152,7 +152,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                   <div className="px-5 py-6 text-center">
                     <Film className="mx-auto h-6 w-6 opacity-30" />
                     <p className="mt-2 text-sm text-muted-foreground">
-                      No films match &ldquo;{debounced}&rdquo;.
+                      No titles match &ldquo;{debounced}&rdquo;.
                     </p>
                     {popular.length > 0 && (
                       <p className="mt-4 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
@@ -210,7 +210,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                   <p className="text-sm text-muted-foreground">
                     {debounced.length === 1
                       ? "Type at least 2 characters to search."
-                      : "Start typing to search the index."}
+                      : "Start typing to search the Index."}
                   </p>
 
                   {/* Keyword suggestions — clickable chips from the top films */}

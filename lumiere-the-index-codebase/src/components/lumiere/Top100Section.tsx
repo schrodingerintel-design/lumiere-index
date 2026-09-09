@@ -129,8 +129,7 @@ export function Top100Section() {
               </li>
             ))
           : films?.slice(0, 10).map((f) => {
-              const director =
-                f.director && f.director !== "Unknown" ? f.director : "Director TBA";
+              const director = f.director && f.director !== "Unknown" ? f.director : null;
               // NEW entries have no previous snapshot — a week count would be
               // meaningless (and contradictory) next to the NEW badge.
               const weeks = f.prev_rank == null ? null : (f.weeks_on_chart ?? 1);
@@ -153,8 +152,9 @@ export function Top100Section() {
                         {f.title}
                       </div>
                       <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {director} · {f.year}
-                        {weeks != null ? ` · ${weeks} ${weeks === 1 ? "wk" : "wks"}` : ""}
+                        {[director, f.year, weeks != null ? `${weeks} ${weeks === 1 ? "wk" : "wks"}` : null]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
@@ -198,8 +198,7 @@ export function Top100Section() {
             {isLoading
               ? [...Array(10)].map((_, i) => <FilmRowSkeleton key={i} />)
               : films?.slice(0, 10).map((f) => {
-                  const director =
-                    f.director && f.director !== "Unknown" ? f.director : "Director TBA";
+                  const director = f.director && f.director !== "Unknown" ? f.director : null;
                   const weeks = f.prev_rank == null ? null : (f.weeks_on_chart ?? 1);
 
                   return (

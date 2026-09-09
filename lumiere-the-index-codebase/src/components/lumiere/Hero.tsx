@@ -107,9 +107,7 @@ export function Hero() {
   const backdropUrl = activeFilm?.backdrop_url || tmdbBackdropUrl(tmdbFilm?.backdrop_path, "w1280");
 
   const director =
-    activeFilm?.director && activeFilm.director !== "Unknown"
-      ? activeFilm.director
-      : "Director TBA";
+    activeFilm?.director && activeFilm.director !== "Unknown" ? activeFilm.director : null;
   const score = activeFilm?.score ?? null;
   const move = activeFilm?.movement ?? 0;
   const isNew = activeFilm?.prev_rank == null;
@@ -132,7 +130,7 @@ export function Hero() {
       onClick={handleHeroTap}
       className="relative w-full select-none overflow-hidden mt-4 max-w-full"
     >
-      {/* ── Backdrop: cover-crop, melting into the violet-black page ── */}
+      {/* ── Backdrop: cover-crop, melting into the black page ── */}
       <div className="absolute inset-0">
         {backdropUrl ? (
           <img
@@ -180,9 +178,11 @@ export function Hero() {
 
         {/* Title + score, vertically centered */}
         <div className="flex flex-1 flex-col justify-center py-6">
-          <div className="font-mono text-[11px] uppercase tracking-[0.26em] text-white/70">
-            A film by {director}
-          </div>
+          {director && (
+            <div className="font-mono text-[11px] uppercase tracking-[0.26em] text-white/70">
+              A film by {director}
+            </div>
+          )}
 
           <h1 className="mt-3 font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[0.98] text-white line-clamp-3">
             {activeFilm?.title}
@@ -212,8 +212,8 @@ export function Hero() {
             params={{ slug: activeFilm?.slug ?? "" }}
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cream px-6 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
           >
-            <Scale className="h-4 w-4" />
-            Compare
+            <Play className="h-4 w-4" />
+            View Film
           </Link>
           {trailer && (
             <Link

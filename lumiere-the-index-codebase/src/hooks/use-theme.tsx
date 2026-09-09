@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 // The Index is a dark-only product. This hook exists so legacy call sites keep
-// working; it simply pins the document to the dark violet theme.
+// working; it simply pins the document to the dark cinema theme.
 export function useTheme() {
   useEffect(() => {
     const root = document.documentElement;
