@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import {
   getFilmDetail,
+  getGenreFilms,
+  getTopFilms,
   searchTmdbMovie,
   searchTmdbTv,
   tmdbPosterUrl,
@@ -20,26 +22,21 @@ import {
 } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { Skeleton } from "@/components/lumiere/Skeletons";
+import { PosterCard } from "@/components/lumiere/PosterCard";
 import {
   Bookmark,
   BookmarkCheck,
   ArrowUpRight,
-  TrendingUp,
   MessageSquare,
-  Youtube,
   ArrowUp,
   ArrowDown,
   Scale,
   Play,
-  BarChart3,
-  ShieldCheck,
   Info,
   X,
-  Sparkles,
   Tv,
   Film as FilmIcon,
-} from "lucide-react";
-export const Route = createFileRoute("/films/$slug")({
+} from "lucide-react";export const Route = createFileRoute("/films/$slug")({
   head: ({ params }) => ({
     meta: [
       { title: `${(params?.slug ?? "").replace(/-/g, " ")} — Lumière The Index` },
@@ -104,58 +101,7 @@ function useWatchlist(slug: string) {
   return { saved, toggle };
 }
 
-// ── Source signal badges ──────────────────────────────────────────────────────
-interface SourceBadgeProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  href?: string;
-  onClick?: () => void;
-  color: string;
-}
-
-function SourceBadge({ icon, label, value, sub, href, onClick, color }: SourceBadgeProps) {
-  const inner = (
-    <div
-      className={`flex items-center gap-3 border border-foreground/10 bg-surface p-3.5 transition ${href || onClick ? "hover:border-foreground/25 hover:bg-foreground/[0.04] cursor-pointer" : ""}`}
-    >
-      <div
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-        style={{ background: `${color}20` }}
-      >
-        <div style={{ color }}>{icon}</div>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</div>
-        <div className="mt-0.5 font-mono text-base font-semibold tabular" style={{ color }}>
-          {value}
-        </div>
-        {sub && <div className="font-mono text-[10px] text-muted-foreground">{sub}</div>}
-      </div>
-      {onClick && !href && <Play className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-      {href && <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-    </div>
-  );
-
-  if (href) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer">
-        {inner}
-      </a>
-    );
-  }
-  if (onClick) {
-    return (
-      <button onClick={onClick} className="block w-full text-left">
-        {inner}
-      </button>
-    );
-  }
-  return inner;
-}
-
-// ── Where to Watch ───────────────────────────────────────────────────────────
+// ── Where to Watch ───────────────────────────────────────────────────────
 const WATCH_REGIONS: { code: string; label: string }[] = [
   { code: "US", label: "United States" },
   { code: "GB", label: "United Kingdom" },
@@ -334,6 +280,17 @@ function FilmDetailView() {
     staleTime: 24 * 60 * 60 * 1000,
   });
 
+  // More Like This — the film's genre shelf (the backend catalog's genre_tag is
+  // the single source of truth), excluding the film itself; falls back to the
+  // current Top 100 for titles without a tag.
+  const { data: similarFilms } = useQuery({
+    queryKey: ["films", "similar", film?.genre_tag ?? "top"],
+    queryFn: () =>
+      film?.genre_tag ? getGenreFilms(film.genre_tag, 8) : getTopFilms(8),
+    enabled: !!film,
+    staleTime: 5 * 60 * 1000,
+  });
+
   if (filmLoading) {
     return (
       <Layout>
@@ -393,17 +350,12 @@ function FilmDetailView() {
   const hasSentimentData = true;
 
   // TMDB derived metrics
-  const tmdbVotes = tmdbDetails?.vote_count ?? 0;
   // Runtime/length differs per content type: movies have a single runtime,
   // shows have per-episode runtimes (first value) — plus season/episode counts.
   const runtime = isTvShow ? tmdbDetails?.episode_run_time?.[0] : tmdbDetails?.runtime;
   const seasonCount = isTvShow ? tmdbDetails?.number_of_seasons : undefined;
   const episodeCount = isTvShow ? tmdbDetails?.number_of_episodes : undefined;
   const genres = tmdbDetails?.genres ?? [];
-  const tmdbPopularity = tmdbDetails?.popularity ?? 0;
-  const budget = isTvShow ? 0 : (tmdbDetails?.budget ?? 0);
-  const revenue = isTvShow ? 0 : (tmdbDetails?.revenue ?? 0);
-
   const tmdbMovieUrl = tmdbId ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}` : undefined;
   const watchRegionData = watchData?.results?.[watchRegion];
   const watchLink = tmdbId
@@ -419,17 +371,31 @@ function FilmDetailView() {
       (watchRegionData.buy?.length ?? 0) >
       0;
 
-  const formatMoney = (n: number) => {
-    if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
-    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(0)}M`;
-    return `$${n.toLocaleString()}`;
-  };
-
   // A NEW entry (no previous snapshot) has no meaningful chart tenure — showing
   // "8 weeks" next to "just entered tracking" is the exact contradiction the
   // audit flagged. Weeks count only from the first charted snapshot onward.
   const isNewEntry = film.prev_rank == null;
   const weeksOnChart = isNewEntry ? 0 : (film.weeks_on_chart ?? 1);
+
+  // Index Total — one unified observation volume across every source (raw
+  // upstream observations over the last 30 days, falling back to the tracked
+  // record count early in a title's life).
+  const indexTotalObs =
+    film.signal_funnel?.raw_observations_30d ?? film.mentions_total ?? 0;
+  const indexTotalLabel =
+    indexTotalObs > 0
+      ? indexTotalObs >= 1_000_000
+        ? `${(indexTotalObs / 1_000_000).toFixed(1)}M`
+        : indexTotalObs >= 1_000
+          ? `${(indexTotalObs / 1_000).toFixed(1)}k`
+          : indexTotalObs.toLocaleString()
+      : "—";
+  const sourceCountLabel =
+    film.signal_funnel && film.signal_funnel.source_coverage > 0
+      ? `${film.signal_funnel.source_coverage} source${film.signal_funnel.source_coverage === 1 ? "" : "s"}`
+      : "";
+
+  const similar = (similarFilms ?? []).filter((f) => f.slug !== slug).slice(0, 6);
 
   return (
     <Layout>
@@ -659,72 +625,28 @@ function FilmDetailView() {
             </div>
           </div>
 
-          {/* ── Multi-Source Viewer Signal Badges ── */}
-          <div>
-            <div className="mb-3 flex items-center justify-between">
+          {/* ── Index Total — one unified number for all audience signals ── */}
+          <div className="border-y border-foreground/10 bg-surface p-6">
+            <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 Audience Signals
               </div>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {film.signal_funnel && film.signal_funnel.raw_observations_30d > 0
-                  ? `${film.signal_funnel.raw_observations_30d.toLocaleString()} raw observations · ${film.signal_funnel.source_coverage} source${film.signal_funnel.source_coverage === 1 ? "" : "s"} · last 30d`
-                  : film.mentions_total > 0
-                    ? `${film.mentions_total.toLocaleString()} tracked records · last 48h`
-                    : "—"}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <SourceBadge
-                icon={<ShieldCheck className="h-4.5 w-4.5" />}
-                label="Audience Index"
-                value={film.score ? `${film.score.toFixed(1)} / 100` : "—"}
-                sub="Verified Audience Signals"
-                color="#01b4e4"
-              />
-              <SourceBadge
-                icon={<TrendingUp className="h-4.5 w-4.5" />}
-                label="Community Sentiment"
-                value={`${sentiment.positive}% Positive`}
-                sub={
-                  hasBackendSentiment
-                    ? "across r/movies, r/TrueFilm & Letterboxd"
-                    : "calibrated from audience signal density"
-                }
-                color="#ff4500"
-              />
-              <SourceBadge
-                icon={<MessageSquare className="h-4.5 w-4.5" />}
-                label="Discussion Velocity"
-                value={
-                  tmdbPopularity > 0
-                    ? tmdbPopularity > 200
-                      ? "Very High"
-                      : tmdbPopularity > 80
-                        ? "High"
-                        : "Moderate"
-                    : "—"
-                }
-                sub={tmdbPopularity > 0 ? "Active cultural tracking" : "Not enough data yet"}
-                color="#8b5cf6"
-              />
-              {revenue > 0 && (
-                <SourceBadge
-                  icon={<BarChart3 className="h-4.5 w-4.5" />}
-                  label="Box Office Revenue"
-                  value={formatMoney(revenue)}
-                  sub={budget > 1000000 ? `Budget: ${formatMoney(budget)}` : undefined}
-                  color="#10b981"
-                />
+              {sourceCountLabel && (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {sourceCountLabel} · last 30d
+                </span>
               )}
-              <SourceBadge
-                icon={<Youtube className="h-4.5 w-4.5" />}
-                label="Trailer Signals"
-                value="Official Trailer"
-                sub={trailerKey ? "YouTube · plays on this page" : "Trailer not yet available"}
-                onClick={trailerKey ? scrollToTrailer : undefined}
-                color="#ff0000"
-              />
             </div>
+            <div className="mt-3 flex items-baseline gap-3">
+              <div className="index-score text-5xl font-bold lg:text-6xl">{indexTotalLabel}</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                Index Total
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Combined audience observations across every tracked source — pageviews, search
+              interest, discussion, and engagement.
+            </p>
           </div>
 
           {/* Audience Sentiment Breakdown */}
@@ -779,71 +701,35 @@ function FilmDetailView() {
             )}
           </div>
 
-          {/* Editorial Insight & Cultural Context — claim strength gated by the
-              confidence tier the ranking engine computed. The observation volume
-              (real upstream activity) is shown separately from the ingest
-              record count — one YouTube record can aggregate millions of views. */}
-          <div className="border border-foreground/10 bg-surface p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
-                Editorial Insight
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-foreground/90 leading-relaxed font-serif">
-              {film.confidence === "insufficient" ||
-              (film.confidence == null && (film.sample_size ?? 0) < 5)
-                ? `"${film.title}" has just entered tracking — not enough audience signal yet to assess its trajectory.`
-                : film.confidence === "low"
-                  ? `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index with limited early evidence — ${(film.sample_size ?? film.mentions_total).toLocaleString()} audience ${((film.sample_size ?? film.mentions_total) === 1) ? "signal" : "signals"} tracked so far.`
-                  : `"${film.title}" holds rank #${film.rank || "—"} on the Lumière Index, backed by ${(film.signal_funnel?.raw_observations_30d ?? film.sample_size ?? film.mentions_total).toLocaleString()} raw audience observations over the last 30 days.`}
-            </p>
-            {/* Source-level funnel — internal Signal Health detail, kept honest */}
-            {film.signal_funnel && film.signal_funnel.sources.length > 0 && (
-              <div className="mt-4 space-y-1.5 border-t border-foreground/10 pt-3">
-                {film.signal_funnel.sources.map((s) => (
-                  <div key={s.source_key} className="flex items-center justify-between font-mono text-[10px]">
-                    <span className="uppercase tracking-wider text-muted-foreground">{s.source_key}</span>
-                    <span className="tabular text-foreground/80">
-                      {s.observations.toLocaleString()} obs · {s.records} rec
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ── Right Aside ── */}
         <aside className="space-y-4 lg:col-span-4 animate-fade-up delay-100">
-          {/* Poster — artwork flush, no rounded frame */}
-          <div
-            className="relative aspect-[2/3] overflow-hidden"
-            style={{ background: gradientStyle(film) }}
-          >
-            {posterUrl ? (
-              <img
-                src={posterUrl}
-                alt={film.title}
-                className="absolute inset-0 h-full w-full object-cover"
-                loading="eager"
-              />
-            ) : (
-              <div
-                className="absolute inset-0 opacity-40 mix-blend-overlay"
-                style={{
-                  backgroundImage:
-                    "radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 60%)",
-                }}
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-            <div className="absolute inset-x-4 bottom-4 text-white">
-              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/70">
-                A film by {director}
+          {/* More Like This — the genre shelf next to Where to Watch */}
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                More Like This
               </div>
-              <div className="font-serif text-3xl leading-tight">{film.title}</div>
+              {film.genre_tag && (
+                <Link
+                  to="/genres"
+                  className="font-mono text-[10px] text-muted-foreground transition hover:text-foreground"
+                >
+                  {film.genre_tag} →
+                </Link>
+              )}
             </div>
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              {similar.map((f) => (
+                <PosterCard key={f.slug} film={f} width="100%" />
+              ))}
+            </div>
+            {similar.length === 0 && (
+              <div className="mt-3 border border-foreground/10 bg-surface p-4 text-xs text-muted-foreground">
+                Similar titles will appear as the catalog grows.
+              </div>
+            )}
           </div>
 
           {/* Where to Watch */}
@@ -950,17 +836,9 @@ function FilmDetailView() {
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Observations
+                  Index Total
                 </div>
-                <div className="mt-1 font-mono text-xl tabular">
-                  {(() => {
-                    const obs = film.signal_funnel?.raw_observations_30d ?? 0;
-                    const n = obs > 0 ? obs : film.mentions_total;
-                    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-                    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-                    return n > 0 ? n : "—";
-                  })()}
-                </div>
+                <div className="mt-1 font-mono text-xl tabular">{indexTotalLabel}</div>
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">

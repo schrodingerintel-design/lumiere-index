@@ -8,7 +8,14 @@ function gradientStyle(from: string | null, to: string | null) {
   return `linear-gradient(155deg, ${from ?? "#333"}, ${to ?? "#111"})`;
 }
 
-export function PosterCard({ film, width = 140 }: { film: RankedFilm; width?: number }) {
+export function PosterCard({
+  film,
+  width = 140,
+}: {
+  film: RankedFilm;
+  /** Fixed px width for strips, or a CSS width like "100%" for grid cells. */
+  width?: number | string;
+}) {
   const trend = filmTrend(film);
   const change = film.movement ?? 0;
 
