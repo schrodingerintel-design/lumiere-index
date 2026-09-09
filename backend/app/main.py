@@ -45,6 +45,18 @@ async def lifespan(app: FastAPI):
     sync refreshes the catalog, and let /readyz report when data is available.
     """
     # ── Database Bootstrapping ────────────────────────────────────────────────
+    # Schema convergence BEFORE anything queries the DB: if the image was
+    # redeployed without migrations having run against the live database,
+    # queries would 5xx on missing columns and the site would read "unable
+    # to load". Alembic upgrade + defensive column backfill, both best-effort.
+    try:
+        from app.db import engine
+        from app.startup_schema import converge
+
+        converge(engine)
+    except Exception as exc:
+        log.warning("startup: schema convergence failed (non-fatal) — %s", exc)
+
     # If the database has no films or ranking snapshots, run seed immediately.
     try:
         from app.db import SessionLocal
