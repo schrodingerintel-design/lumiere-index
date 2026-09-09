@@ -295,6 +295,9 @@ def sync_tmdb_catalog(db: Session, max_films: int = 800) -> list[Film]:
         synced_films.append(film)
 
         # Generate a mention signal for this movie based on TMDB popularity & vote average
+        # Refreshed daily: vote_count/popularity are real platform observations
+        # and they grow over time, so a daily refresh keeps the 30-day window
+        # honest instead of aging out to zero after one month.
         pop = float(item.get("popularity", 50.0))
         vote_avg = float(item.get("vote_average", 7.0))
         vote_count = int(item.get("vote_count", 100))
@@ -303,7 +306,8 @@ def sync_tmdb_catalog(db: Session, max_films: int = 800) -> list[Film]:
         sentiment_score = max(-1.0, min(1.0, (vote_avg - 5.0) / 5.0))
         sentiment_label = "positive" if sentiment_score > 0.1 else ("negative" if sentiment_score < -0.1 else "neutral")
 
-        ext_id = f"tmdb_popular_{film.id}_{tmdb_id}"
+        day_key = datetime.now(timezone.utc).strftime("%Y%m%d")
+        ext_id = f"tmdb_popular_{film.id}_{tmdb_id}_{day_key}"
 
         existing_mention = db.query(Mention).filter_by(external_id=ext_id).first()
         if not existing_mention:
@@ -320,6 +324,8 @@ def sync_tmdb_catalog(db: Session, max_films: int = 800) -> list[Film]:
                 sentiment_score=sentiment_score,
                 sentiment_label=sentiment_label,
                 engagement=int(pop * 10 + vote_count),
+                # Real audience evidence: every TMDB rating is an observation.
+                observations=vote_count,
                 created_at=datetime.now(timezone.utc),
             )
             db.add(m)

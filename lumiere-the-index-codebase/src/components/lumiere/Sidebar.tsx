@@ -114,7 +114,7 @@ export function SidebarContent({
 
 export function Sidebar() {
   return (
-    <aside className="fixed left-0 top-14 bottom-0 z-40 hidden w-64 overflow-y-auto border-r border-foreground/10 bg-surface lg:block">
+    <aside className="frost-soft fixed left-0 top-14 bottom-0 z-40 hidden w-64 overflow-y-auto border-r border-foreground/10 lg:block">
       <SidebarContent />
     </aside>
   );
@@ -129,14 +129,21 @@ export function MobileSidebar({
   onClose: () => void;
   onSearch?: () => void;
 }) {
+  // Mounted only while open — unmounting the drawer is what guarantees the
+  // exit is instant and no invisible layer can trap taps.
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
-      <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="glass-dark absolute left-0 top-0 bottom-0 w-72 overflow-y-auto border-r border-foreground/10 animate-fade-up">
+      {/* Scrim: live blur over the page, not a flat dim highlight. */}
+      <div
+        className="animate-scrim-in absolute inset-0 bg-ink/45 backdrop-blur-md"
+        onClick={onClose}
+      />
+      <div className="frost-soft animate-drawer-in absolute bottom-0 left-0 top-0 w-[80vw] max-w-80 overflow-y-auto border-r border-foreground/10 shadow-2xl shadow-black/50">
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 p-2 hover:bg-foreground/10"
+          aria-label="Close navigation menu"
+          className="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center transition hover:bg-foreground/10"
         >
           <X className="h-4 w-4" />
         </button>

@@ -68,7 +68,10 @@ def fetch_letterboxd(film_tuples: list[tuple[int, str, int | None]]) -> list[Raw
                         text=clean_text[:2000],
                         url=url,
                         author="Letterboxd Reviewer",
+                        # Each review is a real audience observation; a modest
+                        # engagement weight reflects the review's visibility.
                         engagement=5,
+                        observations=1,
                         created_at=datetime.now(timezone.utc),
                     )
                 )

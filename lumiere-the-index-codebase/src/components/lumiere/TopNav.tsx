@@ -27,7 +27,7 @@ const topLinks = NAV_ITEMS.filter(
 export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch?: () => void }) {
 
   return (
-    <header className="sticky top-0 z-30 border-b border-foreground/10 bg-background/95 backdrop-blur">
+    <header className="frost sticky top-0 z-30 border-b border-foreground/10">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-2 px-4 lg:px-6">
         <div className="flex min-w-0 items-center gap-4">
           <button

@@ -183,12 +183,15 @@
   .animate-breathe,
   .animate-float-slow,
   .animate-kenburns,
+  .animate-drawer-in,
+  .animate-scrim-in,
   .live-dot::before,
   .orb-violet,
   .orb-violet-deep,
   .orb-magenta {
     animation: none;
   }
+  .animate-drawer-in { transform: none; }
 }
 /* Subtle, confident hover — a border/tonal shift, not a levitation act. */
 @utility card-lift {
@@ -266,6 +269,38 @@
 @keyframes driftC {
   from { transform: translate(0, 0) scale(0.95); }
   to   { transform: translate(4vw, -5vh) scale(1.2); }
+}
+
+/* ── Frost chrome — live blur that melts into the drifting atmosphere ─────
+   Nav and sidebar sit over the ambient orbs, so a real backdrop blur lets
+   the live violet light glow through: frosted glass, not a flat highlight. */
+@utility frost {
+  background-color: oklch(0.13 0.025 295 / 0.6);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+}
+/* Softer tier for the sidebar rail and drawer. */
+@utility frost-soft {
+  background-color: oklch(0.13 0.025 295 / 0.45);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+/* ── Fluid drawer motion — the side panel slides with organic easing ────── */
+@keyframes drawerIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes scrimIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-drawer-in {
+  animation: drawerIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+.animate-scrim-in {
+  animation: scrimIn 0.35s ease both;
 }
 
 /* Slow breathing glow for accent elements (score, live indicators). */

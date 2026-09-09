@@ -32,13 +32,13 @@ def _film_tuples(db):
 @celery.task
 def ingest_reddit() -> int:
     with SessionLocal() as db:
-        return _ingest(db, "reddit", fetch_reddit)
+        return _ingest(db, "reddit", lambda: fetch_reddit(_film_tuples(db)))
 
 
 @celery.task
 def ingest_news() -> int:
     with SessionLocal() as db:
-        return _ingest(db, "news", fetch_news)
+        return _ingest(db, "news", lambda: fetch_news(_film_tuples(db)))
 
 
 @celery.task

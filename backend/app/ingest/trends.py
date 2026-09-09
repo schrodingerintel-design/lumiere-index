@@ -30,8 +30,11 @@ def fetch_trends(film_tuples: list[tuple[int, str, int | None]]) -> list[RawMent
                     if recent_score > 0:
                         # Sum the weekly interest series: each day's 0-100 index
                         # is a real, comparable observation of search demand.
+                        # One record per (film, day) — the daily ext_id makes
+                        # re-runs idempotent instead of re-counting the same
+                        # weekly series on every hourly run.
                         weekly_total = int(interest_df[title].sum())
-                        ext_id = f"gtrends_{title.replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d%H')}"
+                        ext_id = f"gtrends_{title.replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
                         out.append(
                             RawMention(
                                 external_id=ext_id,

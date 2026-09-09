@@ -118,7 +118,7 @@ def fetch_tiktok_for_film(
     )
 
     return RawMention(
-        external_id=f"tiktok_film_{film_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H')}",
+        external_id=f"tiktok_film_{film_id}_{datetime.now(timezone.utc).strftime('%Y%m%d')}",
         text=text,
         url=None,
         author="tiktok_aggregate",

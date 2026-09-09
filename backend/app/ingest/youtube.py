@@ -160,7 +160,7 @@ def fetch_youtube_for_film(
     )
 
     return RawMention(
-        external_id=f"youtube_film_{film_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H')}",
+        external_id=f"youtube_film_{film_id}_{datetime.now(timezone.utc).strftime('%Y%m%d')}",
         text=text,
         url=top_url,
         author="youtube_aggregate",

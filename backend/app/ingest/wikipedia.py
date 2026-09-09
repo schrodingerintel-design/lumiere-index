@@ -1,78 +1,121 @@
-"""Wikipedia pageview ingestion adapter using Wikimedia REST API."""
+"""Wikipedia pageview ingestion adapter using Wikimedia REST API.
+
+Pageviews are real per-day observations of public attention. We resolve the
+film's actual article via the opensearch API (so "Dracula" lands on
+"Dracula (2025 film)", not the novel) and pull a 30-day daily series, emitting
+one idempotent record per (article, day). The 30-day rolling window then
+carries the film's full attention history instead of a single day.
+"""
 from datetime import datetime, timedelta, timezone
+
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.config import settings
 from app.ingest.base import RawMention
 
-# Wikipedia adapters report real pageview counts. `observations` carries the
-# raw underlying pageviews; `engagement` is the platform-weighted signal fed
-# to the ranking engine.
+_WIKI_API = "https://en.wikipedia.org/w/api.php"
+_PAGEVIEWS_URL = (
+    "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/"
+    "en.wikipedia/all-access/all-agents/{article}/daily/{start}/{end}"
+)
+_DAYS = 30
+
+
+def _headers() -> dict:
+    return {"User-Agent": settings.reddit_user_agent or "LumiereIndex/1.0 (contact@lumiere.com)"}
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential())
-def _fetch_pageviews(article_title: str) -> dict | None:
-    # Wikimedia requires article titles with underscores instead of spaces
+def _resolve_article(title: str, year: int | None) -> str | None:
+    """Find the film's Wikipedia article title via opensearch (film first)."""
+    queries = [f"{title} {year} film" if year else f"{title} film", f"{title} film", title]
+    title_lower = title.lower()
+    for q in queries:
+        try:
+            r = httpx.get(
+                _WIKI_API,
+                params={
+                    "action": "opensearch",
+                    "search": q,
+                    "limit": 5,
+                    "namespace": 0,
+                    "format": "json",
+                },
+                headers=_headers(),
+                timeout=15,
+            )
+            r.raise_for_status()
+            results = r.json()
+            candidates = results[1] if results and len(results) > 1 else []
+            if not candidates:
+                continue
+            # Prefer an article that looks like the film page over a
+            # disambiguation or the novel page.
+            for candidate in candidates:
+                low = candidate.lower()
+                if "film" in low or str(year) in low or title_lower in low:
+                    return candidate
+            return candidates[0]
+        except Exception:
+            continue
+    return None
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential())
+def _fetch_daily_pageviews(article_title: str, days: int = _DAYS) -> list[dict]:
+    """Fetch the daily pageview series for one article (last `days` days)."""
     title_formatted = article_title.strip().replace(" ", "_")
     end_date = datetime.now(timezone.utc) - timedelta(days=1)
-    start_date = end_date - timedelta(days=1)
-    
+    start_date = end_date - timedelta(days=days)
     start_str = start_date.strftime("%Y%m%d00")
     end_str = end_date.strftime("%Y%m%d00")
-    
-    url = f"https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/{title_formatted}/daily/{start_str}/{end_str}"
-    
-    headers = {"User-Agent": settings.reddit_user_agent or "LumiereIndex/1.0 (contact@lumiere.com)"}
-    r = httpx.get(url, headers=headers, timeout=15)
+    url = _PAGEVIEWS_URL.format(article=title_formatted, start=start_str, end=end_str)
+    r = httpx.get(url, headers=_headers(), timeout=20)
     if r.status_code == 404:
-        return None
+        return []
     r.raise_for_status()
-    return r.json()
+    return r.json().get("items", [])
 
 
 def fetch_wikipedia(film_tuples: list[tuple[int, str, int | None]]) -> list[RawMention]:
-    """Given list of (film_id, title, year), fetch Wikipedia pageviews as engagement signals."""
+    """Given a list of (film_id, title, year), fetch daily Wikipedia pageviews."""
     out: list[RawMention] = []
-    
+
     for _, title, year in film_tuples:
-        # Try film title with _(film) or _(YYYY_film) fallback
-        article_candidates = [
-            f"{title} (film)",
-            f"{title} ({year} film)" if year else f"{title} (film)",
-            title,
-        ]
-        
-        data = None
-        used_article = title
-        for candidate in article_candidates:
-            try:
-                res = _fetch_pageviews(candidate)
-                if res and "items" in res and len(res["items"]) > 0:
-                    data = res
-                    used_article = candidate
-                    break
-            except Exception:
+        article = _resolve_article(title, year)
+        if not article:
+            continue
+
+        try:
+            items = _fetch_daily_pageviews(article)
+        except Exception:
+            continue
+        if not items:
+            continue
+
+        slug = article.replace(" ", "_")
+        for item in items:
+            views = int(item.get("views", 0) or 0)
+            day = str(item.get("timestamp", ""))[:8]  # YYYYMMDD
+            if views <= 0 or len(day) != 8:
                 continue
-                
-        if not data or "items" not in data:
-            continue
-            
-        total_views = sum(item.get("views", 0) for item in data["items"])
-        if total_views <= 0:
-            continue
-            
-        ext_id = f"wiki_{used_article.replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
-        out.append(
-            RawMention(
-                external_id=ext_id,
-                text=f"{title} Wikipedia article pageviews: {total_views} views.",
-                url=f"https://en.wikipedia.org/wiki/{used_article.replace(' ', '_')}",
-                author="Wikipedia",
-                engagement=total_views,
-                observations=total_views,
-                created_at=datetime.now(timezone.utc),
+            try:
+                day_dt = datetime.strptime(day, "%Y%m%d").replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            out.append(
+                RawMention(
+                    external_id=f"wiki_{slug}_{day}",
+                    text=f"{title} Wikipedia article pageviews on {day}: {views} views.",
+                    url=f"https://en.wikipedia.org/wiki/{slug}",
+                    author="Wikipedia",
+                    # `observations` is the real pageview count for that day;
+                    # engagement mirrors it as the platform-weighted signal.
+                    engagement=views,
+                    observations=views,
+                    created_at=day_dt,
+                )
             )
-        )
-        
+
     return out
