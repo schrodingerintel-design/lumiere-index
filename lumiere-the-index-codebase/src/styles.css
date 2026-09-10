@@ -178,12 +178,12 @@
    continuously into blur and the page canvas toward the bottom. Two copies of
    the image with opposing vertical masks create the sharp→blur crossfade. */
 @utility hero-fade-sharp {
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 30%, transparent 80%);
-  mask-image: linear-gradient(to bottom, black 0%, black 30%, transparent 80%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 48%, transparent 96%);
+  mask-image: linear-gradient(to bottom, black 0%, black 48%, transparent 96%);
 }
 @utility hero-fade-blur {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 15%, black 65%, black 100%);
-  mask-image: linear-gradient(to bottom, transparent 15%, black 65%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 35%, black 88%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 35%, black 88%, black 100%);
 }
 
 /* Subtle entrance — fast, almost invisible. */
