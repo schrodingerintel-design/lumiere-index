@@ -35,6 +35,37 @@ def _latest_snapshot(db: Session) -> datetime | None:
     return db.scalar(select(func.max(Ranking.snapshot_at)))
 
 
+def _days_on_chart_map(db: Session, film_ids: list[int]) -> dict[int, int]:
+    """Days on chart per film — calendar days since the title's FIRST
+    appearance on the continuous 15-minute chart (min snapshot_at).
+
+    Computed at read time from the snapshot history, so the number stays
+    truthful and self-heals instead of carrying a counter. Titles never
+    charted → 1 (today). Titles charted → floor(days since first appearance)
+    + 1.
+    """
+    if not film_ids:
+        return {}
+    now = datetime.now(timezone.utc)
+    first_seen: dict[int, datetime] = {
+        fid: ts
+        for fid, ts in db.query(Ranking.film_id, func.min(Ranking.snapshot_at))
+        .filter(Ranking.film_id.in_(film_ids))
+        .group_by(Ranking.film_id)
+        .all()
+    }
+    out: dict[int, int] = {}
+    for fid in film_ids:
+        start = first_seen.get(fid)
+        if start is None:
+            out[fid] = 1
+            continue
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        out[fid] = max(((now - start).days) + 1, 1)
+    return out
+
+
 def _ranked_query(db: Session, snapshot: datetime, genre: str | None = None):
     q = (
         db.query(Film, Ranking)
@@ -85,9 +116,12 @@ def _mentions_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     return {fid: int(cnt) for fid, cnt in rows}
 
 
-def _with_mentions(rows, mentions: dict[int, int]):
+def _with_mentions(rows, mentions: dict[int, int], days_map: dict[int, int] | None = None):
     return [
-        _to_ranked(f, r).model_copy(update={"mentions_total": mentions.get(f.id, 0)})
+        _to_ranked(f, r).model_copy(update={
+            "mentions_total": mentions.get(f.id, 0),
+            **({"days_on_chart": (days_map or {}).get(f.id)} if days_map is not None else {}),
+        })
         for f, r in rows
     ]
 
@@ -106,7 +140,8 @@ def top_films(
         return []
     rows = _ranked_query(db, snap, genre=genre).offset(offset).limit(limit).all()
     mentions = _mentions_map(db, [f.id for f, _ in rows])
-    return _with_mentions(rows, mentions)
+    days = _days_on_chart_map(db, [f.id for f, _ in rows])
+    return _with_mentions(rows, mentions, days)
 
 
 @router.get("/films/new-releases", response_model=list[RankedFilm])
@@ -131,13 +166,17 @@ def new_releases(
         .limit(limit)
         .all()
     )
+    mentions = _mentions_map(db, [f.id for f, _ in rows])
     # Canonical ranking: the rank shown here IS the official Index rank from the
     # latest snapshot. Renumbering by list position (enumerate) made every page
     # disagree with the canonical chart — "#1" on the Top 100 could be rank 7
     # on the film page and rank 12 in search. Every consumer reads the same row.
-    mentions = _mentions_map(db, [f.id for f, _ in rows])
+    days = _days_on_chart_map(db, [f.id for f, _ in rows])
     return [
-        _to_ranked(f, r).model_copy(update={"mentions_total": mentions.get(f.id, 0)})
+        _to_ranked(f, r).model_copy(update={
+            "mentions_total": mentions.get(f.id, 0),
+            "days_on_chart": days.get(f.id),
+        })
         for f, r in rows
     ]
 
@@ -405,6 +444,7 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         select(Ranking).where(Ranking.film_id == film.id, Ranking.snapshot_at == snap)
     ) if snap else None
     mentions_total = _mentions_map(db, [film.id]).get(film.id, 0)
+    days_on_chart = _days_on_chart_map(db, [film.id]).get(film.id)
     # Sentiment split counts real audience conversation only — catalog-only
     # sources ("tmdb" vote rows) never contribute.
     catalog_ids = _catalog_source_ids(db)
@@ -441,8 +481,9 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         rank=0, score=0,
     )
     return FilmDetail(
-        **base.model_dump(exclude={"mentions_total"}),
+        **base.model_dump(exclude={"mentions_total", "days_on_chart"}),
         mentions_total=mentions_total,
+        days_on_chart=days_on_chart,
         sentiment=sentiment,
         signal_funnel=_signal_funnel(db, film.id),
     )

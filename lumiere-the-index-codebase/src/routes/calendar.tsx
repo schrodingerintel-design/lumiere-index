@@ -190,7 +190,7 @@ function CalendarPage() {
                   key={f.slug}
                   to="/films/$slug"
                   params={{ slug: f.slug }}
-                  className="glass card-lift group flex gap-4 overflow-hidden rounded-2xl p-4"
+                  className="group flex gap-4 border border-foreground/10 p-4 transition hover:border-foreground/25"
                 >
                   <div className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl bg-ink">
                     {f.poster_url ? (
@@ -245,7 +245,7 @@ function CalendarPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="glass rounded-2xl p-4 flex gap-4">
+              <div key={i} className="flex gap-4 border border-foreground/10 p-4">
                 <Skeleton className="h-36 w-24 rounded-xl shrink-0" />
                 <div className="flex-1 space-y-3">
                   <Skeleton className="h-6 w-3/4" />
@@ -271,7 +271,7 @@ function CalendarPage() {
               return (
                 <div
                   key={m.id}
-                  className="glass card-lift rounded-2xl p-4 flex gap-4 overflow-hidden"
+                  className="flex gap-4 border border-foreground/10 p-4 transition hover:border-foreground/25"
                 >
                   <Link
                     to="/films/$slug"
@@ -349,7 +349,7 @@ function CalendarPage() {
             })}
           </div>
         ) : (
-          <div className="glass rounded-2xl p-10 text-center text-sm text-muted-foreground">
+          <div className="border-y border-foreground/10 bg-surface p-10 text-center text-sm text-muted-foreground">
             No upcoming releases found matching the selected filter.
           </div>
         )}

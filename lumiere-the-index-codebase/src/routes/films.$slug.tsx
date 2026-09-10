@@ -301,10 +301,10 @@ function FilmDetailView() {
             <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-24 w-full" />
             <div className="grid grid-cols-2 gap-4 mt-6">
-              <Skeleton className="h-32 w-full rounded-2xl" />
-              <Skeleton className="h-32 w-full rounded-2xl" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-32 w-full" />
             </div>
-            <Skeleton className="h-48 w-full rounded-2xl mt-4" />
+            <Skeleton className="h-48 w-full mt-4" />
           </div>
           <aside className="lg:col-span-4 space-y-4">
             <Skeleton className="aspect-[2/3] w-full" />
@@ -318,7 +318,7 @@ function FilmDetailView() {
   if (filmError || !film) {
     return (
       <Layout>
-        <div className="px-6 py-20 text-center font-serif text-3xl">
+        <div className="px-6 py-20 text-center font-display text-3xl font-medium">
           {filmError ? `Failed to load film: ${filmError.message}` : "Film not found."}
         </div>
       </Layout>
@@ -368,11 +368,10 @@ function FilmDetailView() {
       (watchRegionData.buy?.length ?? 0) >
       0;
 
-  // A NEW entry (no previous snapshot) has no meaningful chart tenure — showing
-  // "8 weeks" next to "just entered tracking" is the exact contradiction the
-  // audit flagged. Weeks count only from the first charted snapshot onward.
+  // Chart tenure in days — the chart refreshes every 15 minutes, so days is
+  // the honest unit. A NEW entry (no previous snapshot) is on day 1.
   const isNewEntry = film.prev_rank == null;
-  const weeksOnChart = isNewEntry ? 0 : (film.weeks_on_chart ?? 1);
+  const daysOnChart = film.days_on_chart ?? 1;
 
   // Index Total — one unified observation volume across every source (raw
   // upstream observations over the last 30 days, falling back to the tracked
@@ -436,10 +435,10 @@ function FilmDetailView() {
             </div>
           </div>
 
-          {/* Poster floats right — headline, metadata and synopsis wrap around it */}
+          {/* Poster — a clean window onto the artwork. No glow, no frame. */}
           <figure className="float-right ml-5 mb-3 w-[34%] max-w-[210px] sm:ml-8 sm:mb-4 sm:w-[30%] sm:max-w-[280px] lg:max-w-[320px]">
             <div
-              className="relative aspect-[2/3] overflow-hidden shadow-[0_0_70px_oklch(0.45_0.2_300/0.28)]"
+              className="relative aspect-[2/3] overflow-hidden bg-ink"
               style={{ background: gradientStyle(film) }}
             >
               {posterUrl ? (
@@ -520,13 +519,7 @@ function FilmDetailView() {
           <div id="trailer" className="scroll-mt-24">
             {trailerKey ? (
               <div className="relative">
-                {/* Ambient aura — the player floats on the page instead
-                    of sitting in a bordered box. No highlight, no frame. */}
-                <div
-                  aria-hidden
-                  className="animate-breathe absolute -inset-8 bg-[radial-gradient(closest-side,oklch(0.45_0.2_300/0.22),transparent)] blur-2xl"
-                />
-                <div className="relative aspect-video w-full overflow-hidden bg-black/40">
+                <div className="aspect-video w-full overflow-hidden bg-black/40">
                   <iframe
                     src={`https://www.youtube.com/embed/${trailerKey}?rel=0&modestbranding=1&playsinline=1`}
                     title={`${film.title} — Official Trailer`}
@@ -535,16 +528,13 @@ function FilmDetailView() {
                     className="absolute inset-0 h-full w-full"
                   />
                 </div>
-                <div className="relative flex items-center justify-between px-1 pt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                <div className="flex items-center justify-between px-1 pt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   <span>Official Trailer · YouTube</span>
                   <span className="hidden sm:inline">Plays on this page</span>
                 </div>
               </div>
             ) : videos === undefined ? (
-              <div
-                className="relative aspect-video w-full border border-foreground/10"
-                style={{ background: gradientStyle(film) }}
-              >
+              <div className="relative aspect-video w-full bg-surface">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/50">
                     Loading trailer…
@@ -648,8 +638,8 @@ function FilmDetailView() {
             </p>
           </div>
 
-          {/* Audience Sentiment Breakdown */}
-          <div className="border border-foreground/10 bg-surface p-5">
+          {/* Audience Sentiment — real backend data, or an honest empty state */}
+          <div className="border-y border-foreground/10 bg-surface p-6">
             <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 Audience Sentiment Breakdown
@@ -700,10 +690,26 @@ function FilmDetailView() {
             )}
           </div>
 
+          {/* Chart stats — one quiet line, print-facts style */}
+          <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-foreground/10 bg-surface px-6 py-4">
+            {[
+              { label: "Time on chart", value: `${daysOnChart} ${daysOnChart === 1 ? "day" : "days"}` },
+              { label: "Peak rank", value: `#${film.peak_rank ?? film.rank}` },
+              { label: "Index Total", value: indexTotalLabel },
+              { label: "Rank change", value: (film.movement ?? 0) > 0 ? `+${film.movement}` : (film.movement ?? 0) < 0 ? `${film.movement}` : "—" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <div className="font-mono text-sm tabular text-foreground">{stat.value}</div>
+                <div className="mt-0.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* ── Right Aside ── */}
-        <aside className="space-y-4 lg:col-span-4 animate-fade-up delay-100">
+        {/* ── Right aside — More Like This + Where to Watch ── */}
+        <aside className="mx-auto mt-10 w-full max-w-5xl animate-fade-up delay-100 space-y-8 px-0 lg:mt-6">
           {/* More Like This — the genre shelf next to Where to Watch */}
           <div>
             <div className="flex items-center justify-between">
@@ -732,7 +738,7 @@ function FilmDetailView() {
           </div>
 
           {/* Where to Watch */}
-          <div className="border border-foreground/10 bg-surface p-5">
+          <div className="border-t border-foreground/10 pt-6">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 <Tv className="h-4 w-4 text-primary" />
@@ -811,72 +817,6 @@ function FilmDetailView() {
                 <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
               </a>
             </div>
-          </div>
-
-          {/* Index Score Card */}
-          <div className="border border-foreground/10 bg-surface p-5">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              Lumière Index Score
-            </div>
-            <div className="mt-2 font-mono text-6xl tabular text-cream">
-              {film.score?.toFixed(1) || "0.0"}
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-foreground/10 pt-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Time on chart
-                </div>
-                <div className="mt-1 font-mono text-xl tabular">
-                  {isNewEntry
-                    ? "New"
-                    : `${weeksOnChart} ${weeksOnChart === 1 ? "week" : "weeks"}`}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Peak rank
-                </div>
-                <div className="mt-1 font-mono text-xl tabular">#{film.peak_rank ?? film.rank}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Index Total
-                </div>
-                <div className="mt-1 font-mono text-xl tabular">{indexTotalLabel}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Rank change
-                </div>
-                <div
-                  className={`mt-1 font-mono text-xl tabular ${(film.movement ?? 0) > 0 ? "text-forest-deep" : (film.movement ?? 0) < 0 ? "text-down" : ""}`}
-                >
-                  {(film.movement ?? 0) > 0 ? `+${film.movement}` : (film.movement ?? "—")}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={handleToggleSave}
-              className={`flex items-center justify-center gap-2 rounded-full border py-3 text-sm font-medium transition ${
-                saved
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-foreground/15 bg-surface hover:bg-foreground/10"
-              }`}
-            >
-              {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-              {saved ? "Saved" : "Save"}
-            </button>
-            <Link
-              to="/compare"
-              className="flex items-center justify-center gap-2 rounded-full border border-foreground/15 bg-surface py-3 text-sm font-medium transition hover:bg-foreground/10"
-            >
-              <Scale className="h-4 w-4" />
-              Compare
-            </Link>
           </div>
         </aside>
       </section>

@@ -71,21 +71,21 @@ function About() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="glass rounded-2xl border border-foreground/10 p-5">
+        <div className="border border-foreground/10 bg-surface p-5">
           <Compass className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For Audiences</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             See which films the world is talking about — ranked by real signals, not promotion.
           </p>
         </div>
-        <div className="glass rounded-2xl border border-foreground/10 p-5">
+        <div className="border border-foreground/10 bg-surface p-5">
           <TrendingUp className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For Creators</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Follow how your work is landing across search, social, and community — as it happens.
           </p>
         </div>
-        <div className="glass rounded-2xl border border-foreground/10 p-5">
+        <div className="border border-foreground/10 bg-surface p-5">
           <Eye className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For The Industry</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -107,7 +107,7 @@ function About() {
         </p>
       </div>
 
-      <div className="glass rounded-2xl border border-primary/20 bg-primary/5 p-6">
+      <div className="border border-foreground/10 bg-surface p-6">
         <p className="text-sm text-foreground/80">
           Want to know exactly how the Index Score is calculated?{" "}
           <Link to="/methodology" className="font-medium text-primary hover:underline">

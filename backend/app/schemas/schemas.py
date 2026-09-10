@@ -44,6 +44,10 @@ class RankedFilm(FilmBase):
     movement: int = 0
     peak_rank: int | None = None
     weeks_on_chart: int = 0
+    # Days since the title's FIRST appearance on the continuous 15-minute
+    # chart — the tenure unit the UI shows (weeks is legacy, kept for
+    # backward-compatible API consumers).
+    days_on_chart: int | None = None
     mentions_total: int = 0
     is_fallback: bool = False
     # Per-component sub-scores for UI breakdown / debugging

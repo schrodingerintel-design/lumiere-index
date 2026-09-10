@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getTopFilms } from "@/lib/apiClient";
-import { isNewRelease } from "@/lib/filmUtils";
+import { isNewRelease, tenureLabel } from "@/lib/filmUtils";
 import { filmTrend } from "@/lib/trend";
 import { RouteError } from "@/lib/route-error";
 import { ArrowUp, ArrowDown } from "lucide-react";
@@ -71,7 +71,7 @@ function Top100() {
             <div>Rank</div>
             <div>Mvmt</div>
             <div>Title</div>
-            <div>Weeks</div>
+            <div>Days</div>
             <div className="text-right">Index Score</div>
             <div className="text-right">Signals</div>
           </div>
@@ -82,9 +82,6 @@ function Top100() {
                   const change = f.movement ?? null;
                   const director =
                     f.director && f.director !== "Unknown" ? f.director : null;
-                  // NEW entries have no previous snapshot — a week count would be
-                  // meaningless (and contradictory) next to the NEW badge.
-                  const weeks = f.prev_rank == null ? null : (f.weeks_on_chart ?? 1);
                   const signals =
                     f.mentions_total >= 1000
                       ? `${(f.mentions_total / 1000).toFixed(1)}k`
@@ -106,7 +103,7 @@ function Top100() {
                           </span>
                           <span className="sm:hidden">
                             {isNew ? (
-                              <span className="rounded bg-live px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-ink">
+                              <span className="rounded bg-cream px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-ink">
                                 New
                               </span>
                             ) : change !== null && change !== 0 ? (
@@ -129,7 +126,7 @@ function Top100() {
                         </div>
                         <div className="hidden sm:block">
                           {isNew ? (
-                            <span className="rounded bg-live px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
+                            <span className="rounded bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
                               New
                             </span>
                           ) : change !== null && change !== 0 ? (
@@ -160,14 +157,12 @@ function Top100() {
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
                               {director ? `${director} · ${f.year}` : f.year}
-                              <span className="sm:hidden">
-                                {weeks != null ? ` · ${weeks} ${weeks === 1 ? "wk" : "wks"}` : ""}
-                              </span>
+                              <span className="sm:hidden"> · {tenureLabel(f)}</span>
                             </div>
                           </div>
                         </div>
                         <div className="hidden font-mono text-xs tabular text-muted-foreground sm:block">
-                          {weeks != null ? `${weeks} ${weeks === 1 ? "wk" : "wks"}` : "—"}
+                          {tenureLabel(f)}
                         </div>
                         <div className="text-right">
                           <div className="index-score text-xl font-semibold sm:text-lg">

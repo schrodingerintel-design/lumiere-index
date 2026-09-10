@@ -115,7 +115,7 @@ function FilmPicker({
   return (
     <div className="flex flex-col gap-3">
       {value ? (
-        <div className="relative mx-auto w-36 aspect-[2/3] overflow-hidden rounded-2xl bg-ink shadow-lg">
+        <div className="relative mx-auto w-36 aspect-[2/3] overflow-hidden bg-ink">
           {poster ? (
             <img src={poster} alt={value.title} className="h-full w-full object-cover" />
           ) : (
@@ -154,7 +154,7 @@ function FilmPicker({
         </div>
       ) : (
         /* Empty slot: the search input lives inside the placeholder card. */
-        <div className="relative mx-auto flex aspect-[2/3] w-36 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-foreground/15 bg-foreground/[0.03] text-muted-foreground">
+        <div className="relative mx-auto flex aspect-[2/3] w-36 flex-col items-center justify-center gap-3 border border-dashed border-foreground/15 bg-foreground/[0.03] text-muted-foreground">
           <Scale className="h-6 w-6 opacity-40" />
           <span className="px-2 text-center text-xs">Choose a film</span>
           <div className="relative w-[80%]">
@@ -339,7 +339,7 @@ function ComparePage() {
 
       {/* Film Pickers */}
       <section className="mt-8 grid grid-cols-1 gap-6 px-4 sm:grid-cols-2 lg:px-6">
-        <div className="glass rounded-2xl p-5">
+        <div className="border border-foreground/10 p-5">
           <div className="mb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Film A
           </div>
@@ -354,7 +354,7 @@ function ComparePage() {
             />
           )}
         </div>
-        <div className="glass rounded-2xl p-5">
+        <div className="border border-foreground/10 p-5">
           <div className="mb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Film B
           </div>
@@ -374,7 +374,7 @@ function ComparePage() {
       {/* Comparison Table */}
       {!canCompare ? (
         <section className="mt-8 px-4 lg:px-6">
-          <div className="glass rounded-2xl p-12 text-center">
+          <div className="border-y border-foreground/10 bg-surface p-12 text-center">
             <Scale className="mx-auto h-12 w-12 opacity-20" />
             <p className="mt-4 text-sm text-muted-foreground">
               Select two films to compare — search in either card above.
@@ -383,7 +383,7 @@ function ComparePage() {
         </section>
       ) : (
         <section className="mt-8 px-4 lg:px-6">
-          <div className="glass rounded-2xl overflow-hidden">
+          <div className="border border-foreground/10">
             {/* Header row — two columns on mobile so full titles fit, the scale
                 icon is hidden; three columns with truncated titles on sm+. */}
             <div className="grid grid-cols-2 items-center gap-2 border-b border-foreground/10 bg-foreground/[0.03] px-4 py-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-6">
@@ -445,10 +445,10 @@ function ComparePage() {
                 format={(v) => (v > 0 ? `+${v}` : String(v))}
               />
               <CompareRow
-                label="Weeks on Chart"
-                a={filmA!.weeks_on_chart ?? 1}
-                b={filmB!.weeks_on_chart ?? 1}
-                format={(v) => `${v} ${v === 1 ? "week" : "weeks"}`}
+                label="Days on Chart"
+                a={filmA!.days_on_chart ?? 1}
+                b={filmB!.days_on_chart ?? 1}
+                format={(v) => `${v} ${v === 1 ? "day" : "days"}`}
               />
               <CompareRow
                 label="Box Office Revenue"

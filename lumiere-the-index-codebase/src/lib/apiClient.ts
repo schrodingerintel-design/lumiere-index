@@ -90,6 +90,9 @@ export interface RankedFilm {
   movement: number | null;
   peak_rank: number | null;
   weeks_on_chart: number | null;
+  /** Days since the title's first appearance on the live 15-minute chart.
+   *  The tenure unit the UI shows. */
+  days_on_chart?: number | null;
   mentions_total: number;
   /** Genre tag assigned by the backend catalog (Action, Sci-Fi, Horror, Drama,
    *  Indie, Animation, Romance, Comedy). Single source of truth for genres —
@@ -261,35 +264,6 @@ export interface NewEntryFilm {
 /** New Entries — films entering The Index for the first time. */
 export const getIndexNewEntries = (limit: number = 20) =>
   apiFetch<NewEntryFilm[]>(`/api/v1/index/new-entries?limit=${limit}`);
-
-export interface WeeklyEntry {
-  slug: string;
-  title: string;
-  original_title?: string | null;
-  content_type?: "MOVIE" | "TV_SHOW";
-  director: string | null;
-  year: number | null;
-  poster_url: string | null;
-  gradient_from: string | null;
-  gradient_to: string | null;
-  release_date: string | null;
-  first_air_date?: string | null;
-  rank: number;
-  score: number;
-  previous_week_rank: number | null;
-  rank_delta: number;
-  total_signal_volume: number;
-  confidence: string | null;
-  week_start: string;
-  week_end: string;
-}
-
-/** The official Weekly Index — a published weekly Top 100. */
-export const getWeeklyIndex = (limit: number = 100) =>
-  apiFetch<{
-    meta: { week_start: string; week_end: string; published_at: string | null; entry_count: number };
-    entries: WeeklyEntry[];
-  }>(`/api/v1/index/weekly?limit=${limit}`);
 
 export const getNewEntries = (limit: number = 100, offset: number = 0) =>
   apiFetch<RankedFilm[]>(`/api/v1/films/new-entries?limit=${limit}&offset=${offset}`);

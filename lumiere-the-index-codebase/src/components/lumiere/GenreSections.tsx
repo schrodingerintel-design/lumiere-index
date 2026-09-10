@@ -156,12 +156,12 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
-              {/* Index Score — gold on the artwork */}
-              <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-bold leading-none text-primary">
+              {/* Index Score — ivory on the artwork, like every other card */}
+              <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
                 {film.score?.toFixed(1)}
               </div>
               {film.prev_rank == null && (
-                <div className="absolute left-1.5 top-1.5 bg-live px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
+                <div className="absolute left-1.5 top-1.5 bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none text-ink">
                   New
                 </div>
               )}
@@ -175,7 +175,7 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
                   {film.year && (
                     <div className="font-mono text-[10px] text-white/60">{film.year}</div>
                   )}
-                  <div className="truncate font-mono text-[9px] uppercase tracking-wide text-live">
+                  <div className="truncate font-mono text-[9px] uppercase tracking-wide text-white/70">
                     {cardNote(film)}
                   </div>
                 </div>
@@ -212,14 +212,11 @@ export function GenreSections() {
   return (
     <section className="mt-12 space-y-10 px-4 lg:px-6">
       <div>
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
-            Explore by Genre
-          </span>
-          <span className="h-px flex-1 bg-foreground/10" />
+        <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
+          Explore by Genre
         </div>
-        <h2 className="mt-2 font-display text-3xl font-semibold">Curated Collections</h2>
-        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+        <h2 className="mt-1.5 font-display text-2xl font-medium sm:text-3xl">Collections</h2>
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
           Chart titles grouped by their genre — every collection only ever contains films that
           genuinely belong to it.
         </p>

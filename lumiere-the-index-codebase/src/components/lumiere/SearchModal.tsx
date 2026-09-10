@@ -103,7 +103,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
           className="fixed left-1/2 top-[12vh] z-50 w-full max-w-xl -translate-x-1/2 px-4 outline-none animate-fade-up"
         >
           {/* Solid surface — search results must be readable, not a glass demo. */}
-          <div className="overflow-hidden rounded-2xl border border-foreground/15 bg-surface shadow-2xl">
+          <div className="overflow-hidden rounded-lg border border-foreground/15 bg-surface shadow-2xl">
             {/* ── Search input ── */}
             <div className="relative border-b border-foreground/10">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />

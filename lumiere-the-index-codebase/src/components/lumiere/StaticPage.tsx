@@ -12,11 +12,11 @@ export function StaticPage({
 }) {
   return (
     <Layout>
-      <section className="mx-auto max-w-3xl px-4 pb-8 pt-6 lg:px-6">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+      <section className="mx-auto max-w-3xl px-4 pb-8 pt-10 lg:px-6">
+        <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
           {eyebrow}
         </div>
-        <h1 className="mt-2 font-serif text-4xl leading-tight lg:text-5xl">{title}</h1>
+        <h1 className="mt-2 font-display text-4xl font-medium leading-tight sm:text-5xl">{title}</h1>
         <div className="mt-8 space-y-6 leading-relaxed text-foreground/80">{children}</div>
       </section>
     </Layout>

@@ -76,15 +76,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lumière The Index — The films the world can't stop talking about" },
+      { title: "Lumière The Index — The titles capturing the most cultural attention" },
       {
         name: "description",
         content:
-          "The daily cultural momentum ranking for cinema — the 100 films the world can't stop talking about.",
+          "The Index is a daily measure of what's capturing cultural attention across film and television.",
       },
       { name: "author", content: "Lumière" },
       { property: "og:title", content: "Lumière The Index" },
-      { property: "og:description", content: "The films the world can't stop talking about." },
+      {
+        property: "og:description",
+        content: "What's capturing cultural attention in film and television, right now.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -94,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Libre+Franklin:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap",
       },
     ],
   }),

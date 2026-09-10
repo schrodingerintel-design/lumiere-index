@@ -5,8 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* Restrained radius system — editorial, not futuristic. Some elements are
-     nearly square; nothing is a pill-sized bubble anymore. */
+  /* Radius — quiet and squared-off. Editorial, not bubbly. */
   --radius-sm: 0.125rem;
   --radius-md: 0.25rem;
   --radius-lg: 0.375rem;
@@ -41,50 +40,45 @@
   --color-live: var(--live);
   --color-up: var(--up);
   --color-down: var(--down);
-  /* Editorial display face for headlines + a highly readable UI/body face.
-     Fraunces gives cinematic-editorial character without the wedding-invitation
-     softness of Playfair; Libre Franklin is a neutral, legible UI sans. */
+  /* Typography: Fraunces carries the cinematic-editorial voice; Inter is the
+     neutral, highly legible UI face; DM Mono exists only for numbers. */
   --font-display: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "Libre Franklin", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
-  /* Legacy `font-serif` usages resolve to the editorial display face so the
-     whole type system stays coherent (utilities layer would otherwise win). */
+  /* Legacy `font-serif` usages resolve to the display face so the type system
+     stays coherent everywhere. */
   --font-serif: var(--font-display);
 }
 
-/* ── DARK — the only theme: black cinema ─────────────────────────────── */
+/* ── The only theme: black canvas, ivory type, red reserved for emphasis ── */
 :root {
   --radius: 0.5rem;
 
-  /* Brand palette — black canvas, ivory type, red editorial accents.
-     Deep black like a theater with the lights out; ivory carries the text;
-     cinematic red is reserved for emphasis, never the default. */
   --cream:       oklch(0.955 0.008 90);   /* warm ivory — #F4F1EA */
   --ink:         oklch(0.09 0 0);         /* deep black — #080808 */
-  --surface:     oklch(0.155 0 0);        /* near-black cards — #111111 */
-  --surface-alt: oklch(0.20 0 0);         /* elevated surface — #1a1a1a */
-  --border-col:  oklch(1 0 0 / 0.085);    /* dividers — #242424 on black */
+  --surface:     oklch(0.155 0 0);        /* near-black — #111111 */
+  --surface-alt: oklch(0.2 0 0);          /* elevated — #1a1a1a */
+  --border-col:  oklch(1 0 0 / 0.08);     /* hairline dividers — #242424 on black */
 
-  /* Accent: cinematic red — the editorial exclamation mark */
-  --forest:      oklch(0.58 0.2 27);      /* brand red — #E52B2B */
+  /* Cinematic red — branding and editorial emphasis only. */
+  --forest:      oklch(0.58 0.2 27);      /* #E52B2B */
   --forest-deep: oklch(0.68 0.13 152);    /* positive green — #4CAF72 */
   --live:        oklch(0.68 0.13 152);
   --up:          oklch(0.68 0.13 152);
   --down:        oklch(0.62 0.15 25);     /* negative red — #D95353 */
 
-  /* Semantic tokens → dark mode */
   --background:            var(--ink);
   --foreground:            var(--cream);
-  --card:                  oklch(1 0 0 / 0.04);
+  --card:                  var(--surface);
   --card-foreground:       var(--cream);
-  --popover:               var(--surface);
+  --popover:               var(--surface-alt);
   --popover-foreground:    var(--cream);
   --primary:               var(--forest);
   --primary-foreground:    oklch(0.98 0.005 90);
   --secondary:             var(--surface-alt);
   --secondary-foreground:  var(--cream);
   --muted:                 var(--surface);
-  --muted-foreground:      oklch(0.72 0.005 90);
+  --muted-foreground:      oklch(0.72 0.008 90);  /* warm gray — #A6A29B */
   --accent:                var(--forest);
   --accent-foreground:     oklch(0.98 0.005 90);
   --destructive:           var(--down);
@@ -94,7 +88,6 @@
   --ring:                  var(--forest);
 }
 
-/* ── LIGHT THEME REMOVED — dark-only product ──────────────────────────────── */
 @layer base {
   * { border-color: var(--color-border); }
   html, body {
@@ -107,8 +100,14 @@
     -webkit-font-smoothing: antialiased;
     text-wrap: pretty;
   }
-  h1, h2, h3, h4, .font-display, .font-serif { font-family: var(--font-display); letter-spacing: -0.01em; }
-  .font-mono, .tabular { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  h1, h2, h3, h4, .font-display, .font-serif {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  .font-mono, .tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
 
   /* Comfortable base sizing on small screens; most body/UI text stays ≥14px. */
   @media (max-width: 640px) {
@@ -116,52 +115,34 @@
   }
 }
 
-/* ── Surface hierarchy (design reset) ─────────────────────────────────────
-   Glassmorphism is no longer the design language. These utilities keep their
-   names for markup compatibility but now resolve to solid, quiet surfaces:
-   tonal steps of the dark ink background, hairline borders, zero blur.
-     glass       → primary panels (nav chrome, modals)
-     glass-soft  → cards
-     glass-tint  → secondary strips, quiet containers
-     glass-solid → data surfaces (ranking tables)
-     glass-dark  → dark chrome over arbitrary content (mobile nav)
-     glass-flat  → flush panels over the flat background (sidebar rail)
-   The movies — posters, titles, scores — carry the visual richness. */
+/* ── Surfaces — flat, quiet tonal steps. No blur, no glow, no glass. ─────── */
 @utility glass {
   background-color: var(--surface);
   border: 1px solid oklch(1 0 0 / 0.09);
 }
-@utility glass-dark {
-  background-color: var(--surface);
-  border: 1px solid oklch(1 0 0 / 0.12);
-  color: var(--cream);
-}
-/* "Dark" nav chrome — the app is dark-only now. Inner content
-   (Sidebar, QuoteBanner) uses semantic tokens. */
-/* Cards — same solid treatment, one tonal step up. */
 @utility glass-soft {
   background-color: var(--surface);
   border: 1px solid oklch(1 0 0 / 0.08);
 }
-/* Subtle tier — secondary surfaces. Barely-there separation. */
 @utility glass-tint {
   background-color: oklch(1 0 0 / 0.03);
   border: 1px solid oklch(1 0 0 / 0.06);
 }
-/* Solid tier — data surfaces (ranking tables). */
+/* Kept for markup compatibility with older panels — resolves to a solid card. */
+@utility glass-dark {
+  background-color: var(--surface);
+  border: 1px solid oklch(1 0 0 / 0.1);
+}
 @utility glass-solid {
   background-color: var(--surface);
   border: 1px solid oklch(1 0 0 / 0.1);
 }
-/* Flush panel over the flat background (sidebar rail). */
 @utility glass-flat {
   background-color: var(--surface);
   border: 1px solid oklch(1 0 0 / 0.09);
 }
 
-/* Index Score — the product. Typography carries the authority: tabular mono,
-   tight tracking, warm ivory. The number itself is NEVER the brand red — red
-   lives in the labels and accents around it. No glow, no shadow. */
+/* Index Score — the product's signature number. Ivory, tabular, tight. */
 @utility index-score {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -171,7 +152,7 @@
   line-height: 1;
 }
 
-/* 44px minimum tap targets on coarse pointers (mobile audit item). */
+/* 44px minimum tap targets on coarse pointers. */
 @media (pointer: coarse) {
   button, a[role="button"], [role="button"] {
     min-height: 44px;
@@ -180,180 +161,32 @@
 
 /* Respect reduced-motion preferences. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-ticker,
-  .animate-fade-up,
-  .animate-breathe,
-  .animate-float-slow,
-  .animate-kenburns,
-  .animate-drawer-in,
-  .animate-scrim-in,
-  .live-dot::before,
-  .orb-violet,
-  .orb-violet-deep,
-  .orb-magenta {
+  .animate-fade-up {
     animation: none;
   }
-  .animate-drawer-in { transform: none; }
 }
-/* Subtle, confident hover — a border/tonal shift, not a levitation act. */
+
+/* Hover — a quiet tonal shift, nothing more. */
 @utility card-lift {
-  transition: border-color .25s ease, background-color .25s ease;
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
   &:hover {
-    border-color: oklch(1 0 0 / 0.2);
-  }
-}
-@utility live-dot {
-  position: relative;
-  &::before {
-    content: ""; position: absolute; inset: 0; border-radius: 9999px;
-    background: var(--live); animation: pingDot 1.6s cubic-bezier(0,0,.2,1) infinite;
+    border-color: oklch(1 0 0 / 0.18);
   }
 }
 
-@keyframes pingDot {
-  0% { transform: scale(1); opacity: .9; }
-  80%, 100% { transform: scale(2.4); opacity: 0; }
-}
-
+/* Subtle entrance — fast, almost invisible. */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fade-up { animation: fadeUp .4s cubic-bezier(.2,.7,.2,1) both; }
-.delay-100 { animation-delay: .08s }
-.delay-200 { animation-delay: .16s }
-.delay-300 { animation-delay: .24s }
-.delay-400 { animation-delay: .32s }
+.animate-fade-up { animation: fadeUp .3s cubic-bezier(.2,.7,.2,1) both; }
+.delay-100 { animation-delay: .06s }
+.delay-200 { animation-delay: .12s }
+.delay-300 { animation-delay: .18s }
 
-@keyframes ticker {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-.animate-ticker { animation: ticker 40s linear infinite; }
-
-@keyframes barGrow {
-  from { width: 0; }
-}
-.bar-grow > * { animation: barGrow 1.2s cubic-bezier(.2,.7,.2,1) both; }
-
-/* ── Live blur — ambient violet orbs drifting behind the whole app ────────
-   Fixed, pointer-transparent layers of blurred color that slowly breathe.
-   This is atmosphere behind the content, never overlay on it. */
-@utility ambient-orb {
-  position: fixed;
-  pointer-events: none;
-  z-index: 0;
-  border-radius: 9999px;
-  filter: blur(90px);
-  opacity: 0.55;
-  will-change: transform, opacity;
-}
-.orb-violet {
-  background: radial-gradient(circle, oklch(0.45 0.16 27 / 0.28), transparent 70%);
-  animation: driftA 26s ease-in-out infinite alternate;
-}
-.orb-violet-deep {
-  background: radial-gradient(circle, oklch(0.3 0.1 27 / 0.32), transparent 70%);
-  animation: driftB 34s ease-in-out infinite alternate;
-}
-.orb-magenta {
-  background: radial-gradient(circle, oklch(0.38 0.08 60 / 0.2), transparent 70%);
-  animation: driftC 40s ease-in-out infinite alternate;
-}
-@keyframes driftA {
-  from { transform: translate(0, 0) scale(1); }
-  to   { transform: translate(6vw, 4vh) scale(1.15); }
-}
-@keyframes driftB {
-  from { transform: translate(0, 0) scale(1.1); }
-  to   { transform: translate(-5vw, 6vh) scale(0.95); }
-}
-@keyframes driftC {
-  from { transform: translate(0, 0) scale(0.95); }
-  to   { transform: translate(4vw, -5vh) scale(1.2); }
-}
-
-/* ── Frost chrome — live blur that melts into the drifting atmosphere ─────
-   Nav and sidebar sit over the ambient orbs, so a real backdrop blur lets
-   the live violet light glow through: frosted glass, not a flat highlight. */
-@utility frost {
-  background-color: oklch(0.09 0 0 / 0.65);
-  backdrop-filter: blur(22px) saturate(1.35);
-  -webkit-backdrop-filter: blur(22px) saturate(1.35);
-}
-/* Softer tier for the sidebar rail and drawer. */
-@utility frost-soft {
-  background-color: oklch(0.09 0 0 / 0.5);
-  backdrop-filter: blur(18px) saturate(1.25);
-  -webkit-backdrop-filter: blur(18px) saturate(1.25);
-}
-
-/* ── Fluid drawer motion — the side panel slides with organic easing ────── */
-@keyframes drawerIn {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(0); }
-}
-@keyframes scrimIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-.animate-drawer-in {
-  animation: drawerIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-  will-change: transform;
-}
-.animate-scrim-in {
-  animation: scrimIn 0.35s ease both;
-}
-
-/* Slow breathing glow for accent elements (score, live indicators). */
-@keyframes breathe {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.75; }
-}
-.animate-breathe { animation: breathe 4.5s ease-in-out infinite; }
-
-/* Gentle float for decorative media (hero poster). */
-@keyframes floatSlow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-.animate-float-slow { animation: floatSlow 7s ease-in-out infinite; }
-
-/* Cross-fade for hero backdrop slides. */
-@keyframes kenBurns {
-  from { transform: scale(1.02); }
-  to   { transform: scale(1.1); }
-}
-.animate-kenburns { animation: kenBurns 14s ease-out both alternate infinite; }
-
-/* ── Blending media into the background ─────────────────────────────────
-   Header/hero images should never end in a hard edge against the page:
-   masks fade them into the violet-black ground instead of boxing them. */
-@utility blend-img {
-  mask-image: linear-gradient(to bottom, black 55%, transparent 98%);
-  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 98%);
-}
-@utility blend-img-radial {
-  mask-image: radial-gradient(120% 100% at 50% 40%, black 55%, transparent 92%);
-  -webkit-mask-image: radial-gradient(120% 100% at 50% 40%, black 55%, transparent 92%);
-}
-/* Full-bleed media that melts into the page on every edge. */
-@utility blend-full {
-  mask-image: radial-gradient(140% 120% at 50% 45%, black 48%, transparent 88%);
-  -webkit-mask-image: radial-gradient(140% 120% at 50% 45%, black 48%, transparent 88%);
-}
-
-/* Scrollbar */
+/* Scrollbars */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
-
-/* Selection highlight */
-::selection {
-  background: oklch(0.58 0.2 27 / 0.45);
-  color: var(--cream);
-}
-
-/* Scrollbar styling for dark mode */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -361,3 +194,8 @@
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 0.22); }
+
+::selection {
+  background: oklch(0.58 0.2 27 / 0.45);
+  color: var(--cream);
+}

@@ -1,264 +1,418 @@
-import { useState, useEffect, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, Scale, ArrowUp, ArrowDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import {
   getTopFilms,
-  searchTmdbMovie,
-  getTmdbMovieVideos,
-  tmdbPosterUrl,
-  tmdbBackdropUrl,
+  getBiggestMovers,
+  getIndexNewEntries,
+  getTrendingFilms,
   type RankedFilm,
+  type MoverFilm,
+  type NewEntryFilm,
+  type TrendingFilmOut,
 } from "@/lib/apiClient";
-import { HeroSkeleton } from "./Skeletons";
 import { filmTrend } from "@/lib/trend";
+import { RankRow, SectionHeading } from "./Ranking";
+import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
+import { TopTenSkeleton } from "./Skeletons";
 
-function gradientStyle(film: RankedFilm | null) {
-  if (!film) return "#1a1a1a";
-  const from = film.gradient_from ?? "#333";
-  const to = film.gradient_to ?? "#111";
-  return `linear-gradient(155deg, ${from}, ${to})`;
+/** Preload the next slide's backdrop image so swaps are instant. */
+function useBackdropPreload(films: RankedFilm[], index: number) {
+  useEffect(() => {
+    if (films.length < 2) return;
+    const next = films[(index + 1) % films.length];
+    const url = next?.backdrop_url ?? null;
+    if (url) {
+      const img = new Image();
+      img.src = url;
+    }
+  }, [films, index]);
+}
+
+function MovementInline({ film }: { film: RankedFilm }) {
+  const trend = filmTrend(film);
+  const move = film.movement ?? 0;
+  if (trend === "new") {
+    return (
+      <span className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-foreground">
+        New
+      </span>
+    );
+  }
+  if (trend === "rise") {
+    return (
+      <span className="flex items-center gap-1 font-mono text-xs font-semibold tabular text-up">
+        <ArrowUp className="h-3.5 w-3.5" aria-hidden /> {move}
+      </span>
+    );
+  }
+  if (trend === "fall") {
+    return (
+      <span className="flex items-center gap-1 font-mono text-xs font-semibold tabular text-down">
+        <ArrowDown className="h-3.5 w-3.5" aria-hidden /> {Math.abs(move)}
+      </span>
+    );
+  }
+  return <span className="font-mono text-xs text-muted-foreground">—</span>;
 }
 
 export function Hero() {
-  const { data: films, isLoading: filmsLoading } = useQuery({
-    queryKey: ["films", "top", 10],
-    queryFn: () => getTopFilms(10),
+  // Prefetch the supporting queries so the rhythm below the masthead is instant.
+  useQuery({ queryKey: ["index", "movers"], queryFn: () => getBiggestMovers(), staleTime: 5 * 60 * 1000 });
+  useQuery({ queryKey: ["index", "new-entries"], queryFn: () => getIndexNewEntries(), staleTime: 5 * 60 * 1000 });
+  useQuery({ queryKey: ["trending", "films"], queryFn: () => getTrendingFilms(6), staleTime: 5 * 60 * 1000 });
+
+  const { data: films, isLoading } = useQuery({
+    queryKey: ["films", "top", 100],
+    queryFn: () => getTopFilms(100),
     staleTime: 5 * 60 * 1000,
   });
 
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [index, setIndex] = useState(0);
+  const topFive = films?.slice(0, 5) ?? [];
+  const activeFilm = topFive[index] ?? null;
 
-  const queryClient = useQueryClient();
-  const carouselFilms = films?.slice(0, 5) ?? [];
-  const activeFilm = carouselFilms[activeIndex] ?? null;
-
-  // Prefetch TMDB + videos for all carousel films so every slide's data is ready instantly.
-  useEffect(() => {
-    if (!carouselFilms.length) return;
-    for (const film of carouselFilms) {
-      const tmdbKey = ["tmdb", film.title, film.year] as const;
-      queryClient
-        .ensureQueryData({
-          queryKey: tmdbKey,
-          queryFn: () => searchTmdbMovie(film.title, film.year ?? undefined),
-          staleTime: 24 * 60 * 60 * 1000,
-        })
-        .then((tmdbData) => {
-          const id = tmdbData?.results?.[0]?.id;
-          if (id) {
-            queryClient.prefetchQuery({
-              queryKey: ["tmdb-videos", id],
-              queryFn: () => getTmdbMovieVideos(id),
-              staleTime: 24 * 60 * 60 * 1000,
-            });
-          }
-        })
-        .catch(() => {});
-    }
-  }, [carouselFilms, queryClient]);
-
-  const { data: tmdb } = useQuery({
-    queryKey: ["tmdb", activeFilm?.title, activeFilm?.year],
-    queryFn: () => searchTmdbMovie(activeFilm!.title, activeFilm?.year ?? undefined),
-    enabled: !!activeFilm,
-    staleTime: 24 * 60 * 60 * 1000,
-  });
-
-  // Derive tmdbFilm early so we can chain the videos query on its id.
-  const tmdbFilm = tmdb?.results?.[0];
-
-  const { data: videos } = useQuery({
-    queryKey: ["tmdb-videos", tmdbFilm?.id],
-    queryFn: () => getTmdbMovieVideos(tmdbFilm!.id),
-    enabled: !!tmdbFilm?.id,
-    staleTime: 24 * 60 * 60 * 1000,
-  });
-
-  const trailer =
-    videos?.results?.find((v) => v.type === "Trailer" && v.site === "YouTube") ??
-    videos?.results?.find((v) => v.site === "YouTube");
+  useBackdropPreload(topFive, index);
 
   useEffect(() => {
-    if (carouselFilms.length < 2) return;
-    const interval = setInterval(() => {
-      setActiveIndex((current) => (current + 1) % carouselFilms.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [carouselFilms.length]);
+    if (topFive.length < 2) return;
+    const t = setInterval(() => setIndex((i) => (i + 1) % topFive.length), 8000);
+    return () => clearInterval(t);
+  }, [topFive.length]);
 
-  // Tap zones: tapping the left/right half of the hero flips the slide.
-  // Links and buttons opt out so CTAs (compare, trailer, poster) keep working.
-  const handleHeroTap = (e: ReactMouseEvent<HTMLElement>) => {
-    if (carouselFilms.length < 2) return;
-    if ((e.target as HTMLElement | null)?.closest("a, button, input, [role='button']")) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const goPrev = e.clientX - rect.left < rect.width / 2;
-    setActiveIndex((curr) =>
-      goPrev
-        ? (curr - 1 + carouselFilms.length) % carouselFilms.length
-        : (curr + 1) % carouselFilms.length,
+  if (isLoading || !films) {
+    return (
+      <section className="px-4 pt-10 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <TopTenSkeleton />
+        </div>
+      </section>
     );
-  };
-
-  if (filmsLoading || !films) return <HeroSkeleton />;
-
-  const posterUrl = activeFilm?.poster_url || tmdbPosterUrl(tmdbFilm?.poster_path, "w500");
-  const backdropUrl = activeFilm?.backdrop_url || tmdbBackdropUrl(tmdbFilm?.backdrop_path, "w1280");
+  }
 
   const director =
     activeFilm?.director && activeFilm.director !== "Unknown" ? activeFilm.director : null;
-  const score = activeFilm?.score ?? null;
-  const move = activeFilm?.movement ?? 0;
-  const isNew = activeFilm?.prev_rank == null;
-  const weeks = activeFilm?.weeks_on_chart ?? 0;
-  const trend = filmTrend(activeFilm);
-
-  // "Why it's here" — an honest, evidence-gated line. The claim strength is
-  // capped by the confidence tier the ranking engine computed for this title.
-  const sample = activeFilm?.sample_size ?? 0;
-  const confidence = activeFilm?.confidence ?? "insufficient";
-  const whyItsHere =
-    confidence === "insufficient"
-      ? "Just entered tracking — not enough signal yet"
-      : confidence === "low"
-        ? `Limited early signal — ${sample.toLocaleString()} audience ${sample === 1 ? "mention" : "mentions"} tracked so far`
-        : `Backed by ${sample.toLocaleString()} tracked audience signals this cycle`;
+  const backdropUrl = activeFilm?.backdrop_url ?? null;
+  const daysOnChart = activeFilm?.days_on_chart ?? 1;
 
   return (
-    <section
-      onClick={handleHeroTap}
-      className="relative w-full select-none overflow-hidden mt-4 max-w-full"
-    >
-      {/* ── Backdrop: cover-crop, melting into the black page ── */}
-      <div className="absolute inset-0">
-        {backdropUrl ? (
+    <section className="relative">
+      {/* Backdrop — a single still, dissolving into the page. Nothing floats. */}
+      {backdropUrl && (
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <img
             key={backdropUrl}
             src={backdropUrl}
             alt=""
-            className="animate-kenburns absolute inset-0 h-full w-full object-cover object-[50%_35%]"
+            className="h-full w-full object-cover object-[50%_30%] opacity-25"
             fetchPriority="high"
             decoding="async"
           />
-        ) : (
-          <div
-            key={activeFilm?.slug}
-            className="absolute inset-0"
-            style={{ background: gradientStyle(activeFilm) }}
-          />
-        )}
-        {/* Ink-tinted gradients instead of hard black — the image dissolves
-            into the page ground on every edge, no frame, no seam. */}
-        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/55 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/20 to-ink/45" />
-      </div>
-
-      {/* ── Content ── */}
-      <div className="relative z-10 flex min-h-[460px] flex-col px-5 py-7 sm:px-8 sm:py-8 lg:min-h-[540px] lg:px-12 lg:py-10 lg:pr-80">
-        {/* Masthead strip — rank, movement, weeks, date. Editorial, not badges. */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.2em] text-white/75">
-          <span className="font-semibold text-primary">#{activeFilm?.rank ?? 1} on the Index</span>
-          {trend === "new" ? (
-            <span className="font-semibold text-live">New entry</span>
-          ) : trend === "rise" ? (
-            <span className="flex items-center gap-1 font-semibold text-up">
-              <ArrowUp className="h-3.5 w-3.5" /> {move}
-            </span>
-          ) : trend === "fall" ? (
-            <span className="flex items-center gap-1 font-semibold text-down">
-              <ArrowDown className="h-3.5 w-3.5" /> {Math.abs(move)}
-            </span>
-          ) : (
-            <span className="text-muted-foreground" title="Held its rank">—</span>
-          )}
-          {!isNew && weeks > 0 && <span>{weeks} {weeks === 1 ? "week" : "weeks"} on chart</span>}
-          <span className="hidden sm:inline">{todayLabel()}</span>
+          <div className="absolute inset-0 bg-gradient-to-b from-ink/70 via-ink/85 to-ink" />
         </div>
+      )}
 
-        {/* Title + score, vertically centered */}
-        <div className="flex flex-1 flex-col justify-center py-6">
-          {director && (
-            <div className="font-mono text-[11px] uppercase tracking-[0.26em] text-white/70">
-              A film by {director}
-            </div>
-          )}
-
-          <h1 className="mt-3 font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[0.98] text-white line-clamp-3">
-            {activeFilm?.title}
-          </h1>
-
-          {/* Index Score — the product. Big number in brand gold, label underneath. */}
-          <div className="mt-6 flex items-end gap-4">
-            <div>
-              <div className="font-mono text-6xl font-bold leading-none tracking-tight text-cream sm:text-7xl lg:text-8xl">
-                {score?.toFixed(1) ?? "—"}
+      <div className="relative px-4 pt-10 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 max-w-2xl">
+              {/* Kicker — where this title stands today */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                <span className="font-semibold text-primary">
+                  #{activeFilm?.rank ?? 1} on the Index
+                </span>
+                <span aria-hidden>·</span>
+                {activeFilm && <MovementInline film={activeFilm} />}
+                <span aria-hidden>·</span>
+                <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
               </div>
-              <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.3em] text-white/80">
+
+              {/* Title — the film stays the hero */}
+              <h1 className="mt-4 font-display text-4xl font-medium leading-[1.02] sm:text-5xl md:text-6xl">
+                <Link
+                  to="/films/$slug"
+                  params={{ slug: activeFilm?.slug ?? "" }}
+                  className="transition-colors hover:text-primary"
+                >
+                  {activeFilm?.title ?? "The Index"}
+                </Link>
+              </h1>
+
+              {/* One line of metadata, quietly */}
+              <p className="mt-3 text-sm text-muted-foreground sm:text-[15px]">
+                {[director, activeFilm?.year, `${daysOnChart} ${daysOnChart === 1 ? "day" : "days"} on chart`]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+
+            {/* Index Score — the defining number. Big, ivory, calm. */}
+            <div className="shrink-0">
+              <div className="index-score text-7xl sm:text-8xl">
+                {activeFilm?.score?.toFixed(1) ?? "—"}
+              </div>
+              <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 Index Score
               </div>
             </div>
           </div>
 
-          <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/70">
-            {whyItsHere}
-          </p>
-        </div>
-
-        {/* Bottom: text CTAs — confident, not pill badges */}
-        <div className="flex flex-wrap items-center gap-5">
-          <Link
-            to="/films/$slug"
-            params={{ slug: activeFilm?.slug ?? "" }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cream px-6 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
-          >
-            <Play className="h-4 w-4" />
-            View Film
-          </Link>
-          {trailer && (
-            <Link
-              to="/films/$slug"
-              params={{ slug: activeFilm?.slug ?? "" }}
-              hash="trailer"
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/35 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              <Play className="h-4 w-4" />
-              Trailer
-            </Link>
+          {/* Slide switching — quiet dots, no buttons shouting for attention */}
+          {topFive.length > 1 && (
+            <div className="mt-8 flex gap-2">
+              {topFive.map((f, i) => (
+                <button
+                  key={f.slug}
+                  onClick={() => setIndex(i)}
+                  aria-label={`Show #${f.rank}: ${f.title}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === index ? "w-6 bg-foreground/80" : "w-1.5 bg-foreground/25 hover:bg-foreground/40"
+                  }`}
+                />
+              ))}
+            </div>
           )}
         </div>
-      </div>
-
-      {/* ── Right: poster (desktop only) — the artwork does the talking ── */}
-      <div className="absolute right-12 top-1/2 z-10 hidden -translate-y-1/2 lg:block">
-        <Link
-          to="/films/$slug"
-          params={{ slug: activeFilm?.slug ?? "" }}
-          className="animate-float-slow group relative block w-56 shadow-[0_0_90px_oklch(0.45_0.2_300/0.35)]"
-        >
-          {posterUrl ? (
-            <img
-              key={posterUrl}
-              src={posterUrl}
-              alt={activeFilm?.title}
-              className="h-full w-full object-cover aspect-[2/3]"
-              fetchPriority="high"
-              decoding="async"
-            />
-          ) : (
-            <div className="aspect-[2/3]" style={{ background: gradientStyle(activeFilm) }} />
-          )}
-        </Link>
       </div>
     </section>
   );
 }
 
-function todayLabel(): string {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
+/** Homepage Top 10 — the chart IS the hero of the page. */
+export function TopTen() {
+  const { data: films, isLoading, error } = useQuery({
+    queryKey: ["films", "top", 100],
+    queryFn: () => getTopFilms(100),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const top10 = films?.slice(0, 10) ?? [];
+
+  return (
+    <section className="px-4 pt-10 sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <SectionHeading
+          kicker="The Index"
+          title="The Top 10"
+          copy="The ten titles capturing the most cultural attention today, ranked by audience signal alone."
+          seeAllHref="/top-100"
+          seeAllLabel="Full Top 100"
+        />
+        <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/10">
+          {isLoading ? (
+            <TopTenSkeleton />
+          ) : error ? (
+            <li className="py-12 text-center text-sm text-muted-foreground">
+              Something went wrong. Please try again.
+            </li>
+          ) : (
+            top10.map((f) => (
+              <li key={f.slug}>
+                <RankRow film={f} />
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function MoverRow({ film }: { film: MoverFilm }) {
+  const up = film.direction === "up";
+  return (
+    <li>
+      <Link
+        to="/films/$slug"
+        params={{ slug: film.slug }}
+        className="group flex items-center gap-3 py-2.5"
+      >
+        <FilmPosterThumbnail film={film} className="h-14 w-10" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+            {film.title}
+          </div>
+          <div className="mt-0.5 font-mono text-[11px] tabular text-muted-foreground">
+            {film.previous_rank != null
+              ? `#${film.previous_rank} → #${film.current_rank}`
+              : `#${film.current_rank}`}
+          </div>
+        </div>
+        <span
+          className={`flex items-center gap-0.5 font-mono text-xs font-semibold tabular ${
+            up ? "text-up" : "text-down"
+          }`}
+        >
+          {up ? (
+            <ArrowUp className="h-3 w-3" aria-hidden />
+          ) : (
+            <ArrowDown className="h-3 w-3" aria-hidden />
+          )}
+          {film.movement}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function NewEntryRow({ film }: { film: NewEntryFilm }) {
+  return (
+    <li>
+      <Link
+        to="/films/$slug"
+        params={{ slug: film.slug }}
+        className="group flex items-center gap-3 py-2.5"
+      >
+        <FilmPosterThumbnail film={film} className="h-14 w-10" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+            {film.title}
+          </div>
+          <div className="mt-0.5 font-mono text-[11px] tabular text-muted-foreground">
+            Debuted at #{film.debut_rank}
+          </div>
+        </div>
+        <span className="index-score text-base">{film.debut_score?.toFixed(1)}</span>
+      </Link>
+    </li>
+  );
+}
+
+function TrendingRow({ film }: { film: TrendingFilmOut }) {
+  return (
+    <li>
+      <Link
+        to="/films/$slug"
+        params={{ slug: film.film_slug }}
+        className="group flex items-center gap-3 py-2.5"
+      >
+        <FilmPosterThumbnail film={film} className="h-14 w-10" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+            {film.title}
+          </div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">{film.trend_reason}</div>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+/** Homepage rhythm — What's moving → What's new → What's being discussed. */
+export function PulseRow() {
+  const { data: movers, isLoading: moversLoading } = useQuery({
+    queryKey: ["index", "movers"],
+    queryFn: () => getBiggestMovers(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: newEntries, isLoading: entriesLoading } = useQuery({
+    queryKey: ["index", "new-entries"],
+    queryFn: () => getIndexNewEntries(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: trendingFilms, isLoading: trendingLoading } = useQuery({
+    queryKey: ["trending", "films"],
+    queryFn: () => getTrendingFilms(6),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const gainers = (movers?.gainers ?? []).slice(0, 4);
+  const topEntries = (newEntries ?? []).slice(0, 4);
+  const topTrending = (trendingFilms ?? []).slice(0, 4);
+
+  const loading = moversLoading || entriesLoading || trendingLoading;
+
+  return (
+    <section className="mt-14 px-4 sm:px-6">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 md:grid-cols-3">
+        <div>
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Biggest Movers
+          </div>
+          {loading ? (
+            <div className="space-y-4 py-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-14 w-10 animate-pulse rounded-sm bg-foreground/10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-28 animate-pulse rounded bg-foreground/10" />
+                    <div className="h-2.5 w-20 animate-pulse rounded bg-foreground/10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : gainers.length > 0 ? (
+            <ul className="divide-y divide-foreground/[0.06]">
+              {gainers.map((f) => (
+                <MoverRow key={f.slug} film={f} />
+              ))}
+            </ul>
+          ) : (
+            <p className="py-3 text-sm text-muted-foreground">
+              No movement in the latest Index yet.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            New Entries
+          </div>
+          {loading ? (
+            <div className="space-y-4 py-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-14 w-10 animate-pulse rounded-sm bg-foreground/10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-28 animate-pulse rounded bg-foreground/10" />
+                    <div className="h-2.5 w-20 animate-pulse rounded bg-foreground/10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : topEntries.length > 0 ? (
+            <ul className="divide-y divide-foreground/[0.06]">
+              {topEntries.map((f) => (
+                <NewEntryRow key={f.slug} film={f} />
+              ))}
+            </ul>
+          ) : (
+            <p className="py-3 text-sm text-muted-foreground">No new entries this cycle.</p>
+          )}
+        </div>
+
+        <div>
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Trending
+          </div>
+          {loading ? (
+            <div className="space-y-4 py-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-14 w-10 animate-pulse rounded-sm bg-foreground/10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-28 animate-pulse rounded bg-foreground/10" />
+                    <div className="h-2.5 w-20 animate-pulse rounded bg-foreground/10" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : topTrending.length > 0 ? (
+            <ul className="divide-y divide-foreground/[0.06]">
+              {topTrending.map((f) => (
+                <TrendingRow key={f.film_slug} film={f} />
+              ))}
+            </ul>
+          ) : (
+            <p className="py-3 text-sm text-muted-foreground">
+              Nothing is trending yet — titles appear once enough audience signal accumulates.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 }
