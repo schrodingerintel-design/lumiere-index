@@ -175,8 +175,9 @@ export function Hero() {
       )}
 
       {/* Content layer — transparent to taps so the zones beneath receive them;
-          interactive children re-enable pointer events explicitly. */}
-      <div className="pointer-events-none relative px-4 pt-10 sm:px-6">
+          interactive children re-enable pointer events explicitly. Horizontal
+          padding clears the desktop edge arrows. */}
+      <div className="pointer-events-none relative px-4 pt-10 sm:px-20 lg:px-24">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 max-w-2xl">
