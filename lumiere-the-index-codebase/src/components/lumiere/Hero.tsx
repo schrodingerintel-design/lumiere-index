@@ -126,8 +126,8 @@ export function Hero() {
 
       {/* Mobile: invisible tap zones over the backdrop — tap left third for the
           previous title, right third for the next, middle to open the film.
-          Desktop keeps the visible dots. Sits below the content layer, so the
-          title link and dots are never blocked. */}
+          Desktop gets visible edge arrows. Sits below the content layer, so the
+          title link is never blocked. */}
       {topFive.length > 1 && (
         <div className="absolute inset-0 grid grid-cols-3 sm:hidden">
           <button
@@ -221,22 +221,6 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Slide position — tiny semi-transparent dots. Mobile navigates by
-              tapping the backdrop: left/right to move, middle to open the film. */}
-          {topFive.length > 1 && (
-            <div className="pointer-events-auto mt-8 flex items-center gap-2.5">
-              {topFive.map((f, i) => (
-                <button
-                  key={f.slug}
-                  onClick={() => setIndex(i)}
-                  aria-label={`Show #${f.rank}: ${f.title}`}
-                  className={`h-1 w-1 rounded-full transition-colors duration-300 ${
-                    i === index ? "bg-foreground/80" : "bg-foreground/25 hover:bg-foreground/45"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </section>
