@@ -137,7 +137,7 @@ function Hot50() {
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
               The 50 titles capturing the most cultural attention right now, re-ranked every 15
-              minutes from live audience signal.
+              minutes.
               {snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
             </p>
           </div>

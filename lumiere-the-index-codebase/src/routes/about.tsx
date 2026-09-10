@@ -37,15 +37,15 @@ function About() {
       <p>
         Entertainment moves faster than ever. A film can become a worldwide conversation overnight
         through theaters, streaming, social platforms, and communities. Yet understanding what is
-        truly trending has become fragmented across thousands of different signals. The Index brings
-        those signals together into one platform.
+        truly trending has become fragmented across countless platforms. The Index brings
+        that picture together in one place.
       </p>
 
       <div>
         <h2 className="font-serif text-2xl text-foreground">What is The Index?</h2>
         <p className="mt-3">
           The Index is a ranking system designed to measure cultural momentum. Rather than focusing
-          on a single metric, Lumière analyzes multiple signals surrounding movies and shows to
+          on a single metric, Lumière looks at the full picture surrounding movies and shows to
           understand their impact, visibility, and relevance.
         </p>
         <p>
@@ -75,7 +75,7 @@ function About() {
           <Compass className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For Audiences</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            See which films the world is talking about — ranked by real signals, not promotion.
+            See which films the world is talking about — ranked by real attention, not promotion.
           </p>
         </div>
         <div className="border border-foreground/10 bg-surface p-5">

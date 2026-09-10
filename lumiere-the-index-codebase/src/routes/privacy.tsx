@@ -95,10 +95,9 @@ function Privacy() {
         <List
           items={[
             "Movie and television information",
-            "Public engagement signals",
+            "Public engagement data",
             "Industry data",
             "Trending discussions",
-            "Publicly available cultural signals",
           ]}
         />
         <p>This information is used to create rankings, charts, analytics, and discovery features.</p>
@@ -122,7 +121,7 @@ function Privacy() {
 
       <Section num="4." title="The Index and Data Processing">
         <p>
-          The Index analyzes multiple signals to understand cultural momentum around movies
+          The Index analyzes public entertainment data to understand cultural momentum around movies
           and shows.
         </p>
         <p>Personal user information is not used to artificially influence rankings.</p>

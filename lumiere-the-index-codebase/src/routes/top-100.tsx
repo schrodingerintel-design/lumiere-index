@@ -16,7 +16,7 @@ export const Route = createFileRoute("/top-100")({
       {
         name: "description",
         content:
-          "The 100 films currently generating the strongest cultural momentum across audience conversation, attention and visibility.",
+          "The 100 films currently generating the strongest cultural momentum.",
       },
     ],
   }),
@@ -54,8 +54,7 @@ function Top100() {
         </div>
         <h1 className="mt-2 font-display text-5xl lg:text-6xl">The Top 100</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          The 100 films currently generating the strongest cultural momentum across audience
-          conversation, attention and visibility.
+          The 100 films currently generating the strongest cultural momentum.
         </p>
       </section>
 
@@ -67,13 +66,12 @@ function Top100() {
         )}
         <div className="border-t-2 border-foreground/20">
           {/* Desktop header row */}
-          <div className="hidden grid-cols-[64px_64px_1fr_90px_110px_90px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
+          <div className="hidden grid-cols-[64px_64px_1fr_90px_110px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
             <div>Rank</div>
             <div>Mvmt</div>
             <div>Title</div>
             <div>Days</div>
             <div className="text-right">Index Score</div>
-            <div className="text-right">Signals</div>
           </div>
           <ul>
             {isLoading
@@ -82,10 +80,6 @@ function Top100() {
                   const change = f.movement ?? null;
                   const director =
                     f.director && f.director !== "Unknown" ? f.director : null;
-                  const signals =
-                    f.mentions_total >= 1000
-                      ? `${(f.mentions_total / 1000).toFixed(1)}k`
-                      : String(f.mentions_total);
                   const isNew = f.prev_rank == null && isNewRelease(f);
 
                   return (
@@ -95,7 +89,7 @@ function Top100() {
                         params={{ slug: f.slug }}
                         /* Mobile: stacked card — rank/movement/title/score, meta underneath.
                            Desktop: full 6-column scan table. No horizontal overflow anywhere. */
-                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_110px_90px] sm:px-5"
+                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_110px] sm:px-5"
                       >
                         <div className="flex flex-col items-start gap-0.5">
                           <span className="index-score text-2xl font-semibold sm:text-xl">
@@ -171,9 +165,6 @@ function Top100() {
                           <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
                             Index
                           </div>
-                        </div>
-                        <div className="hidden text-right font-mono text-xs tabular text-muted-foreground font-medium sm:block">
-                          {signals}
                         </div>
                       </Link>
                     </li>

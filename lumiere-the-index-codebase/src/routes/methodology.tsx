@@ -47,7 +47,7 @@ function Methodology() {
       <p>
         Entertainment is no longer shaped by a single factor. A movie's influence can come from
         theaters, streaming platforms, online communities, social conversations, search behavior,
-        media coverage, and audience engagement. The Index combines multiple signals to
+        media coverage, and audience engagement. The Index combines these dimensions to
         create a broader understanding of what is capturing global attention.
       </p>
 
@@ -76,31 +76,27 @@ function Methodology() {
         />
       </Section>
 
-      <Section title="Ranking Signals">
-        <p>The Index evaluates multiple categories of signals.</p>
+      <Section title="What Goes Into a Ranking">
+        <p>The Index looks at four dimensions of cultural attention.</p>
 
         <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
           <h3 className="font-serif text-lg text-foreground">Audience Interest</h3>
-          <p className="mt-1 text-sm">Measures how actively audiences are discovering and engaging with a title. Signals may include:</p>
-          <List items={["Search interest.", "Platform activity.", "Audience interactions.", "Viewing trends."]} />
+          <p className="mt-1 text-sm">How actively audiences are discovering and engaging with a title.</p>
         </div>
 
         <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
           <h3 className="font-serif text-lg text-foreground">Social Conversation</h3>
-          <p className="mt-1 text-sm">Measures the level and momentum of public discussion. Signals may include:</p>
-          <List items={["Social media discussions.", "Community conversations.", "Viral moments.", "Audience reactions."]} />
+          <p className="mt-1 text-sm">The level and momentum of public discussion.</p>
         </div>
 
         <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
           <h3 className="font-serif text-lg text-foreground">Media Presence</h3>
-          <p className="mt-1 text-sm">Measures how strongly a title is appearing across entertainment coverage. Signals may include:</p>
-          <List items={["News coverage.", "Industry announcements.", "Interviews.", "Editorial attention."]} />
+          <p className="mt-1 text-sm">How strongly a title is appearing across entertainment coverage.</p>
         </div>
 
         <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
           <h3 className="font-serif text-lg text-foreground">Availability &amp; Visibility</h3>
-          <p className="mt-1 text-sm">Measures how accessible and discoverable a title is. Signals may include:</p>
-          <List items={["Streaming availability.", "New releases.", "Major platform appearances.", "Regional availability."]} />
+          <p className="mt-1 text-sm">How accessible and discoverable a title is.</p>
         </div>
       </Section>
 
@@ -126,7 +122,7 @@ function Methodology() {
         </p>
         <List
           items={[
-            "Signal collection — continuous. Audience observations are ingested from every source around the clock.",
+            "Data collection — continuous. Audience activity is measured around the clock.",
             "The official Top 100 — a published ranking cycle. Each cycle writes one immutable snapshot; ranks, movement, and days-on-chart are computed between consecutive snapshots only.",
             "Biggest Movers — derived from rank changes between consecutive published Indexes. It highlights the titles climbing or falling fastest; it is not a separate ranking with separate math.",
           ]}
@@ -141,7 +137,7 @@ function Methodology() {
       <Section title="Index Score">
         <p>
           Every title receives an Index Score representing its current cultural momentum. The
-          score is generated through the Index's ranking system using multiple data inputs and signals.
+          score is generated through the Index's ranking system using multiple data inputs.
         </p>
         <p>
           The score is not a review score. It does not represent whether a movie is “good” or “bad.”
@@ -155,18 +151,17 @@ function Methodology() {
           <span>How the Index Score (0–100) is Calculated</span>
         </div>
         <p className="mt-3 text-xs text-foreground/70">
-          The pipeline runs in one direction — raw observations are never edited to change a
+          The pipeline runs in one direction — raw data is never edited to change a
           score, and no number is ever synthesized:
         </p>
         <ul className="mt-3 space-y-2 font-mono text-xs text-foreground/80">
           <li>
-            • <strong>Raw observations:</strong> real audience mentions and engagements are ingested
-            from Reddit, Letterboxd, news, YouTube, TikTok, Wikipedia, and Google Trends, deduped
-            per source.
+            • <strong>Raw data:</strong> real audience activity is ingested from across the web,
+            deduped and verified.
           </li>
           <li>
-            • <strong>Signal extraction:</strong> observations roll into daily per-film series —
-            mention volume, sentiment, and which platforms are actively discussing the title.
+            • <strong>Processing:</strong> it rolls into daily per-title series —
+            volume, sentiment, and momentum.
           </li>
           <li>
             • <strong>Five weighted components:</strong> Current Attention (30%), Momentum (25%),
@@ -189,13 +184,13 @@ function Methodology() {
 
       <Section title="Independence &amp; Transparency">
         <p>
-          The Index's rankings are designed to reflect audience and cultural signals rather than paid
+          The Index's rankings are designed to reflect audience and cultural momentum rather than paid
           influence. Titles cannot purchase higher rankings. Sponsored content, partnerships, or
           promotional placements, when available, will always be clearly identified.
         </p>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          <span>0% critic weight — rankings are driven entirely by audience signals.</span>
+          <span>0% critic weight — rankings are driven entirely by audience attention.</span>
         </div>
       </Section>
 

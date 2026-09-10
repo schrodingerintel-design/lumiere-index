@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getTopFilms,
   getBiggestMovers,
@@ -151,6 +151,29 @@ export function Hero() {
         </div>
       )}
 
+      {/* Desktop arrows — quiet circular controls at the edges. Mobile uses
+          the invisible tap zones above instead. */}
+      {topFive.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setIndex((i) => (i - 1 + topFive.length) % topFive.length)}
+            aria-label="Previous title"
+            className="absolute left-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground sm:flex lg:left-6"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIndex((i) => (i + 1) % topFive.length)}
+            aria-label="Next title"
+            className="absolute right-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground sm:flex lg:right-6"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
+
       {/* Content layer — transparent to taps so the zones beneath receive them;
           interactive children re-enable pointer events explicitly. */}
       <div className="pointer-events-none relative px-4 pt-10 sm:px-6">
@@ -198,17 +221,17 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Slide position — desktop only. Mobile navigates by tapping the
-              backdrop: left/right to move, middle to open the film. */}
+          {/* Slide position — tiny semi-transparent dots. Mobile navigates by
+              tapping the backdrop: left/right to move, middle to open the film. */}
           {topFive.length > 1 && (
-            <div className="pointer-events-auto mt-8 hidden gap-2 sm:flex">
+            <div className="pointer-events-auto mt-8 flex items-center gap-2.5">
               {topFive.map((f, i) => (
                 <button
                   key={f.slug}
                   onClick={() => setIndex(i)}
                   aria-label={`Show #${f.rank}: ${f.title}`}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    i === index ? "w-6 bg-foreground/80" : "w-1.5 bg-foreground/25 hover:bg-foreground/40"
+                  className={`h-1 w-1 rounded-full transition-colors duration-300 ${
+                    i === index ? "bg-foreground/80" : "bg-foreground/25 hover:bg-foreground/45"
                   }`}
                 />
               ))}
@@ -236,7 +259,7 @@ export function TopTen() {
         <SectionHeading
           kicker="The Index"
           title="The Top 10"
-          copy="The ten titles capturing the most cultural attention today, ranked by audience signal alone."
+          copy="The ten titles capturing the most cultural attention today."
           seeAllHref="/top-100"
           seeAllLabel="Full Top 100"
         />
@@ -449,7 +472,7 @@ export function PulseRow() {
             </ul>
           ) : (
             <p className="py-3 text-sm text-muted-foreground">
-              Nothing is trending yet — titles appear once enough audience signal accumulates.
+              Nothing is trending yet.
             </p>
           )}
         </div>

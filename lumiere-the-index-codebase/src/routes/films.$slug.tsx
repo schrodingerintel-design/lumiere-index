@@ -373,9 +373,9 @@ function FilmDetailView() {
   const isNewEntry = film.prev_rank == null;
   const daysOnChart = film.days_on_chart ?? 1;
 
-  // Index Total — one unified observation volume across every source (raw
-  // upstream observations over the last 30 days, falling back to the tracked
-  // record count early in a title's life).
+  // Index Total — one unified observation volume (raw upstream observations
+  // over the last 30 days, falling back to the tracked record count early in
+  // a title's life).
   const indexTotalObs =
     film.signal_funnel?.raw_observations_30d ?? film.mentions_total ?? 0;
   const indexTotalLabel =
@@ -386,10 +386,6 @@ function FilmDetailView() {
           ? `${(indexTotalObs / 1_000).toFixed(1)}k`
           : indexTotalObs.toLocaleString()
       : "—";
-  const sourceCountLabel =
-    film.signal_funnel && film.signal_funnel.source_coverage > 0
-      ? `${film.signal_funnel.source_coverage} source${film.signal_funnel.source_coverage === 1 ? "" : "s"}`
-      : "";
 
   const similar = (similarFilms ?? []).filter((f) => f.slug !== slug).slice(0, 6);
 
@@ -576,11 +572,9 @@ function FilmDetailView() {
                   </button>
                 </div>
                 <p>
-                  The Index Score blends five time-windowed components — Current Attention (30%),
-                  Momentum (25%), Recency (20%), Audience Engagement (15%), and Cross-Platform
-                  Reach (10%) — computed from raw audience observations and normalized to 0–100
-                  within the active pool. We do not aggregate critic star ratings or press reviews —
-                  every point reflects real audience signals.{" "}
+                  The Index Score measures a title's current cultural momentum on a 0–100 scale,
+                  computed from real audience attention across the web and normalized within the
+                  active pool. It is not a review score — it never grades quality.{" "}
                   <a href="/methodology" className="font-medium text-primary underline">
                     Full methodology →
                   </a>
@@ -614,28 +608,14 @@ function FilmDetailView() {
             </div>
           </div>
 
-          {/* ── Index Total — one unified number for all audience signals ── */}
+          {/* ── Index Total — one unified number ── */}
           <div className="border-y border-foreground/10 bg-surface p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Audience Signals
-              </div>
-              {sourceCountLabel && (
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {sourceCountLabel} · last 30d
-                </span>
-              )}
-            </div>
-            <div className="mt-3 flex items-baseline gap-3">
+            <div className="flex items-baseline gap-3">
               <div className="index-score text-5xl font-bold lg:text-6xl">{indexTotalLabel}</div>
               <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                 Index Total
               </div>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Combined audience observations across every tracked source — pageviews, search
-              interest, discussion, and engagement.
-            </p>
           </div>
 
           {/* Audience Sentiment — real backend data, or an honest empty state */}
@@ -645,7 +625,7 @@ function FilmDetailView() {
                 Audience Sentiment Breakdown
               </div>
               <span className="font-mono text-[10px] text-muted-foreground">
-                {hasBackendSentiment ? "Verified Audience Signals" : "Awaiting Data"}
+                {hasBackendSentiment ? "Verified" : "Awaiting Data"}
               </span>
             </div>
             {hasSentimentData && sentiment.positive != null ? (
@@ -684,7 +664,7 @@ function FilmDetailView() {
               <div className="mt-4 flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
                 <MessageSquare className="h-8 w-8 opacity-30" />
                 <p className="text-xs">
-                  Insufficient sentiment data — more audience signals needed.
+                  Not enough data yet.
                 </p>
               </div>
             )}

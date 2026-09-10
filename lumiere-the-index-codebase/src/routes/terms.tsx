@@ -41,7 +41,7 @@ function Terms() {
       <Section num="1." title="Use of the Service">
         <p>
           The Service provides rankings, charts, analytics, and discovery features based on publicly
-          available entertainment signals. You may use the Service for personal, non-commercial
+          available entertainment data. You may use the Service for personal, non-commercial
           purposes unless otherwise agreed in writing.
         </p>
       </Section>
@@ -49,11 +49,11 @@ function Terms() {
       <Section num="2." title="The Index and Rankings">
         <p>
           The Index reflects cultural momentum derived from multiple audience and public
-          signals. Rankings are provided for informational purposes and do not constitute editorial
+          data. Rankings are provided for informational purposes and do not constitute editorial
           endorsement or professional advice.
         </p>
         <p>
-          The Index's rankings are designed to reflect audience and cultural signals rather than paid
+          The Index's rankings are designed to reflect audience and cultural momentum rather than paid
           influence. Titles cannot purchase higher rankings. Sponsored content, partnerships, or
           promotional placements, when available, are always clearly identified.
         </p>
@@ -72,7 +72,7 @@ function Terms() {
         <p>You agree not to:</p>
         <ul className="list-inside list-disc space-y-1 font-mono text-sm">
           <li>Use the Service for any unlawful purpose.</li>
-          <li>Attempt to manipulate rankings, scores, or public signal data.</li>
+          <li>Attempt to manipulate rankings, scores, or public data.</li>
           <li>Access the Service through automated means that exceed reasonable usage limits.</li>
           <li>Interfere with the security or operation of the Service.</li>
           <li>Misrepresent your identity or affiliation.</li>

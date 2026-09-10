@@ -26,8 +26,7 @@ export function Footer() {
           <div className="sm:col-span-2">
             <BrandLink />
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              The cultural index for film and television — published daily, ranked by audience
-              signal alone.
+              The cultural index for film and television — published daily.
             </p>
           </div>
 

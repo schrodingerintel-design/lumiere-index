@@ -11,7 +11,7 @@ export const Route = createFileRoute("/trending")({
       {
         name: "description",
         content:
-          "Films generating the most audience conversation right now — ranked by real viewer signal velocity.",
+          "Films generating the most audience conversation right now.",
       },
     ],
   }),
@@ -24,10 +24,6 @@ export const Route = createFileRoute("/trending")({
   component: TrendingPage,
   errorComponent: RouteError,
 });
-
-function signalLabel(volume: number): string {
-  return volume >= 1000 ? `${(volume / 1000).toFixed(1)}k` : String(volume);
-}
 
 function TrendingRow({ film, position }: { film: TrendingFilmOut; position: number }) {
   return (
@@ -66,9 +62,6 @@ function TrendingRow({ film, position }: { film: TrendingFilmOut; position: numb
         </div>
         <div className="shrink-0 text-right">
           <div className="index-score text-xl sm:text-2xl">{film.score?.toFixed(1)}</div>
-          <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-            {signalLabel(film.mentions_24h)} today
-          </div>
         </div>
       </Link>
     </li>
@@ -93,8 +86,7 @@ function TrendingPage() {
             Trending
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            What audiences are actively discussing right now — ranked by conversation velocity
-            across reviews, social media, and viewer communities.
+            What audiences are actively discussing right now.
           </p>
         </div>
       </section>
@@ -129,8 +121,7 @@ function TrendingPage() {
             </ul>
           ) : (
             <div className="border-y border-foreground/10 bg-surface p-12 text-center text-sm text-muted-foreground">
-              Nothing is trending yet — titles appear once enough real audience signal
-              accumulates.
+              Nothing is trending yet.
             </div>
           )}
         </div>
