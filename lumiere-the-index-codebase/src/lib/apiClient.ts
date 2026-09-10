@@ -1,5 +1,5 @@
 /**
- * Lumière API Client
+ * The Index API Client
  * Provides typed fetch wrappers for:
  *  1. Local FastAPI backend  (VITE_API_BASE_URL)
  *  2. TMDB via backend proxy (key never exposed to browser)

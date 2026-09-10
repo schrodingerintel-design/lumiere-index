@@ -26,7 +26,7 @@ import {
 export const Route = createFileRoute("/compare")({
   head: () => ({
     meta: [
-      { title: "Compare Films — Lumière The Index" },
+      { title: "Compare Films — The Index" },
       {
         name: "description",
         content:
@@ -323,7 +323,7 @@ function ComparePage() {
         </div>
         <h1 className="mt-2 font-serif text-5xl lg:text-6xl">Compare Films</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Head-to-head analysis comparing Lumière Index Scores, viewer sentiment, audience signals,
+          Head-to-head analysis comparing Index Scores, viewer sentiment, audience signals,
           and box office.
         </p>
 
@@ -408,7 +408,7 @@ function ComparePage() {
 
             <div className="px-6 py-2">
               <CompareRow
-                label="Lumière Index Score"
+                label="Index Score"
                 a={filmA!.score}
                 b={filmB!.score}
                 format={(v) => v.toFixed(1)}

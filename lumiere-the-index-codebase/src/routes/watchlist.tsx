@@ -11,7 +11,7 @@ import { tenureLabel } from "@/lib/filmUtils";
 export const Route = createFileRoute("/watchlist")({
   head: () => ({
     meta: [
-      { title: "My Watchlist — Lumière The Index" },
+      { title: "My Watchlist — The Index" },
       { name: "description", content: "Titles you're tracking across the Index." },
     ],
   }),

@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/lumiere/Skeletons";
 export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
-      { title: "Now & Next — Lumière The Index" },
+      { title: "Now & Next — The Index" },
       {
         name: "description",
         content:

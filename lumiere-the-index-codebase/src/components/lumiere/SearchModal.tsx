@@ -241,7 +241,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             {/* ── Footer hints ── */}
             <div className="flex items-center justify-between border-t border-foreground/10 px-5 py-3">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Search the Lumière Index
+                Search The Index
               </span>
               <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                 <kbd className="rounded border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 font-mono">

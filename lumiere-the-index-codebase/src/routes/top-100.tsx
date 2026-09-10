@@ -12,7 +12,7 @@ import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 export const Route = createFileRoute("/top-100")({
   head: () => ({
     meta: [
-      { title: "Top 100 — Lumière The Index" },
+      { title: "Top 100 — The Index" },
       {
         name: "description",
         content:

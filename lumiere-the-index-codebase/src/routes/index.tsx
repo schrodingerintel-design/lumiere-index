@@ -8,7 +8,7 @@ import { getTopFilms } from "@/lib/apiClient";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Lumière The Index — The titles capturing the most cultural attention" },
+      { title: "The Index — The titles capturing the most cultural attention" },
       {
         name: "description",
         content:

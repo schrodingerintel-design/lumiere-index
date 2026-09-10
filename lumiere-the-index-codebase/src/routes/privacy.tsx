@@ -5,11 +5,11 @@ import { RouteError } from "@/lib/route-error";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — Lumière The Index" },
+      { title: "Privacy Policy — The Index" },
       {
         name: "description",
         content:
-          "How Lumière collects, uses, protects, and processes information when you use the Index.",
+          "How The Index collects, uses, protects, and processes information when you use the Index.",
       },
     ],
   }),
@@ -48,16 +48,16 @@ function Privacy() {
 
       <Section num="1." title="Introduction">
         <p>
-          Welcome to Lumière (“Lumière”, “The Index”, “we”, “our”, or “us”). This Privacy Policy
+          Welcome to The Index (“The Index”, “we”, “our”, or “us”). This Privacy Policy
           explains how we collect, use, protect, and process information when you access or use
-          Lumière products, websites, applications, and services.
+          The Index products, websites, applications, and services.
         </p>
-        <p>By using Lumière, you agree to the practices described in this Privacy Policy.</p>
+        <p>By using The Index, you agree to the practices described in this Privacy Policy.</p>
       </Section>
 
       <Section num="2." title="Information We Collect">
         <p className="font-medium text-foreground">Information You Provide</p>
-        <p>When you use Lumière, we may collect information you voluntarily provide, including:</p>
+        <p>When you use The Index, we may collect information you voluntarily provide, including:</p>
         <List
           items={[
             "Name",
@@ -71,7 +71,7 @@ function Privacy() {
         />
 
         <p className="font-medium text-foreground">Information Collected Automatically</p>
-        <p>When you use Lumière, we may automatically collect:</p>
+        <p>When you use The Index, we may automatically collect:</p>
         <List
           items={[
             "Device information",
@@ -89,7 +89,7 @@ function Privacy() {
 
         <p className="font-medium text-foreground">Entertainment Data</p>
         <p>
-          Lumière may collect, analyze, and process publicly available entertainment information,
+          The Index may collect, analyze, and process publicly available entertainment information,
           including:
         </p>
         <List
@@ -108,7 +108,7 @@ function Privacy() {
         <p>We use collected information to:</p>
         <List
           items={[
-            "Provide and improve Lumière services.",
+            "Provide and improve The Index services.",
             "Create personalized experiences.",
             "Maintain and improve ranking systems.",
             "Analyze platform performance.",
@@ -120,20 +120,20 @@ function Privacy() {
         />
       </Section>
 
-      <Section num="4." title="The Lumière Index and Data Processing">
+      <Section num="4." title="The Index and Data Processing">
         <p>
-          The Lumière Index analyzes multiple signals to understand cultural momentum around movies
+          The Index analyzes multiple signals to understand cultural momentum around movies
           and shows.
         </p>
         <p>Personal user information is not used to artificially influence rankings.</p>
         <p>
-          Rankings are generated using Lumière's methodology and may incorporate publicly available
+          Rankings are generated using the Index's methodology and may incorporate publicly available
           information and aggregated platform data.
         </p>
       </Section>
 
       <Section num="5." title="Cookies and Tracking Technologies">
-        <p>Lumière may use cookies and similar technologies to:</p>
+        <p>The Index may use cookies and similar technologies to:</p>
         <List
           items={[
             "Remember user preferences.",
@@ -147,13 +147,13 @@ function Privacy() {
       </Section>
 
       <Section num="6." title="Third-Party Services">
-        <p>Lumière may use third-party services for:</p>
+        <p>The Index may use third-party services for:</p>
         <List items={["Hosting.", "Analytics.", "Authentication.", "Payments.", "Data processing.", "Infrastructure."]} />
         <p>These providers may process information only as necessary to provide their services.</p>
       </Section>
 
       <Section num="7." title="Data Sharing">
-        <p>Lumière does not sell personal information.</p>
+        <p>The Index does not sell personal information.</p>
         <p>We may share information when necessary with:</p>
         <List
           items={[
@@ -187,14 +187,14 @@ function Privacy() {
 
       <Section num="10." title="Children's Privacy">
         <p>
-          Lumière is not intended for users below the minimum age required by applicable laws. We do
+          The Index is not intended for users below the minimum age required by applicable laws. We do
           not knowingly collect personal information from children without appropriate authorization.
         </p>
       </Section>
 
       <Section num="11." title="International Users">
         <p>
-          Lumière operates globally. Your information may be processed in countries where our service
+          The Index operates globally. Your information may be processed in countries where our service
           providers operate. We take reasonable steps to ensure appropriate protection of personal
           information.
         </p>
@@ -211,13 +211,13 @@ function Privacy() {
       <Section num="13." title="Contact Us">
         <p>If you have questions regarding this Privacy Policy, contact:</p>
         <p className="font-mono text-sm">
-          Lumière
+          The Index
           <br />
-          Email: privacy@lumiere.com
+          Email: privacy@theindex.com
           <br />
-          Website: Theindex.com
+          Website: theindex.com
         </p>
-        <p className="text-xs text-muted-foreground">© Lumière. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">© The Index — by Lumière. All rights reserved.</p>
       </Section>
     </StaticPage>
   );

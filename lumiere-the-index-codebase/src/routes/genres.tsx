@@ -10,7 +10,7 @@ import { PosterCard } from "@/components/lumiere/PosterCard";
 export const Route = createFileRoute("/genres")({
   head: () => ({
     meta: [
-      { title: "Browse by Genre — Lumière The Index" },
+      { title: "Browse by Genre — The Index" },
       {
         name: "description",
         content: "Explore chart titles grouped by genre — every collection only ever contains films that genuinely belong to it.",

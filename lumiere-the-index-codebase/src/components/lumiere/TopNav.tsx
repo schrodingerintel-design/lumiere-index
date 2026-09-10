@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Menu, Search } from "lucide-react";
+import { Brand, BrandLink } from "@/components/lumiere/Brand";
 
 /**
  * Primary navigation — the product surface. Secondary destinations
@@ -37,9 +38,7 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
             <Menu className="h-5 w-5" />
           </button>
 
-          <Link to="/" className="shrink-0 font-display text-xl leading-none tracking-tight">
-            Lumière<span className="text-primary">.</span>
-          </Link>
+          <BrandLink />
 
           <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
             {PRIMARY_LINKS.map((l) => (
@@ -90,9 +89,7 @@ export function MobileMenu({
       <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
       <div className="animate-fade-up absolute inset-x-0 top-0 border-b border-border bg-ink shadow-2xl shadow-black/60">
         <div className="flex h-14 items-center justify-between px-4">
-          <span className="font-display text-xl leading-none">
-            Lumière<span className="text-primary">.</span>
-          </span>
+          <Brand />
           <button
             onClick={onClose}
             aria-label="Close navigation menu"

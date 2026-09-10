@@ -8,7 +8,7 @@ import { FilmCardSkeleton } from "@/components/lumiere/Skeletons";
 export const Route = createFileRoute("/new-entries")({
   head: () => ({
     meta: [
-      { title: "New Entries — Lumière The Index" },
+      { title: "New Entries — The Index" },
       {
         name: "description",
         content:

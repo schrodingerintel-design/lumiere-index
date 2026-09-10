@@ -98,22 +98,62 @@ export function Hero() {
 
   return (
     <section className="relative">
-      {/* Backdrop — a single still, dissolving into the page. Nothing floats. */}
+      {/* Backdrop — very visible at the top, then dissolving continuously into
+          blur and the page canvas toward the bottom. Two masked copies of the
+          same still create the sharp→blur crossfade; no banding, no hard edge. */}
       {backdropUrl && (
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <img
             key={backdropUrl}
             src={backdropUrl}
             alt=""
-            className="h-full w-full object-cover object-[50%_30%] opacity-25"
+            className="hero-fade-sharp absolute inset-0 h-full w-full object-cover object-[50%_30%]"
             fetchPriority="high"
             decoding="async"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/70 via-ink/85 to-ink" />
+          <img
+            key={`${backdropUrl}-blur`}
+            src={backdropUrl}
+            alt=""
+            className="hero-fade-blur absolute inset-0 h-full w-full scale-110 object-cover object-[50%_30%] blur-2xl"
+            fetchPriority="high"
+            decoding="async"
+          />
+          {/* Color management only — keeps the top bright while the dissolve lands on the canvas */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/55 to-ink" />
         </div>
       )}
 
-      <div className="relative px-4 pt-10 sm:px-6">
+      {/* Mobile: invisible tap zones over the backdrop — tap left third for the
+          previous title, right third for the next, middle to open the film.
+          Desktop keeps the visible dots. Sits below the content layer, so the
+          title link and dots are never blocked. */}
+      {topFive.length > 1 && (
+        <div className="absolute inset-0 grid grid-cols-3 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setIndex((i) => (i - 1 + topFive.length) % topFive.length)}
+            aria-label="Previous title"
+            className="h-full w-full"
+          />
+          <Link
+            to="/films/$slug"
+            params={{ slug: activeFilm?.slug ?? "" }}
+            aria-label={`Open ${activeFilm?.title ?? "film"}`}
+            className="h-full w-full"
+          />
+          <button
+            type="button"
+            onClick={() => setIndex((i) => (i + 1) % topFive.length)}
+            aria-label="Next title"
+            className="h-full w-full"
+          />
+        </div>
+      )}
+
+      {/* Content layer — transparent to taps so the zones beneath receive them;
+          interactive children re-enable pointer events explicitly. */}
+      <div className="pointer-events-none relative px-4 pt-10 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 max-w-2xl">
@@ -133,7 +173,7 @@ export function Hero() {
                 <Link
                   to="/films/$slug"
                   params={{ slug: activeFilm?.slug ?? "" }}
-                  className="transition-colors hover:text-primary"
+                  className="pointer-events-auto inline-block transition-colors hover:text-primary"
                 >
                   {activeFilm?.title ?? "The Index"}
                 </Link>
@@ -158,9 +198,10 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Slide switching — quiet dots, no buttons shouting for attention */}
+          {/* Slide position — desktop only. Mobile navigates by tapping the
+              backdrop: left/right to move, middle to open the film. */}
           {topFive.length > 1 && (
-            <div className="mt-8 flex gap-2">
+            <div className="pointer-events-auto mt-8 hidden gap-2 sm:flex">
               {topFive.map((f, i) => (
                 <button
                   key={f.slug}

@@ -6,11 +6,11 @@ import { Lock, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/methodology")({
   head: () => ({
     meta: [
-      { title: "Index Methodology — Lumière The Index" },
+      { title: "Index Methodology — The Index" },
       {
         name: "description",
         content:
-          "How the Lumière Index measures cultural momentum from audience interest, social conversation, media presence, and availability.",
+          "How The Index measures cultural momentum from audience interest, social conversation, media presence, and availability.",
       },
     ],
   }),
@@ -39,20 +39,20 @@ function List({ items }: { items: string[] }) {
 
 function Methodology() {
   return (
-    <StaticPage eyebrow="Lumière Index Methodology" title="How The Index Measures Cultural Momentum">
+    <StaticPage eyebrow="Index Methodology" title="How The Index Measures Cultural Momentum">
       <p className="font-serif text-xl text-foreground/90">
-        The Lumière Index is a real-time ranking system designed to measure the cultural impact and
+        The Index is a real-time ranking system designed to measure the cultural impact and
         momentum of movies and television shows.
       </p>
       <p>
         Entertainment is no longer shaped by a single factor. A movie's influence can come from
         theaters, streaming platforms, online communities, social conversations, search behavior,
-        media coverage, and audience engagement. The Lumière Index combines multiple signals to
+        media coverage, and audience engagement. The Index combines multiple signals to
         create a broader understanding of what is capturing global attention.
       </p>
 
       <Section title="What Does The Index Measure?">
-        <p>The Lumière Index measures cultural momentum. It does not simply rank:</p>
+        <p>The Index measures cultural momentum. It does not simply rank:</p>
         <List
           items={[
             "The highest-grossing films.",
@@ -77,7 +77,7 @@ function Methodology() {
       </Section>
 
       <Section title="Ranking Signals">
-        <p>The Lumière Index evaluates multiple categories of signals.</p>
+        <p>The Index evaluates multiple categories of signals.</p>
 
         <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
           <h3 className="font-serif text-lg text-foreground">Audience Interest</h3>
@@ -127,7 +127,7 @@ function Methodology() {
         <List
           items={[
             "Signal collection — continuous. Audience observations are ingested from every source around the clock.",
-            "The official Top 100 — a published ranking cycle. Each cycle writes one immutable snapshot; ranks, movement, and weeks-on-chart are computed between consecutive snapshots only.",
+            "The official Top 100 — a published ranking cycle. Each cycle writes one immutable snapshot; ranks, movement, and days-on-chart are computed between consecutive snapshots only.",
             "Biggest Movers — derived from rank changes between consecutive published Indexes. It highlights the titles climbing or falling fastest; it is not a separate ranking with separate math.",
           ]}
         />
@@ -140,8 +140,8 @@ function Methodology() {
 
       <Section title="Index Score">
         <p>
-          Every title receives a Lumière Index Score representing its current cultural momentum. The
-          score is generated through Lumière's ranking system using multiple data inputs and signals.
+          Every title receives an Index Score representing its current cultural momentum. The
+          score is generated through the Index's ranking system using multiple data inputs and signals.
         </p>
         <p>
           The score is not a review score. It does not represent whether a movie is “good” or “bad.”
@@ -189,7 +189,7 @@ function Methodology() {
 
       <Section title="Independence &amp; Transparency">
         <p>
-          Lumière rankings are designed to reflect audience and cultural signals rather than paid
+          The Index's rankings are designed to reflect audience and cultural signals rather than paid
           influence. Titles cannot purchase higher rankings. Sponsored content, partnerships, or
           promotional placements, when available, will always be clearly identified.
         </p>
@@ -201,12 +201,12 @@ function Methodology() {
 
       <Section title="Continuous Improvement">
         <p>
-          The Lumière Index is constantly evolving. As entertainment habits change, our methodology
+          The Index is constantly evolving. As entertainment habits change, our methodology
           will continue improving to better represent how audiences discover, discuss, and experience
           stories. Our goal is simple: to build the world's most trusted measurement of entertainment
           culture.
         </p>
-        <p className="text-xs text-muted-foreground">© Lumière</p>
+        <p className="text-xs text-muted-foreground">© The Index — by Lumière</p>
       </Section>
     </StaticPage>
   );

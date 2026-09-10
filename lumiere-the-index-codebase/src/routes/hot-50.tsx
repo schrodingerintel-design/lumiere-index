@@ -12,7 +12,7 @@ import { tenureLabel } from "@/lib/filmUtils";
 export const Route = createFileRoute("/hot-50")({
   head: () => ({
     meta: [
-      { title: "Hot 50 — Lumière The Index" },
+      { title: "Hot 50 — The Index" },
       {
         name: "description",
         content:

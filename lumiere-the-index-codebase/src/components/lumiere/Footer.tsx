@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { BrandLink } from "@/components/lumiere/Brand";
 
 const COMPANY_LINKS = [
   { to: "/about", label: "About" },
@@ -23,9 +24,7 @@ export function Footer() {
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
-            <Link to="/" className="font-display text-xl leading-none">
-              Lumière<span className="text-primary">.</span>
-            </Link>
+            <BrandLink />
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
               The cultural index for film and television — published daily, ranked by audience
               signal alone.
@@ -70,7 +69,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-border pt-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Lumière — The Index. All rights reserved.
+          © {new Date().getFullYear()} The Index — by Lumière. All rights reserved.
         </div>
       </div>
     </footer>

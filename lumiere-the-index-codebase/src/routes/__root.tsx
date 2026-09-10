@@ -76,14 +76,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lumière The Index — The titles capturing the most cultural attention" },
+      { title: "The Index — The titles capturing the most cultural attention" },
       {
         name: "description",
         content:
           "The Index is a daily measure of what's capturing cultural attention across film and television.",
       },
       { name: "author", content: "Lumière" },
-      { property: "og:title", content: "Lumière The Index" },
+      { property: "og:title", content: "The Index" },
       {
         property: "og:description",
         content: "What's capturing cultural attention in film and television, right now.",
@@ -92,6 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },

@@ -9,11 +9,11 @@ import { FilmCardSkeleton } from "@/components/lumiere/Skeletons";
 export const Route = createFileRoute("/rising")({
   head: () => ({
     meta: [
-      { title: "Biggest Movers — Lumière The Index" },
+      { title: "Biggest Movers — The Index" },
       {
         name: "description",
         content:
-          "The biggest rank changes on the Lumière Index — largest daily climbers and decliners.",
+          "The biggest rank changes on The Index — largest daily climbers and decliners.",
       },
     ],
   }),

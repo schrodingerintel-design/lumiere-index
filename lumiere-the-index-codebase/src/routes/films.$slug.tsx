@@ -39,14 +39,14 @@ import {
 } from "lucide-react";export const Route = createFileRoute("/films/$slug")({
   head: ({ params }) => ({
     meta: [
-      { title: `${(params?.slug ?? "").replace(/-/g, " ")} — Lumière The Index` },
+      { title: `${(params?.slug ?? "").replace(/-/g, " ")} — The Index` },
       {
         name: "description",
         content: `Live cultural index score and audience sentiment for film ${params?.slug}.`,
       },
       {
         property: "og:title",
-        content: `${(params?.slug ?? "").replace(/-/g, " ")} — Lumière The Index`,
+        content: `${(params?.slug ?? "").replace(/-/g, " ")} — The Index`,
       },
       {
         property: "og:description",
@@ -56,7 +56,7 @@ import {
       { name: "twitter:card", content: "summary_large_image" },
       {
         name: "twitter:title",
-        content: `${(params?.slug ?? "").replace(/-/g, " ")} — Lumière The Index`,
+        content: `${(params?.slug ?? "").replace(/-/g, " ")} — The Index`,
       },
       {
         name: "twitter:description",
