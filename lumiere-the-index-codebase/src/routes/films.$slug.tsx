@@ -373,6 +373,25 @@ function FilmDetailView() {
   const isNewEntry = film.prev_rank == null;
   const daysOnChart = film.days_on_chart ?? 1;
 
+  // Index résumé — days on chart, days at #1, peak rank. The chart's own
+  // history presented as editorial fact; the résumé's first entry carries the
+  // emphasis (dominance streak for a current #1, peak crown for a former one).
+  const daysAtOne = film.days_at_one ?? 0;
+  const peakRank = film.peak_rank ?? film.rank;
+  const day = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
+  const resumeBits: string[] = [];
+  if (film.rank === 1) {
+    if (daysAtOne > 0) resumeBits.push(`${day(daysAtOne)} at #1`);
+    resumeBits.push(`${day(daysOnChart)} on chart`);
+  } else if (peakRank === 1) {
+    resumeBits.push("Peak #1");
+    if (daysAtOne > 0) resumeBits.push(`${day(daysAtOne)} at #1`);
+    resumeBits.push(`${day(daysOnChart)} on chart`);
+  } else {
+    resumeBits.push(`${day(daysOnChart)} on chart`);
+    resumeBits.push(`Peak #${peakRank}`);
+  }
+
   // Index Total — one unified observation volume (raw upstream observations
   // over the last 30 days, falling back to the tracked record count early in
   // a title's life).
@@ -592,6 +611,15 @@ function FilmDetailView() {
                   of 100 · audience-driven
                 </div>
               </div>
+              {/* Index résumé — the title's chart history, one quiet line */}
+              <div className="pb-1.5 text-xs leading-relaxed text-muted-foreground">
+                {resumeBits.map((bit, i) => (
+                  <span key={bit}>
+                    {i > 0 && <span className="mx-1.5 text-foreground/25">·</span>}
+                    <span className={i === 0 ? "font-medium text-foreground" : undefined}>{bit}</span>
+                  </span>
+                ))}
+              </div>
               <div className="pb-1.5 font-mono text-base">
                 {(film.movement ?? 0) > 0 ? (
                   <span className="flex items-center gap-1 font-semibold text-up">
@@ -673,10 +701,10 @@ function FilmDetailView() {
           {/* Chart stats — one quiet line, print-facts style */}
           <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-foreground/10 bg-surface px-6 py-4">
             {[
-              { label: "Time on chart", value: `${daysOnChart} ${daysOnChart === 1 ? "day" : "days"}` },
-              { label: "Peak rank", value: `#${film.peak_rank ?? film.rank}` },
+              { label: "Days on chart", value: `${daysOnChart}` },
+              { label: "Days at #1", value: `${daysAtOne}` },
+              { label: "Peak rank", value: `#${peakRank}` },
               { label: "Index Total", value: indexTotalLabel },
-              { label: "Rank change", value: (film.movement ?? 0) > 0 ? `+${film.movement}` : (film.movement ?? 0) < 0 ? `${film.movement}` : "—" },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="font-mono text-sm tabular text-foreground">{stat.value}</div>

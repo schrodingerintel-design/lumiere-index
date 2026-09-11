@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Film, Ranking
-from app.api.v1.films import _days_on_chart_map
+from app.api.v1.films import _days_at_one_map, _days_on_chart_map
 from app.schemas import RankedFilm
 
 router = APIRouter()
@@ -121,7 +121,8 @@ def genre_films(
         .all()
     )
     days = _days_on_chart_map(db, [f.id for f, _ in rows])
+    at_one = _days_at_one_map(db, [f.id for f, _ in rows])
     # An empty shelf is a valid state (sparse catalog for a genre), not an
     # error — the frontend renders "not enough titles yet" for empty lists.
     # Returning 404 here made every sparse collection look like a broken page.
-    return [_to_ranked(f, r).model_copy(update={"days_on_chart": days.get(f.id)}) for f, r in rows]
+    return [_to_ranked(f, r).model_copy(update={"days_on_chart": days.get(f.id), "days_at_one": at_one.get(f.id)}) for f, r in rows]

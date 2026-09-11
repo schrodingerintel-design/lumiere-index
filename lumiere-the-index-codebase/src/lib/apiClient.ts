@@ -93,6 +93,9 @@ export interface RankedFilm {
   /** Days since the title's first appearance on the live 15-minute chart.
    *  The tenure unit the UI shows. */
   days_on_chart?: number | null;
+  /** Distinct calendar days the title has spent at rank #1 — its historical
+   *  dominance on the chart. */
+  days_at_one?: number | null;
   mentions_total: number;
   /** Genre tag assigned by the backend catalog (Action, Sci-Fi, Horror, Drama,
    *  Indie, Animation, Romance, Comedy). Single source of truth for genres —

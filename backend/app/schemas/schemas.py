@@ -48,6 +48,9 @@ class RankedFilm(FilmBase):
     # chart — the tenure unit the UI shows (weeks is legacy, kept for
     # backward-compatible API consumers).
     days_on_chart: int | None = None
+    # Distinct calendar days the title has spent at rank #1 — the historical
+    # dominance measure. Computed at read time from the snapshot history.
+    days_at_one: int | None = None
     mentions_total: int = 0
     is_fallback: bool = False
     # Per-component sub-scores for UI breakdown / debugging

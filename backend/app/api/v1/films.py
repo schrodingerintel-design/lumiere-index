@@ -66,6 +66,29 @@ def _days_on_chart_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     return out
 
 
+def _days_at_one_map(db: Session, film_ids: list[int]) -> dict[int, int]:
+    """Days at #1 per film — the number of DISTINCT calendar days on which
+    the title held rank 1 in any snapshot of the continuous chart.
+
+    This is the historical dominance measure: a title that entered yesterday
+    and has been #1 ever since reports 2, while a title ranked #7 for a
+    month reports 0. Computed at read time from the snapshot history — no
+    persisted counter to drift.
+    """
+    if not film_ids:
+        return {}
+    rows = (
+        db.query(Ranking.film_id, func.date(Ranking.snapshot_at))
+        .filter(Ranking.film_id.in_(film_ids), Ranking.rank == 1)
+        .group_by(Ranking.film_id, func.date(Ranking.snapshot_at))
+        .all()
+    )
+    out: dict[int, int] = {fid: 0 for fid in film_ids}
+    for fid, _day in rows:
+        out[fid] += 1
+    return out
+
+
 def _ranked_query(db: Session, snapshot: datetime, genre: str | None = None):
     q = (
         db.query(Film, Ranking)
@@ -116,11 +139,13 @@ def _mentions_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     return {fid: int(cnt) for fid, cnt in rows}
 
 
-def _with_mentions(rows, mentions: dict[int, int], days_map: dict[int, int] | None = None):
+def _with_mentions(rows, mentions: dict[int, int], days_map: dict[int, int] | None = None,
+                   at_one_map: dict[int, int] | None = None):
     return [
         _to_ranked(f, r).model_copy(update={
             "mentions_total": mentions.get(f.id, 0),
             **({"days_on_chart": (days_map or {}).get(f.id)} if days_map is not None else {}),
+            **({"days_at_one": (at_one_map or {}).get(f.id)} if at_one_map is not None else {}),
         })
         for f, r in rows
     ]
@@ -141,7 +166,8 @@ def top_films(
     rows = _ranked_query(db, snap, genre=genre).offset(offset).limit(limit).all()
     mentions = _mentions_map(db, [f.id for f, _ in rows])
     days = _days_on_chart_map(db, [f.id for f, _ in rows])
-    return _with_mentions(rows, mentions, days)
+    at_one = _days_at_one_map(db, [f.id for f, _ in rows])
+    return _with_mentions(rows, mentions, days, at_one)
 
 
 @router.get("/films/new-releases", response_model=list[RankedFilm])
@@ -172,10 +198,12 @@ def new_releases(
     # disagree with the canonical chart — "#1" on the Top 100 could be rank 7
     # on the film page and rank 12 in search. Every consumer reads the same row.
     days = _days_on_chart_map(db, [f.id for f, _ in rows])
+    at_one = _days_at_one_map(db, [f.id for f, _ in rows])
     return [
         _to_ranked(f, r).model_copy(update={
             "mentions_total": mentions.get(f.id, 0),
             "days_on_chart": days.get(f.id),
+            "days_at_one": at_one.get(f.id),
         })
         for f, r in rows
     ]
@@ -445,6 +473,7 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
     ) if snap else None
     mentions_total = _mentions_map(db, [film.id]).get(film.id, 0)
     days_on_chart = _days_on_chart_map(db, [film.id]).get(film.id)
+    days_at_one = _days_at_one_map(db, [film.id]).get(film.id, 0)
     # Sentiment split counts real audience conversation only — catalog-only
     # sources ("tmdb" vote rows) never contribute.
     catalog_ids = _catalog_source_ids(db)
@@ -481,9 +510,10 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         rank=0, score=0,
     )
     return FilmDetail(
-        **base.model_dump(exclude={"mentions_total", "days_on_chart"}),
+        **base.model_dump(exclude={"mentions_total", "days_on_chart", "days_at_one"}),
         mentions_total=mentions_total,
         days_on_chart=days_on_chart,
+        days_at_one=days_at_one,
         sentiment=sentiment,
         signal_funnel=_signal_funnel(db, film.id),
     )
