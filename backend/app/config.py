@@ -95,7 +95,25 @@ class Settings(BaseSettings):
 
     reddit_user_agent: str = "lumiere-index/0.1"
     newsapi_key: str = ""
-    youtube_api_key: str = ""
+    youtube_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("youtube_api_key", "YOUTUBE_API_KEY"),
+        description="YouTube Data API v3 Key",
+    )
+    youtube_quota_daily_limit: int = Field(
+        default=10000,
+        validation_alias=AliasChoices("youtube_quota_daily_limit", "YOUTUBE_QUOTA_DAILY_LIMIT"),
+        description="Daily quota limit for YouTube Data API v3 (default 10,000 units)",
+    )
+    youtube_cache_ttl_hours: int = Field(
+        default=12,
+        validation_alias=AliasChoices("youtube_cache_ttl_hours", "YOUTUBE_CACHE_TTL_HOURS"),
+        description="Cache TTL in hours for YouTube API results (6-12 hours recommended)",
+    )
+    youtube_min_confidence: float = Field(
+        default=0.6,
+        description="Minimum confidence score required for automatic trailer acceptance",
+    )
     tmdb_api_key: str = Field(
         default="b58020901e8a8af0f3d636c6d83b08c6",
         validation_alias=AliasChoices("tmdb_api_key", "TMDB_API_KEY"),
@@ -107,6 +125,70 @@ class Settings(BaseSettings):
 
     discovery_batch_size: int = 50
     tmdb_search_per_run: int = 30
+
+    # IMDb enrichment & experimental momentum
+    enable_imdb_momentum: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_imdb_momentum", "ENABLE_IMDB_MOMENTUM"),
+        description="Enable experimental IMDb vote momentum diagnostics (OFF by default; does not affect official rankings)",
+    )
+    imdb_datasets_dir: str = Field(
+        default="data/imdb",
+        validation_alias=AliasChoices("imdb_datasets_dir", "IMDB_DATASETS_DIR"),
+        description="Local directory for downloaded IMDb datasets (title.basics.tsv.gz, title.ratings.tsv.gz)",
+    )
+
+    # ── Source Adapter Feature Flags ──────────────────────────────────────────
+    enable_youtube_adapter: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("enable_youtube_adapter", "ENABLE_YOUTUBE_ADAPTER"),
+    )
+    enable_wikimedia_adapter: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("enable_wikimedia_adapter", "ENABLE_WIKIMEDIA_ADAPTER"),
+    )
+    enable_letterboxd_adapter: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("enable_letterboxd_adapter", "ENABLE_LETTERBOXD_ADAPTER"),
+    )
+    enable_reddit_adapter: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_reddit_adapter", "ENABLE_REDDIT_ADAPTER"),
+    )
+    enable_tiktok_adapter: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_tiktok_adapter", "ENABLE_TIKTOK_ADAPTER"),
+    )
+    enable_instagram_adapter: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_instagram_adapter", "ENABLE_INSTAGRAM_ADAPTER"),
+    )
+    enable_x_adapter: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("enable_x_adapter", "ENABLE_X_ADAPTER"),
+    )
+
+    # ── Per-Source Ingest Controls ────────────────────────────────────────────
+    source_max_items_per_run: int = Field(
+        default=100,
+        validation_alias=AliasChoices("source_max_items_per_run", "SOURCE_MAX_ITEMS_PER_RUN"),
+    )
+    source_lookback_hours: int = Field(
+        default=48,
+        validation_alias=AliasChoices("source_lookback_hours", "SOURCE_LOOKBACK_HOURS"),
+    )
+    source_request_timeout_seconds: int = Field(
+        default=20,
+        validation_alias=AliasChoices("source_request_timeout_seconds", "SOURCE_REQUEST_TIMEOUT_SECONDS"),
+    )
+    source_max_retries: int = Field(
+        default=3,
+        validation_alias=AliasChoices("source_max_retries", "SOURCE_MAX_RETRIES"),
+    )
+    source_min_request_delay_seconds: float = Field(
+        default=0.5,
+        validation_alias=AliasChoices("source_min_request_delay_seconds", "SOURCE_MIN_REQUEST_DELAY_SECONDS"),
+    )
 
     admin_key: str = ""
 

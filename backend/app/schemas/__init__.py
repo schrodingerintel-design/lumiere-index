@@ -23,4 +23,10 @@ from .schemas import (
     MoverOut,
     MoversOut,
     NewEntryOut,
+    FilmAttentionSignalsOut,
+    TrailerMetaOut,
+    AttentionMetricsOut,
+    DerivedSignalsOut,
+    IMDbDetailOut,
+    IMDbMomentumDiagnosticOut,
 )

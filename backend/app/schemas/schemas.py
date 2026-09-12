@@ -94,12 +94,34 @@ class SignalFunnel(BaseModel):
     sources: list[SourceSignalBreakdown] = []
 
 
+class IMDbDetailOut(BaseModel):
+    """Enriched IMDb metadata strictly for display, separate from ranking scores."""
+    id: str
+    average_rating: float | None = None
+    num_votes: int | None = None
+    url: str | None = None
+    attribution: str = "Information courtesy of IMDb (https://www.imdb.com). Used with permission."
+
+
+class IMDbMomentumDiagnosticOut(BaseModel):
+    """Phase 3: Experimental vote-count momentum diagnostics (gated, does not affect official ranking)."""
+    num_votes: int
+    vote_growth: int
+    vote_velocity: float
+    elapsed_days: float
+    is_experimental: bool = True
+    used_in_ranking: bool = False
+
+
 class FilmDetail(RankedFilm):
     mentions_total: int = 0
     sentiment: SentimentBreakdown
     # Observation funnel — raw volume behind the score, for internal Signal
     # Health consumers. Optional so older clients ignore it cleanly.
     signal_funnel: SignalFunnel | None = None
+    # IMDb enrichment (Phase 2 & 3)
+    imdb: IMDbDetailOut | None = None
+    imdb_momentum: IMDbMomentumDiagnosticOut | None = None
 
 
 class TimelinePoint(BaseModel):
@@ -351,3 +373,40 @@ class NewEntryOut(BaseModel):
     current_rank: int | None = None
     confidence: str | None = None
     signal_volume: int = 0
+
+
+class TrailerMetaOut(BaseModel):
+    video_id: str
+    video_title: str
+    channel_title: str
+    published_at: datetime | None = None
+    is_official: bool = True
+    confidence: float = 1.0
+
+
+class AttentionMetricsOut(BaseModel):
+    view_count: int = 0
+    like_count: int = 0
+    comment_count: int = 0
+    view_velocity_daily: float = 0.0
+    engagement_rate: float = 0.0
+
+
+class DerivedSignalsOut(BaseModel):
+    formatted_views: str = "0"
+    formatted_reactions: str = "0"
+    formatted_comments: str = "0"
+    momentum_indicator: str = "steady"  # "surging" | "rising" | "steady" | "cooling"
+    attention_tier: str = "moderate"     # "viral" | "high" | "moderate" | "low"
+
+
+class FilmAttentionSignalsOut(BaseModel):
+    film_id: int
+    slug: str
+    title: str
+    has_youtube_signal: bool = False
+    data_status: str = "unavailable"    # "fresh" | "cached" | "stale" | "unavailable"
+    last_fetched_at: datetime | None = None
+    trailer: TrailerMetaOut | None = None
+    metrics: AttentionMetricsOut = AttentionMetricsOut()
+    derived: DerivedSignalsOut = DerivedSignalsOut()

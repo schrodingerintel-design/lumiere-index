@@ -73,3 +73,25 @@ Snapshots stored in `rankings`; `movement = prev_rank - rank`.
 Point the TanStack app at `VITE_API_BASE_URL=http://localhost:8000/api/v1`
 and replace `src/lib/films.ts` static data with fetch calls to the endpoints
 above. Loaders should use `context.queryClient.ensureQueryData`.
+
+## YouTube Data API v3 Integration
+
+The YouTube Data API v3 ingests official trailer engagement signals to strengthen **Current Attention (30%)**, **Momentum/Growth (25%)**, and **Audience Engagement (15%)**.
+
+### Architecture & Security
+- **Strictly server-side**: `YOUTUBE_API_KEY` is kept in backend environment variables and is never exposed to client bundles or network responses.
+- **Internal API**: The frontend consumes processed and derived metrics via `GET /api/v1/films/{id_or_slug}/attention-signals` (e.g. formatted views like `"14.2M"`, reaction volumes, velocity, and momentum indicators) — never raw YouTube JSON payloads.
+
+### Quota Management & Caching
+- **Quota Guard**: YouTube's default quota is 10,000 units/day (`search.list` = 100 units, `videos.list` = 1 unit). The in-process & Redis `QuotaGuard` tracks consumption. If quota usage reaches the 92% safe ceiling, expensive searches are paused and cached data is served.
+- **Batching**: Calls to `videos.list` are batched up to 50 video IDs per call, costing only 1 unit per batch.
+- **Caching**: Results are cached in Redis (with in-memory fallback) with a 6–12 hour TTL to prevent redundant calls during frequent ranking refreshes.
+
+### Official Trailer Matcher
+The matcher queries official studio channels (e.g. Warner Bros, Universal, Sony, Disney, Marvel, A24, Netflix, Neon, Paramount) and parses video titles to verify official trailers while filtering out fan edits, parodies, reactions, and concept trailers. Matches are scored with a confidence metric; low-confidence matches are flagged for editorial review.
+
+### Scoring Integration & Graceful Degradation
+- **Current Attention (CA)**: Blends log-transformed view velocity (`views / days_since_published`) with conversation volume.
+- **Momentum/Growth (M)**: Incorporates YouTube view velocity acceleration.
+- **Audience Engagement (AE)**: Factored through high-intent reactions (likes and comments density per view).
+- **Graceful Fallback**: If a film lacks YouTube signals (no trailer found, API quota exhausted, or network error), the scoring engine automatically degrades to 100% pre-YouTube signal weighting without penalty, zeroing out, or errors.

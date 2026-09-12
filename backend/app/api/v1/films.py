@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 
 from app.db import get_db
-from app.models import Film, Ranking, Mention, DailyScore, CountryScore, Source
+from app.models import Film, Ranking, Mention, DailyScore, CountryScore, Source, YouTubeSignal, IMDbEnrichment
 from app.models.film import normalize_content_type
 from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
 from app.schemas import (
@@ -17,7 +17,14 @@ from app.schemas import (
     CountryScoreOut,
     SourceSignalBreakdown,
     SignalFunnel,
+    FilmAttentionSignalsOut,
+    TrailerMetaOut,
+    AttentionMetricsOut,
+    DerivedSignalsOut,
+    IMDbDetailOut,
+    IMDbMomentumDiagnosticOut,
 )
+from app.config import settings
 from app.utils.cache import cache_response
 
 router = APIRouter()
@@ -509,6 +516,31 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         genre_tag=film.genre_tag,
         rank=0, score=0,
     )
+    # IMDb enrichment lookup (Phase 2 & 3)
+    imdb_out: IMDbDetailOut | None = None
+    imdb_enrichment = db.scalar(select(IMDbEnrichment).where(IMDbEnrichment.film_id == film.id))
+    if imdb_enrichment:
+        imdb_out = IMDbDetailOut(
+            id=imdb_enrichment.imdb_id,
+            average_rating=imdb_enrichment.average_rating,
+            num_votes=imdb_enrichment.num_votes,
+            url=f"https://www.imdb.com/title/{imdb_enrichment.imdb_id}/",
+        )
+
+    imdb_mom: IMDbMomentumDiagnosticOut | None = None
+    if settings.enable_imdb_momentum:
+        from app.services.imdb_service import imdb_service
+        mom_data = imdb_service.get_film_imdb_momentum(db, film.id)
+        if mom_data:
+            imdb_mom = IMDbMomentumDiagnosticOut(
+                num_votes=mom_data["num_votes"],
+                vote_growth=mom_data["vote_growth"],
+                vote_velocity=mom_data["vote_velocity"],
+                elapsed_days=mom_data["elapsed_days"],
+                is_experimental=True,
+                used_in_ranking=False,
+            )
+
     return FilmDetail(
         **base.model_dump(exclude={"mentions_total", "days_on_chart", "days_at_one"}),
         mentions_total=mentions_total,
@@ -516,6 +548,8 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         days_at_one=days_at_one,
         sentiment=sentiment,
         signal_funnel=_signal_funnel(db, film.id),
+        imdb=imdb_out,
+        imdb_momentum=imdb_mom,
     )
 
 
@@ -553,3 +587,116 @@ def film_countries(slug: str, days: int = 7, db: Session = Depends(get_db)):
         .all()
     )
     return [CountryScoreOut(country_code=cc, mentions=int(m or 0), score=float(s or 0)) for cc, m, s in rows]
+
+
+def _format_count(n: int) -> str:
+    """Format counts into human-readable compact representations like 14.2M or 450K."""
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.1f}B".replace(".0B", "B")
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M".replace(".0M", "M")
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K".replace(".0K", "K")
+    return str(n)
+
+
+@router.get("/films/{id_or_slug}/attention-signals", response_model=FilmAttentionSignalsOut)
+def film_attention_signals(
+    id_or_slug: str,
+    db: Session = Depends(get_db),
+):
+    """Return processed, derived attention and engagement metrics for a film.
+
+    Server-side aggregated: never exposes YouTube API keys or raw JSON responses.
+    """
+    if id_or_slug.isdigit():
+        film = db.scalar(select(Film).where(Film.id == int(id_or_slug)))
+    else:
+        film = db.scalar(select(Film).where(Film.slug == id_or_slug))
+
+    if not film:
+        raise HTTPException(404, "Film not found")
+
+    sig = db.scalar(
+        select(YouTubeSignal)
+        .where(YouTubeSignal.film_id == film.id)
+        .order_by(YouTubeSignal.fetched_at.desc())
+    )
+
+    if not sig:
+        return FilmAttentionSignalsOut(
+            film_id=film.id,
+            slug=film.slug,
+            title=film.title,
+            has_youtube_signal=False,
+            data_status="unavailable",
+            trailer=None,
+            metrics=AttentionMetricsOut(),
+            derived=DerivedSignalsOut(),
+        )
+
+    now = datetime.now(timezone.utc)
+    fetched_at = sig.fetched_at
+    if fetched_at and fetched_at.tzinfo is None:
+        fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+
+    age_hours = (now - fetched_at).total_seconds() / 3600.0 if fetched_at else 999.0
+    if age_hours <= 6.0:
+        status = "fresh"
+    elif age_hours <= 24.0:
+        status = "cached"
+    else:
+        status = "stale"
+
+    v = sig.view_velocity
+    if v >= 500_000:
+        momentum = "surging"
+    elif v >= 100_000:
+        momentum = "rising"
+    elif v >= 10_000:
+        momentum = "steady"
+    else:
+        momentum = "cooling"
+
+    views = sig.view_count
+    if views >= 10_000_000:
+        tier = "viral"
+    elif views >= 2_000_000:
+        tier = "high"
+    elif views >= 200_000:
+        tier = "moderate"
+    else:
+        tier = "low"
+
+    eng_rate = round((sig.like_count + sig.comment_count) / max(views, 1) * 100.0, 3)
+
+    return FilmAttentionSignalsOut(
+        film_id=film.id,
+        slug=film.slug,
+        title=film.title,
+        has_youtube_signal=True,
+        data_status=status,
+        last_fetched_at=fetched_at,
+        trailer=TrailerMetaOut(
+            video_id=sig.video_id,
+            video_title=sig.video_title or "",
+            channel_title=sig.channel_title or "",
+            published_at=sig.published_at,
+            is_official=sig.is_official,
+            confidence=round(sig.confidence, 2),
+        ),
+        metrics=AttentionMetricsOut(
+            view_count=sig.view_count,
+            like_count=sig.like_count,
+            comment_count=sig.comment_count,
+            view_velocity_daily=round(sig.view_velocity, 1),
+            engagement_rate=eng_rate,
+        ),
+        derived=DerivedSignalsOut(
+            formatted_views=_format_count(sig.view_count),
+            formatted_reactions=_format_count(sig.like_count),
+            formatted_comments=_format_count(sig.comment_count),
+            momentum_indicator=momentum,
+            attention_tier=tier,
+        ),
+    )

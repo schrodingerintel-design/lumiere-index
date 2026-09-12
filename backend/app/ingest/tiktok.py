@@ -1,156 +1,151 @@
-"""TikTok ingestion via RapidAPI (tiktok-api28).
+"""TikTok adapter — policy-disabled stub.
 
-Strategy per film:
-  1. Query movie title via /video/search-videos endpoint
-  2. Take top 5 video results
-  3. Sum play_count + digg_count + comment_count → TikTok Engagement Score
-  4. Emit one RawMention per film with aggregated signal
+The previous implementation used an unapproved third-party RapidAPI scraper
+proxy (tiktok-api28, tiktok-scraper7) which:
+  - Has no official TikTok API authorization
+  - Violates TikTok's automated scraping terms of service
+  - Was non-functional (no RAPIDAPI_KEY was ever configured)
+  - Used a hardcoded API base URL that didn't match the configured host
 
-Set in backend/.env:
-  RAPIDAPI_KEY=<your key>
-  RAPIDAPI_TIKTOK_HOST=tiktok-api28.p.rapidapi.com
+Per the Source Policy (app/core/source_policy.py), this adapter is permanently
+disabled. Status: 'disabled_access_policy'.
 
-Returns empty list when the API is unreachable or unconfigured.
+If TikTok grants official API access in the future, implement a compliant
+adapter using the TikTok Research API (research.tiktok.com) with proper
+OAuth credentials and honor all TikTok data retention and deletion signals.
+
+Manual CSV import is provided as the safe alternative for lawfully collected
+TikTok analytics exports (e.g., from TikTok Business Center dashboards).
 """
 from __future__ import annotations
+
+import csv
+import io
+import logging
 from datetime import datetime, timezone
 from typing import Optional
-import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.config import settings
-from app.ingest.base import RawMention
+from app.core.source_policy import STATUS_DISABLED_ACCESS_POLICY
+from app.ingest.base import RawMention, SourceAdapter, SourceHealth
 
-TT_BASE = "https://tiktok-api28.p.rapidapi.com"
-_TOP_N = 5  # videos to aggregate per film
-
-
-# ── API helpers ──────────────────────────────────────────────────────────────
-
-def _rapidapi_headers() -> dict:
-    return {
-        "Content-Type": "application/json",
-        "x-rapidapi-host": settings.rapidapi_tiktok_host,
-        "x-rapidapi-key": settings.rapidapi_key,
-    }
+log = logging.getLogger(__name__)
 
 
-@retry(stop=stop_after_attempt(1), wait=wait_exponential(multiplier=1, min=2, max=5))
-def _search_videos(keyword: str, cursor: int = 0) -> dict:
-    r = httpx.get(
-        f"{TT_BASE}/video/search-videos",
-        headers=_rapidapi_headers(),
-        params={"keyword": keyword, "cursor": str(cursor)},
-        timeout=30,  # Fail fast — unofficial scrapers can be slow
+def fetch_tiktok(film_titles: list[tuple[int, str, Optional[int]]]) -> list[RawMention]:
+    """Entry point stub — always returns empty, adapter is policy-disabled.
+
+    Previous implementation used an unauthorized scraper proxy:
+    https://tiktok-api28.p.rapidapi.com (no official TikTok authorization).
+    This is permanently disabled per the Source Policy.
+    """
+    if not settings.enable_tiktok_adapter:
+        log.debug("tiktok.adapter.disabled_access_policy")
+        return []
+
+    # Even if somehow force-enabled, there is no compliant implementation.
+    # Do not attempt unapproved access.
+    log.warning(
+        "tiktok.adapter.no_compliant_impl",
+        msg="TikTok adapter was enabled but has no approved API access. "
+            "Configure TikTok Research API credentials or use manual CSV import."
     )
-    r.raise_for_status()
-    return r.json()
-
-
-def _extract_videos(data: dict) -> list[dict]:
-    """Pull the video list from whichever key the API uses."""
-    for key in ["data", "videos", "aweme_list", "itemList", "items"]:
-        val = data.get(key)
-        if isinstance(val, list) and val:
-            return val
-    # Sometimes nested under data.videos
-    inner = data.get("data")
-    if isinstance(inner, dict):
-        for key in ["videos", "aweme_list", "items"]:
-            val = inner.get(key)
-            if isinstance(val, list) and val:
-                return val
     return []
 
-
-def _get_stats(video: dict) -> tuple[int, int, int]:
-    """Extract play_count, digg_count (likes), comment_count from a video object."""
-    stats = video.get("stats") or video.get("statistics") or video
-    play = int(stats.get("play_count", 0) or stats.get("playCount", 0) or 0)
-    digg = int(stats.get("digg_count", 0) or stats.get("diggCount", 0) or 0)
-    comments = int(stats.get("comment_count", 0) or stats.get("commentCount", 0) or 0)
-    return play, digg, comments
-
-
-# ── per-film live fetcher ────────────────────────────────────────────────────
 
 def fetch_tiktok_for_film(
     film_id: int,
     title: str,
     year: Optional[int] = None,
 ) -> RawMention | None:
+    """Single-film stub — always returns None."""
+    return None
+
+
+def ingest_from_csv(csv_content: str, film_id: int, title: str) -> list[RawMention]:
+    """Parse a TikTok Business Center analytics CSV export into RawMentions.
+
+    This is the approved manual import path. Export the CSV from:
+      TikTok Business Center → Analytics → Content → Export.
+
+    Expected CSV columns (at minimum): date, video_views, likes, comments, shares.
+    Columns are matched case-insensitively; missing columns default to 0.
+
+    Args:
+        csv_content: Raw CSV string from TikTok analytics export.
+        film_id: Film ID to associate with.
+        title: Film title for the mention text.
+
+    Returns:
+        List of RawMentions with observations=video_views and engagement weighted.
     """
-    Search TikTok for '[title]' and return a single aggregated RawMention.
-    Returns None if no results or API is not configured.
-    """
-    if not settings.rapidapi_key or not settings.rapidapi_tiktok_host:
-        return None
-
-    try:
-        data = _search_videos(title)
-    except Exception:
-        return None
-
-    videos = _extract_videos(data)
-    if not videos:
-        return None
-
-    total_plays = 0
-    total_likes = 0
-    total_comments = 0
-    top_desc = ""
-
-    for vid in videos[:_TOP_N]:
-        plays, likes, comments = _get_stats(vid)
-        total_plays += plays
-        total_likes += likes
-        total_comments += comments
-        if not top_desc:
-            top_desc = vid.get("desc", "") or vid.get("title", "") or ""
-
-    engagement = total_likes * 2 + total_comments * 4 + total_plays // 200
-
-    year_str = f"({year})" if year else ""
-    text = (
-        f"{title} {year_str} film — TikTok aggregated audience signal "
-        f"from top {min(_TOP_N, len(videos))} videos. "
-        f"{top_desc[:200]}"
-    )
-
-    return RawMention(
-        external_id=f"tiktok_film_{film_id}_{datetime.now(timezone.utc).strftime('%Y%m%d')}",
-        text=text,
-        url=None,
-        author="tiktok_aggregate",
-        language="en",
-        engagement=engagement,
-        observations=total_plays,
-        created_at=datetime.now(timezone.utc),
-    )
-
-
-# ── fallback (returns empty list so UI shows honest empty state) ────────────
-
-def _fallback_fetch(film_titles: list[tuple[int, str, Optional[int]]]) -> list[RawMention]:
-    return []
-
-
-# ── public API ───────────────────────────────────────────────────────────────
-
-def fetch_tiktok(film_titles: list[tuple[int, str, Optional[int]]]) -> list[RawMention]:
-    """
-    Main entry point. Accepts (film_id, title, year) tuples.
-    Tries the live RapidAPI scraper per-film; returns empty list if unavailable.
-    """
-    if not settings.rapidapi_key or not settings.rapidapi_tiktok_host:
-        return []
-
     out: list[RawMention] = []
+    try:
+        reader = csv.DictReader(io.StringIO(csv_content))
+        for row in reader:
+            # Case-insensitive key lookup
+            row_lower = {k.lower().strip(): v for k, v in row.items()}
 
-    for tup in film_titles:
-        film_id, title, year = tup[:3]
-        mention = fetch_tiktok_for_film(film_id, title, year)
-        if mention:
-            out.append(mention)
+            date_str = row_lower.get("date", "").strip()
+            views = int(row_lower.get("video_views", 0) or 0)
+            likes = int(row_lower.get("likes", 0) or 0)
+            comments = int(row_lower.get("comments", 0) or 0)
+            shares = int(row_lower.get("shares", 0) or 0)
+
+            if not date_str or views <= 0:
+                continue
+
+            try:
+                # Support YYYY-MM-DD and MM/DD/YYYY formats
+                for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"):
+                    try:
+                        obs_dt = datetime.strptime(date_str, fmt).replace(tzinfo=timezone.utc)
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    continue
+            except Exception:
+                continue
+
+            engagement = likes * 2 + comments * 4 + shares * 3 + views // 500
+            out.append(RawMention(
+                external_id=f"tiktok_csv_{film_id}_{date_str}",
+                text=(
+                    f"{title} TikTok analytics (manual export) for {date_str}: "
+                    f"{views:,} views, {likes:,} likes, {comments:,} comments."
+                ),
+                url=None,
+                author="tiktok_manual_export",
+                language="en",
+                engagement=max(engagement, 1),
+                observations=views,
+                created_at=obs_dt,
+            ))
+    except Exception as exc:
+        log.error("tiktok.csv_import.failed", error=str(exc))
 
     return out
+
+
+class TikTokAdapter(SourceAdapter):
+    """Disabled SourceAdapter stub for TikTok.
+
+    Status: disabled_access_policy — unauthorized scraper removed.
+    Compliant alternative: manual CSV import via ingest_from_csv().
+    """
+    source_key = "tiktok"
+
+    def collect(self, since: datetime | None = None) -> list[RawMention]:
+        return []
+
+    def health(self) -> SourceHealth:
+        return SourceHealth(
+            source_key=self.source_key,
+            status=STATUS_DISABLED_ACCESS_POLICY,
+            last_error=(
+                "Adapter disabled: previous implementation used an unapproved "
+                "third-party scraper proxy (tiktok-api28.p.rapidapi.com) with no official "
+                "TikTok API authorization. Use manual CSV import for lawfully collected data."
+            ),
+        )

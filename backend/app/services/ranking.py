@@ -376,6 +376,35 @@ def recompute_rankings(db: Session) -> datetime:
             cp_raw[fid] = 0.0
 
     # ── 7. Pool-relative normalisation ───────────────────────────────────────
+    # Query latest YouTube signals per film (if table exists) for multi-modal scoring
+    from app.models.youtube import YouTubeSignal
+    yt_signals: dict[int, YouTubeSignal] = {}
+    try:
+        yt_rows = db.query(YouTubeSignal).order_by(YouTubeSignal.fetched_at.desc()).all()
+        for row in yt_rows:
+            if row.film_id not in yt_signals:
+                yt_signals[row.film_id] = row
+    except Exception:
+        yt_signals = {}
+
+    # Derived YouTube signals for active films
+    yt_ca_raw: dict[int, float] = {}
+    yt_m_raw: dict[int, float] = {}
+    yt_ae_raw: dict[int, float] = {}
+    for fid, sig in yt_signals.items():
+        if fid in active_fids and sig.view_count > 0:
+            # Attention: log view velocity (views/day)
+            yt_ca_raw[fid] = math.log1p(sig.view_velocity if sig.view_velocity > 0 else sig.view_count / 30.0)
+            if sig.view_velocity > 0:
+                yt_m_raw[fid] = math.log1p(sig.view_velocity)
+            # Engagement: like & comment density per log view count
+            reaction_density = (sig.like_count * 2.0 + sig.comment_count * 5.0) / max(math.log1p(sig.view_count), 1.0)
+            yt_ae_raw[fid] = reaction_density
+
+    yt_ca_pool = list(yt_ca_raw.values())
+    yt_m_pool = list(yt_m_raw.values())
+    yt_ae_pool = list(yt_ae_raw.values())
+
     all_fids = list(ca_raw.keys())
 
     active_ca = [ca_raw[fid] for fid in active_fids]
@@ -391,16 +420,43 @@ def recompute_rankings(db: Session) -> datetime:
     ae_norm: dict[int, float] = {}
     cp_norm: dict[int, float] = {}
 
+    def _norm_pool(val: float, pool: list[float]) -> float:
+        if not pool:
+            return 0.5
+        lo = min(pool)
+        hi = max(pool)
+        if hi == lo:
+            return 1.0 if val > 0 else 0.5
+        return max(0.0, min(1.0, (val - lo) / (hi - lo)))
+
     for fid in all_fids:
         if fid in active_fids:
-            ca_norm[fid] = _percentile_rank(ca_raw[fid], active_ca)
-            ae_norm[fid] = _percentile_rank(ae_raw[fid], active_ae)
-            # Center momentum around 0.5 for active films:
+            ca_base = _percentile_rank(ca_raw[fid], active_ca)
+            if fid in yt_ca_raw and yt_ca_pool:
+                yt_ca_pct = _norm_pool(yt_ca_raw[fid], yt_ca_pool)
+                ca_norm[fid] = 0.75 * ca_base + 0.25 * yt_ca_pct
+            else:
+                ca_norm[fid] = ca_base  # Graceful fallback: 100% pre-YouTube attention
+
+            ae_base = _percentile_rank(ae_raw[fid], active_ae)
+            if fid in yt_ae_raw and yt_ae_pool:
+                yt_ae_pct = _norm_pool(yt_ae_raw[fid], yt_ae_pool)
+                ae_norm[fid] = 0.80 * ae_base + 0.20 * yt_ae_pct
+            else:
+                ae_norm[fid] = ae_base  # Graceful fallback: 100% pre-YouTube sentiment
+
             mv = m_raw[fid]
             if mv >= 0:
-                m_norm[fid] = 0.5 + 0.5 * (mv / m_pos_max)
+                m_base = 0.5 + 0.5 * (mv / m_pos_max)
             else:
-                m_norm[fid] = 0.5 - 0.45 * (abs(mv) / abs(m_neg_min))
+                m_base = 0.5 - 0.45 * (abs(mv) / abs(m_neg_min))
+
+            if fid in yt_m_raw and yt_m_pool:
+                yt_m_pct = _norm_pool(yt_m_raw[fid], yt_m_pool)
+                m_norm[fid] = 0.80 * m_base + 0.20 * yt_m_pct
+            else:
+                m_norm[fid] = m_base  # Graceful fallback: 100% pre-YouTube momentum
+
             cp_norm[fid] = _percentile_rank(cp_raw[fid], active_cp)
         else:
             ca_norm[fid] = 0.0

@@ -50,7 +50,7 @@ def ingest_news() -> int:
 @celery.task
 def ingest_youtube() -> int:
     with SessionLocal() as db:
-        return _ingest(db, "youtube", lambda: fetch_youtube(_film_tuples(db)))
+        return _ingest(db, "youtube", lambda: fetch_youtube(_film_tuples(db), db=db))
 
 
 @celery.task
@@ -62,7 +62,7 @@ def ingest_tiktok() -> int:
 @celery.task
 def ingest_wikipedia() -> int:
     with SessionLocal() as db:
-        return _ingest(db, "wikipedia", lambda: fetch_wikipedia(_film_tuples(db)))
+        return _ingest(db, "wikipedia", lambda: fetch_wikipedia(_film_tuples(db), db=db))
 
 
 @celery.task

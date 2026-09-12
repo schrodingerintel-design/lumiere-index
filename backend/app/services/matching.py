@@ -8,7 +8,7 @@ from app.models import Film, FilmAlias
 _CINEMA_CONTEXT = re.compile(
     r"\b(film|movie|cinema|movies|films|directed|director|watch(?:ed|ing)?|"
     r"review|trailer|streaming|theater|theatre|screening|box\s*office|"
-    r"oscar|award|imdb|rotten\s*tomatoes)\b",
+    r"oscar|award|imdb|rotten\s*tomatoes|season|series|episode)\b",
     re.IGNORECASE,
 )
 
@@ -16,6 +16,7 @@ _CINEMA_CONTEXT = re.compile(
 _AMBIGUOUS_TITLES: frozenset[str] = frozenset({
     "us", "it", "air", "him", "her", "love", "life", "ride", "rush",
     "the", "a", "an", "smile", "vice", "heat", "raw", "wild", "real",
+    "nope", "men", "drive", "trap", "fall",
 })
 
 # Minimum surrounding context window (chars) to look for cinema words
@@ -34,6 +35,10 @@ class FilmMatcher:
         self._index: list[tuple[str, int]] = []
         for f in rows:
             self._index.append((f.title.lower(), f.id))
+            # Also index title + year (e.g. "Dune 2021" or "Dune (2021)")
+            if f.year:
+                self._index.append((f"{f.title.lower()} ({f.year})", f.id))
+                self._index.append((f"{f.title.lower()} {f.year}", f.id))
         for a in aliases:
             self._index.append((a.alias.lower(), a.film_id))
         # Longer aliases matched first to avoid substring collisions
@@ -45,22 +50,36 @@ class FilmMatcher:
         t = text.lower()
 
         for alias, fid in self._index:
-            if alias not in t:
+            # Word boundary search prevents partial matches (e.g. "us" matching "genius")
+            pattern = rf"\b{re.escape(alias)}\b"
+            match_obj = re.search(pattern, t)
+            if not match_obj:
                 continue
 
-            # For very short / ambiguous titles, require cinema context nearby
+            pos = match_obj.start()
+
+            # For short / ambiguous titles, require cinema context, director name, or year nearby
             if alias in _AMBIGUOUS_TITLES:
-                pos = t.find(alias)
                 snippet = t[max(0, pos - _CONTEXT_WINDOW) : pos + len(alias) + _CONTEXT_WINDOW]
-                if not _CINEMA_CONTEXT.search(snippet):
+                has_cinema_context = bool(_CINEMA_CONTEXT.search(snippet))
+
+                meta = self._film_meta.get(fid)
+                director_match = False
+                year_match = False
+                if meta:
+                    _, director_lower, year = meta
+                    if director_lower and len(director_lower) > 4 and director_lower in t:
+                        director_match = True
+                    if year and str(year) in snippet:
+                        year_match = True
+
+                if not (has_cinema_context or director_match or year_match):
                     continue
 
-            # Optional director context boost (not required, but helps precision)
-            # If we have director info and it appears in the text — high confidence
+            # Optional director context boost (trust it if present)
             meta = self._film_meta.get(fid)
             if meta:
                 _, director_lower, _ = meta
-                # Director match is strong signal — trust it even for short titles
                 if director_lower and len(director_lower) > 4 and director_lower in t:
                     return fid
 

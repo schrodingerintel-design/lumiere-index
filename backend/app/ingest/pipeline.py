@@ -10,10 +10,10 @@ from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Mention, PendingMention, Source
+from app.models import Mention, PendingMention, Source, MetricSnapshot
 from app.services.matching import FilmMatcher
 from app.services.sentiment import score_text
-from app.ingest.base import RawMention
+from app.ingest.base import RawMention, RawMetricSnapshot
 
 _matcher_cache: dict[int, FilmMatcher] = {}
 _matcher_lock = threading.Lock()
@@ -153,6 +153,71 @@ def ingest_batch(db: Session, source_key: str, raws: list[RawMention]) -> int:
     # Surface the raw API outcome so the health view can distinguish upstream
     # silence from pipeline rejection.
     record_ingest(db, source_key, error=f"{errors} items failed" if errors else None)
+    record_ingest_stats(
+        db,
+        source_key,
+        requested=incoming,
+        received=incoming,
+        processed=inserted,
+        rejected=rejected,
+        api_errors=errors,
+        rate_limit_errors=0,
+    )
+    return inserted
+
+
+def ingest_metric_batch(db: Session, source_key: str, metrics: list[RawMetricSnapshot]) -> int:
+    """Ingest aggregate metric snapshots into metric_snapshots table.
+
+    Deduplicates on (source_id, external_id, metric_type).
+    Never applies VADER sentiment or mixes with textual mentions.
+    """
+    src = _ensure_source(db, source_key)
+    inserted = 0
+    errors = 0
+    incoming = len(metrics)
+    rejected = 0
+    for m in metrics:
+        try:
+            existing = (
+                db.query(MetricSnapshot)
+                .filter_by(source_id=src.id, external_id=m.external_id, metric_type=m.metric_type)
+                .first()
+            )
+            if existing:
+                existing.value = m.value
+                existing.observed_at = m.observed_at
+                existing.observations = m.observations
+                existing.raw_payload_hash = m.raw_payload_hash
+                db.commit()
+                rejected += 1  # counts as deduplicated update
+                continue
+
+            snap = MetricSnapshot(
+                source_id=src.id,
+                external_id=m.external_id,
+                film_id=m.film_id,
+                metric_type=m.metric_type,
+                value=m.value,
+                observed_at=m.observed_at,
+                country=m.country,
+                observations=m.observations,
+                source_url=m.source_url,
+                attribution=m.attribution,
+                raw_payload_hash=m.raw_payload_hash,
+                created_at=m.created_at or datetime.now(timezone.utc),
+            )
+            db.add(snap)
+            db.commit()
+            inserted += 1
+        except IntegrityError:
+            db.rollback()
+            rejected += 1
+        except Exception:
+            db.rollback()
+            errors += 1
+
+    record_ingest(db, source_key, error=f"{errors} metric items failed" if errors else None)
     record_ingest_stats(
         db,
         source_key,

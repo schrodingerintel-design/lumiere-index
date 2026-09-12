@@ -48,6 +48,8 @@ class Film(Base):
     # can filter by content type.
     content_type: Mapped[str] = mapped_column(String(16), default="MOVIE", nullable=False, index=True)
     tmdb_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    # Stored IMDb ID (tconst e.g. tt1375666) for direct matching to IMDb datasets
+    imdb_id: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
     director: Mapped[str | None] = mapped_column(String(255))
     year: Mapped[int | None] = mapped_column(Integer)
     runtime_min: Mapped[int | None] = mapped_column(Integer)
@@ -83,6 +85,9 @@ class Film(Base):
         return self.first_air_date if self.content_type == "TV_SHOW" else self.release_date
 
     aliases: Mapped[list["FilmAlias"]] = relationship(back_populates="film", cascade="all, delete-orphan")
+    youtube_signals: Mapped[list["YouTubeSignal"]] = relationship("YouTubeSignal", back_populates="film", cascade="all, delete-orphan")
+    imdb_enrichment: Mapped["IMDbEnrichment | None"] = relationship("IMDbEnrichment", back_populates="film", uselist=False, cascade="all, delete-orphan")
+    imdb_vote_snapshots: Mapped[list["IMDbVoteSnapshot"]] = relationship("IMDbVoteSnapshot", back_populates="film", cascade="all, delete-orphan")
 
 
 class FilmAlias(Base):
