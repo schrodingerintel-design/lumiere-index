@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ArrowRight, Scale } from "lucide-react";
 import {
   getTopFilms,
   getBiggestMovers,
@@ -184,9 +184,11 @@ export function Hero() {
           padding clears the desktop edge arrows. */}
       <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-24 lg:pt-16">
         <div className="mx-auto max-w-6xl">
-          <div className="min-w-0 max-w-2xl">
-              {/* Kicker — where this title stands today */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          <div className="lg:flex lg:items-start lg:justify-between lg:gap-14">
+            {/* Left — rank badge, title, metadata, synopsis, actions */}
+            <div className="min-w-0 max-w-2xl">
+              {/* Rank badge — where this title stands today */}
+              <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-foreground/15 bg-ink/45 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
                 <span className="font-semibold text-primary">
                   #{activeFilm?.rank ?? 1} on the Index
                 </span>
@@ -197,7 +199,7 @@ export function Hero() {
               </div>
 
               {/* Title — the film stays the hero */}
-              <h1 className="mt-4 font-display text-4xl font-medium leading-[1.02] sm:text-5xl md:text-6xl">
+              <h1 className="mt-5 font-display text-4xl font-medium leading-[1.02] sm:text-5xl md:text-6xl lg:text-[64px]">
                 <Link
                   to="/films/$slug"
                   params={{ slug: activeFilm?.slug ?? "" }}
@@ -208,14 +210,40 @@ export function Hero() {
               </h1>
 
               {/* One line of metadata, quietly */}
-              <p className="mt-3 text-sm text-muted-foreground sm:text-[15px]">
+              <p className="mt-4 text-sm text-muted-foreground sm:text-[15px]">
                 {[director, activeFilm?.year, `${daysOnChart} ${daysOnChart === 1 ? "day" : "days"} on chart`]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
 
-              {/* Index Score — the defining number, stacked under the metadata. */}
-              <div className="mt-6">
+              {/* Synopsis — a short taste on desktop */}
+              {activeFilm?.synopsis && (
+                <p className="mt-4 hidden max-w-xl text-sm leading-relaxed text-foreground/70 line-clamp-3 lg:block">
+                  {activeFilm.synopsis}
+                </p>
+              )}
+
+              {/* Desktop actions */}
+              <div className="pointer-events-auto mt-7 hidden items-center gap-3 lg:flex">
+                <Link
+                  to="/films/$slug"
+                  params={{ slug: activeFilm?.slug ?? "" }}
+                  className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-primary/90"
+                >
+                  View film details
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+                <Link
+                  to="/compare"
+                  className="inline-flex items-center gap-2 rounded-md border border-foreground/20 bg-ink/30 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur-sm transition hover:border-foreground/50"
+                >
+                  <Scale className="h-4 w-4" aria-hidden />
+                  Compare this title
+                </Link>
+              </div>
+
+              {/* Index Score (mobile / tablet) — stacked under the metadata */}
+              <div className="mt-6 lg:hidden">
                 <div className="index-score text-7xl sm:text-8xl">
                   {activeFilm?.score?.toFixed(1) ?? "—"}
                 </div>
@@ -224,6 +252,56 @@ export function Hero() {
                 </div>
               </div>
             </div>
+
+            {/* Right — poster card + score ring (desktop only) */}
+            {activeFilm && (
+              <div className="pointer-events-auto hidden shrink-0 items-center gap-7 lg:flex">
+                <Link
+                  to="/films/$slug"
+                  params={{ slug: activeFilm.slug }}
+                  className="group relative block w-52 overflow-hidden rounded-xl shadow-2xl ring-1 ring-foreground/20"
+                >
+                  <FilmPosterThumbnail film={activeFilm} className="aspect-[2/3] w-full" />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/85 to-transparent px-3.5 pb-3 pt-8">
+                    <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">
+                      {activeFilm.title}
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="index-score text-base">{activeFilm.score?.toFixed(1) ?? "—"}</span>
+                      <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                        Index
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+
+                {/* Score ring — red emphasis around the ivory number */}
+                <div className="relative h-36 w-36">
+                  <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90" aria-hidden>
+                    <circle cx="70" cy="70" r="60" fill="none" strokeWidth="5" className="stroke-foreground/10" />
+                    <circle
+                      cx="70"
+                      cy="70"
+                      r="60"
+                      fill="none"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                      className="stroke-primary transition-[stroke-dasharray] duration-700"
+                      strokeDasharray={`${
+                        2 * Math.PI * 60 * Math.min(Math.max((activeFilm.score ?? 0) / 100, 0), 1)
+                      } ${2 * Math.PI * 60}`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="index-score text-4xl">{activeFilm.score?.toFixed(1) ?? "—"}</span>
+                    <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                      Index Score
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
