@@ -123,17 +123,18 @@ export function Hero() {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/55 to-ink" />
           {/* Desktop boundary — slight blur + fade at the bottom edge so the
               header melts into the page with no visible seam. */}
-          <div className="hero-boundary-blur absolute inset-x-0 bottom-0 h-28 hidden sm:block" />
-          <div className="absolute inset-x-0 bottom-0 h-24 hidden sm:block bg-gradient-to-b from-transparent to-ink" />
+          <div className="hero-boundary-blur absolute inset-x-0 bottom-0 h-28 hidden lg:block" />
+          <div className="absolute inset-x-0 bottom-0 h-24 hidden lg:block bg-gradient-to-b from-transparent to-ink" />
         </div>
       )}
 
       {/* Mobile: invisible tap zones over the backdrop — tap left third for the
           previous title, right third for the next, middle to open the film.
           Desktop gets visible edge arrows. Sits below the content layer, so the
-          title link is never blocked. */}
+          title link is never blocked. Shown up to lg — tablets keep the touch
+          layout. */}
       {topFive.length > 1 && (
-        <div className="absolute inset-0 grid grid-cols-3 sm:hidden">
+        <div className="absolute inset-0 grid grid-cols-3 lg:hidden">
           <button
             type="button"
             onClick={() => setIndex((i) => (i - 1 + topFive.length) % topFive.length)}
@@ -163,7 +164,7 @@ export function Hero() {
             type="button"
             onClick={() => setIndex((i) => (i - 1 + topFive.length) % topFive.length)}
             aria-label="Previous title"
-            className="absolute left-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground sm:flex lg:left-6"
+            className="absolute left-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground lg:flex lg:left-6"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -171,7 +172,7 @@ export function Hero() {
             type="button"
             onClick={() => setIndex((i) => (i + 1) % topFive.length)}
             aria-label="Next title"
-            className="absolute right-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground sm:flex lg:right-6"
+            className="absolute right-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground lg:flex lg:right-6"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -181,7 +182,7 @@ export function Hero() {
       {/* Content layer — transparent to taps so the zones beneath receive them;
           interactive children re-enable pointer events explicitly. Horizontal
           padding clears the desktop edge arrows. */}
-      <div className="pointer-events-none relative px-4 pt-10 sm:px-20 sm:pt-14 lg:px-24 lg:pt-16">
+      <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-24 lg:pt-16">
         <div className="mx-auto max-w-6xl">
           <div className="min-w-0 max-w-2xl">
               {/* Kicker — where this title stands today */}
