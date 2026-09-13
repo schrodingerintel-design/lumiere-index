@@ -121,6 +121,10 @@ export function Hero() {
           />
           {/* Color management only — keeps the top bright while the dissolve lands on the canvas */}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/55 to-ink" />
+          {/* Desktop boundary — slight blur + fade at the bottom edge so the
+              header melts into the page with no visible seam. */}
+          <div className="hero-boundary-blur absolute inset-x-0 bottom-0 h-28 hidden sm:block" />
+          <div className="absolute inset-x-0 bottom-0 h-24 hidden sm:block bg-gradient-to-b from-transparent to-ink" />
         </div>
       )}
 
