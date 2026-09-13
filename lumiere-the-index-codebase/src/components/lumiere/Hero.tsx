@@ -182,13 +182,10 @@ export function Hero() {
       {/* Content layer — transparent to taps so the zones beneath receive them;
           interactive children re-enable pointer events explicitly. Horizontal
           padding clears the desktop edge arrows. */}
-      <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-24 lg:pt-16">
-        <div className="mx-auto max-w-6xl">
-          <div className="lg:flex lg:items-start lg:justify-between lg:gap-14">
-            {/* Left — rank badge, title, metadata, synopsis, actions */}
-            <div className="min-w-0 max-w-2xl">
-              {/* Rank badge — where this title stands today */}
-              <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-foreground/15 bg-ink/45 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
+      <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-24 lg:pt-14">
+        <div className="mx-auto max-w-7xl lg:flex lg:min-h-[440px] lg:flex-col xl:min-h-[520px]">
+          {/* Rank badge — the only element that stays at the top */}
+          <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 self-start rounded-full border border-foreground/15 bg-ink/45 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
                 <span className="font-semibold text-primary">
                   #{activeFilm?.rank ?? 1} on the Index
                 </span>
@@ -196,10 +193,14 @@ export function Hero() {
                 {activeFilm && <MovementInline film={activeFilm} />}
                 <span aria-hidden>·</span>
                 <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
-              </div>
+          </div>
 
+          {/* Everything else sits at the bottom of the hero */}
+          <div className="lg:mt-auto lg:flex lg:items-end lg:justify-between lg:gap-14">
+            {/* Left — title, metadata, synopsis, actions */}
+            <div className="min-w-0 max-w-2xl lg:pb-4">
               {/* Title — the film stays the hero */}
-              <h1 className="mt-5 font-display text-4xl font-medium leading-[1.02] sm:text-5xl md:text-6xl lg:text-[64px]">
+              <h1 className="mt-5 font-display text-4xl font-medium leading-[1.02] sm:text-5xl md:text-6xl lg:mt-0 lg:text-[72px] lg:leading-[0.98] xl:text-[80px]">
                 <Link
                   to="/films/$slug"
                   params={{ slug: activeFilm?.slug ?? "" }}
@@ -253,9 +254,9 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Right — poster card + score ring (desktop only) */}
+            {/* Right — poster card + score ring, pinned to the far right edge */}
             {activeFilm && (
-              <div className="pointer-events-auto hidden shrink-0 items-center gap-7 lg:flex">
+              <div className="pointer-events-auto hidden shrink-0 items-center gap-7 lg:flex lg:pb-2">
                 <Link
                   to="/films/$slug"
                   params={{ slug: activeFilm.slug }}
@@ -302,9 +303,9 @@ export function Hero() {
               </div>
             )}
           </div>
-
         </div>
       </div>
+
     </section>
   );
 }
