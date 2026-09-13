@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ArrowRight, Scale } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import {
   getTopFilms,
   getBiggestMovers,
@@ -182,8 +182,8 @@ export function Hero() {
       {/* Content layer — transparent to taps so the zones beneath receive them;
           interactive children re-enable pointer events explicitly. Horizontal
           padding clears the desktop edge arrows. */}
-      <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-24 lg:pt-14">
-        <div className="mx-auto max-w-7xl lg:flex lg:min-h-[440px] lg:flex-col xl:min-h-[520px]">
+      <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-16 lg:pt-12 xl:px-20">
+        <div className="mx-auto max-w-7xl lg:flex lg:min-h-[520px] lg:flex-col xl:min-h-[600px]">
           {/* Rank badge — the only element that stays at the top */}
           <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 self-start rounded-full border border-foreground/15 bg-ink/45 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
                 <span className="font-semibold text-primary">
@@ -233,13 +233,6 @@ export function Hero() {
                 >
                   View film details
                   <ArrowRight className="h-4 w-4" aria-hidden />
-                </Link>
-                <Link
-                  to="/compare"
-                  className="inline-flex items-center gap-2 rounded-md border border-foreground/20 bg-ink/30 px-5 py-2.5 text-sm font-medium text-foreground backdrop-blur-sm transition hover:border-foreground/50"
-                >
-                  <Scale className="h-4 w-4" aria-hidden />
-                  Compare this title
                 </Link>
               </div>
 
