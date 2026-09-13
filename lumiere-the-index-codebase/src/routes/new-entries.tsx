@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getIndexNewEntries } from "@/lib/apiClient";
+import { localDate } from "@/lib/filmUtils";
 import { RouteError } from "@/lib/route-error";
 import { FilmCardSkeleton } from "@/components/lumiere/Skeletons";
 
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/new-entries")({
 
 function formatDate(iso: string | null): string {
   if (!iso) return "Date TBA";
-  return new Date(iso).toLocaleDateString("en-US", {
+  return localDate(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

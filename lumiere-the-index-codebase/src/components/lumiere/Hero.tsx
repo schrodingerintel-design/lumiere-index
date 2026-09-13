@@ -97,7 +97,7 @@ export function Hero() {
   const daysOnChart = activeFilm?.days_on_chart ?? 1;
 
   return (
-    <section className="relative">
+    <section className="relative sm:flex sm:min-h-[500px] sm:items-center lg:min-h-[600px]">
       {/* Backdrop — very visible at the top, then dissolving continuously into
           blur and the page canvas toward the bottom. Two masked copies of the
           same still create the sharp→blur crossfade; no banding, no hard edge. */}
@@ -177,7 +177,7 @@ export function Hero() {
       {/* Content layer — transparent to taps so the zones beneath receive them;
           interactive children re-enable pointer events explicitly. Horizontal
           padding clears the desktop edge arrows. */}
-      <div className="pointer-events-none relative px-4 pt-10 sm:px-20 lg:px-24">
+      <div className="pointer-events-none relative px-4 pt-10 sm:px-20 sm:pt-0 lg:px-24">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 max-w-2xl">
