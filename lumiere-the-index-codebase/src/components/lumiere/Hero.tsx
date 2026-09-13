@@ -97,7 +97,7 @@ export function Hero() {
   const daysOnChart = activeFilm?.days_on_chart ?? 1;
 
   return (
-    <section className="relative sm:flex sm:min-h-[500px] sm:items-center lg:min-h-[600px]">
+    <section className="relative sm:flex sm:min-h-[500px] lg:min-h-[600px]">
       {/* Backdrop — very visible at the top, then dissolving continuously into
           blur and the page canvas toward the bottom. Two masked copies of the
           same still create the sharp→blur crossfade; no banding, no hard edge. */}
@@ -177,10 +177,9 @@ export function Hero() {
       {/* Content layer — transparent to taps so the zones beneath receive them;
           interactive children re-enable pointer events explicitly. Horizontal
           padding clears the desktop edge arrows. */}
-      <div className="pointer-events-none relative px-4 pt-10 sm:px-20 sm:pt-0 lg:px-24">
+      <div className="pointer-events-none relative px-4 pt-10 sm:px-20 sm:pt-14 lg:px-24 lg:pt-16">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0 max-w-2xl">
+          <div className="min-w-0 max-w-2xl">
               {/* Kicker — where this title stands today */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                 <span className="font-semibold text-primary">
@@ -209,18 +208,17 @@ export function Hero() {
                   .filter(Boolean)
                   .join(" · ")}
               </p>
-            </div>
 
-            {/* Index Score — the defining number. Big, ivory, calm. */}
-            <div className="shrink-0">
-              <div className="index-score text-7xl sm:text-8xl">
-                {activeFilm?.score?.toFixed(1) ?? "—"}
-              </div>
-              <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Index Score
+              {/* Index Score — the defining number, stacked under the metadata. */}
+              <div className="mt-6">
+                <div className="index-score text-7xl sm:text-8xl">
+                  {activeFilm?.score?.toFixed(1) ?? "—"}
+                </div>
+                <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                  Index Score
+                </div>
               </div>
             </div>
-          </div>
 
         </div>
       </div>
