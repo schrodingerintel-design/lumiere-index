@@ -27,7 +27,7 @@ function todayLabel(): string {
 export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-ink/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-6">
           {/* Mobile: compact Apple-style header — logo + menu + search */}
           <button

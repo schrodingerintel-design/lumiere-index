@@ -184,15 +184,14 @@ export function Hero() {
           padding clears the desktop edge arrows. */}
       <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-16 lg:pt-12 xl:px-20">
         <div className="mx-auto max-w-7xl lg:flex lg:min-h-[520px] lg:flex-col xl:min-h-[600px]">
-          {/* Rank badge — the only element that stays at the top */}
-          <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 self-start rounded-full border border-foreground/15 bg-ink/45 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
-                <span className="font-semibold text-primary">
-                  #{activeFilm?.rank ?? 1} on the Index
-                </span>
-                <span aria-hidden>·</span>
-                {activeFilm && <MovementInline film={activeFilm} />}
-                <span aria-hidden>·</span>
-                <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
+          {/* Rank badge — the only element at the top, square, hugging the
+              top-left corner of the content canvas */}
+          <div className="inline-flex flex-wrap items-center self-start border border-foreground/15 bg-ink/45 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
+            <span className="font-semibold text-primary">#{activeFilm?.rank ?? 1}</span>
+            <span aria-hidden className="mx-2.5">·</span>
+            {activeFilm && <MovementInline film={activeFilm} />}
+            <span aria-hidden className="mx-2.5">·</span>
+            <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
           </div>
 
           {/* Everything else sits at the bottom of the hero */}
