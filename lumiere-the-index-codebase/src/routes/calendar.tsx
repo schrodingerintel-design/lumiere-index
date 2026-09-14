@@ -10,6 +10,7 @@ import {
   type TmdbMovie,
 } from "@/lib/apiClient";
 import { slugify } from "@/lib/utils";
+import { localDate } from "@/lib/filmUtils";
 import { RouteError } from "@/lib/route-error";
 import { Calendar as CalendarIcon, Filter, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/lumiere/Skeletons";
@@ -36,10 +37,12 @@ const THEATER_WINDOW_DAYS = 180;
 
 function getDaysUntil(dateStr: string): { text: string; isPast: boolean } {
   if (!dateStr) return { text: "Date TBA", isPast: false };
-  const target = new Date(dateStr).getTime();
+  // Both sides anchored to local midnight — comparing a UTC-parsed target
+  // against local midnight inflates the count by one in UTC-negative zones.
+  const target = localDate(dateStr).getTime();
   const today = new Date().setHours(0, 0, 0, 0);
   const diffTime = target - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
   if (diffDays < 0) return { text: "Now In Theaters", isPast: true };
   if (diffDays === 0) return { text: "Releasing Today", isPast: false };
@@ -179,7 +182,7 @@ function CalendarPage() {
             {indexUpcoming.map((f) => {
               const countdown = getDaysUntil(f.release_date ?? "");
               const formattedDate = f.release_date
-                ? new Date(f.release_date).toLocaleDateString("en-US", {
+                ? localDate(f.release_date).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
@@ -261,7 +264,7 @@ function CalendarPage() {
               const poster = tmdbPosterUrl(m.poster_path, "w342");
               const countdown = getDaysUntil(m.release_date);
               const formattedDate = m.release_date
-                ? new Date(m.release_date).toLocaleDateString("en-US", {
+                ? localDate(m.release_date).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                     year: "numeric",

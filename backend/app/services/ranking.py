@@ -517,38 +517,49 @@ def recompute_rankings(db: Session) -> datetime:
     # ── 9. Previous snapshot lookup for movement tracking ─────────────────────
     prev_snap = db.scalar(select(func.max(Ranking.snapshot_at)))
     prev_ranks: dict[int, int] = {}
-    prev_movements: dict[int, int | None] = {}
-    prev_prev_ranks: dict[int, int | None] = {}
     prev_peak: dict[int, int] = {}
     if prev_snap:
         for r in db.query(Ranking).filter(Ranking.snapshot_at == prev_snap):
             prev_ranks[r.film_id] = r.rank
-            prev_movements[r.film_id] = r.movement
-            prev_prev_ranks[r.film_id] = r.prev_rank
             prev_peak[r.film_id] = r.peak_rank or r.rank
+
+    # ── Movement baseline: the rank as of ~24 hours ago ───────────────────────
+    # The indicator answers "how has this title moved in the last day?", so
+    # the baseline is the OLDEST snapshot still inside the 24-hour window.
+    # Carrying the last movement forward (the previous behaviour) kept "↑ 3"
+    # on screen forever after the rise; comparing only 15-minute snapshots
+    # reset a real move to "—" within minutes. Both wrong — the day is the
+    # honest unit for a chart that refreshes every 15 minutes.
+    cutoff = now - timedelta(hours=24)
+    if prev_snap is not None and prev_snap.tzinfo is None:
+        cutoff = cutoff.replace(tzinfo=None)  # column stores naive UTC
+    baseline_ranks: dict[int, int] = {}
+    for fid, window_rank in (
+        db.query(Ranking.film_id, Ranking.rank)
+        .filter(Ranking.snapshot_at >= cutoff)
+        .order_by(Ranking.snapshot_at.asc())
+    ):
+        # Ascending scan: the FIRST (oldest) snapshot per film wins.
+        baseline_ranks.setdefault(fid, window_rank)
 
     def _movement_for(fid: int, rank: int) -> tuple[int | None, int]:
         """Return (prev_rank, movement) for this snapshot.
 
-        Movement is rank-based and PERSISTENT: the ↑/↓/— indicator keeps
-        showing the last rank change until the rank actually changes again.
-        Comparing only against the immediately-previous snapshot (which fires
-        every refresh cycle) would reset a real move to "—" within minutes
-        whenever a film holds its new position.
+        Movement is the real 24-hour change: current rank versus the rank in
+        the oldest snapshot still inside the 24-hour window. Unchanged across
+        the window → steady (movement 0 → the "—" indicator) — a rise from
+        yesterday never outlives the day it happened. Titles newer than the
+        window compare against their first appearance in it; titles with no
+        history in the window at all remain a genuine NEW entry.
         """
-        prev = prev_ranks.get(fid)
-        if prev is None:
-            return None, 0  # first appearance — a genuine NEW entry
-        if prev != rank:
-            return prev, prev - rank  # rank changed → fresh movement
-        # Rank unchanged from the previous snapshot: carry the last movement
-        # forward until the rank changes again. A debut that held its rank
-        # resolves to steady (movement 0, prev_rank set) instead of showing
-        # a perpetual "New" badge.
-        carried = prev_movements.get(fid)
-        movement = carried if carried is not None else 0
-        last_from = prev_prev_ranks.get(fid)
-        return (last_from if last_from is not None else prev), movement
+        baseline = baseline_ranks.get(fid)
+        if baseline is None:
+            return None, 0  # no history inside the window — genuine NEW entry
+        if baseline != rank:
+            return baseline, baseline - rank  # real movement within the day
+        # Rank unchanged across the window → steady. prev_rank keeps the last
+        # known rank for consumers that display it as context.
+        return prev_ranks.get(fid, baseline), 0
 
     # ── Weeks on chart: calendar weeks since the film's FIRST chart appearance.
     # The previous implementation carried a counter and incremented it on every

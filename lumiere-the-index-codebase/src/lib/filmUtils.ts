@@ -1,6 +1,19 @@
 import type { RankedFilm } from "./apiClient";
 
 /**
+ * Parse a date-only string ("2026-09-15") as LOCAL midnight.
+ *
+ * `new Date("2026-09-15")` parses as UTC midnight, which in timezones behind
+ * UTC lands on the previous calendar day and breaks every day-count and
+ * display built on it. All film dates from the API are plain calendar dates,
+ * so they must always be interpreted in the viewer's local calendar.
+ */
+export function localDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+/**
  * The date a title "aired" — release_date for movies, first_air_date for TV
  * shows. TV shows are first-class content; their date never lives in
  * release_date.

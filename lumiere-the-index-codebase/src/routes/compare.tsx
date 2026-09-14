@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import {
   getTopFilms,
+  searchFilms,
   searchTmdbMovie,
   getTmdbMovieDetails,
   tmdbPosterUrl,
@@ -43,6 +44,15 @@ export const Route = createFileRoute("/compare")({
 // search UI is fully unmounted) or empty (a placeholder card with the search
 // input inside it). Selecting a film closes and unmounts the dropdown, clears
 // the query, and blurs the input so the poster is the only visible state.
+function useDebouncedValue<T>(value: T, delay = 250): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 function FilmPicker({
   value,
   onSelect,
@@ -60,8 +70,21 @@ function FilmPicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const filtered = query.trim()
-    ? films.filter((f) => f.title.toLowerCase().includes(query.toLowerCase()))
+  // Server-backed search for real queries — the top-100 starter list only
+  // covers the chart head, so filtering it client-side hid most of the
+  // catalog from compare. Two characters trigger the API; shorter queries
+  // (or cleared input) fall back to the starter list.
+  const debounced = useDebouncedValue(query.trim(), 250);
+  const serverSearching = debounced.length >= 2;
+  const { data: serverResults = [] } = useQuery({
+    queryKey: ["films", "search", "compare", debounced],
+    queryFn: () => searchFilms(debounced, 20),
+    enabled: serverSearching,
+    staleTime: 30 * 1000,
+  });
+
+  const filtered = serverSearching
+    ? serverResults
     : films;
 
   const { data: tmdb } = useQuery({
@@ -184,7 +207,9 @@ function FilmPicker({
           className="max-h-64 overflow-y-auto rounded-xl border border-foreground/15 bg-background shadow-2xl"
         >
           {filtered.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-muted-foreground">No films found</div>
+            <div className="px-4 py-3 text-sm text-muted-foreground">
+              {serverSearching ? `No titles match “${debounced}”.` : "No films found"}
+            </div>
           ) : (
             filtered.slice(0, 20).map((f) => (
               <button
@@ -204,7 +229,16 @@ function FilmPicker({
                     {f.director ? `${f.director} · ${f.year}` : String(f.year)}
                   </div>
                 </div>
-                <div className="ml-auto font-mono text-sm text-cream">{f.score?.toFixed(1)}</div>
+                <div className="ml-auto shrink-0 text-right">
+                  <div className="font-mono text-sm text-cream">
+                    {f.rank > 0 ? f.score?.toFixed(1) : "—"}
+                  </div>
+                  {f.rank > 0 && (
+                    <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                      #{f.rank}
+                    </div>
+                  )}
+                </div>
               </button>
             ))
           )}

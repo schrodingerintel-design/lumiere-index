@@ -48,8 +48,9 @@ def _days_on_chart_map(db: Session, film_ids: list[int]) -> dict[int, int]:
 
     Computed at read time from the snapshot history, so the number stays
     truthful and self-heals instead of carrying a counter. Titles never
-    charted → 1 (today). Titles charted → floor(days since first appearance)
-    + 1.
+    charted → 1 (today). Titles charted → calendar days elapsed since the
+    first appearance (counted at UTC midnight boundaries, NOT rolling 24h
+    windows — a title first seen at 2pm must show 2 the next morning), + 1.
     """
     if not film_ids:
         return {}
@@ -69,7 +70,11 @@ def _days_on_chart_map(db: Session, film_ids: list[int]) -> dict[int, int]:
             continue
         if start.tzinfo is None:
             start = start.replace(tzinfo=timezone.utc)
-        out[fid] = max(((now - start).days) + 1, 1)
+        # Calendar-day difference at UTC midnight boundaries. Using a naive
+        # timedelta .days would anchor the increment to the first snapshot's
+        # time of day and hold the count flat until that same time returns.
+        day_diff = (now.date() - start.astimezone(timezone.utc).date()).days
+        out[fid] = max(day_diff + 1, 1)
     return out
 
 
@@ -355,8 +360,6 @@ def search_films(
     db: Session = Depends(get_db),
 ):
     snap = _latest_snapshot(db)
-    if not snap:
-        return []
 
     pattern = f"%{q}%"
     genre_clause = func.lower(Film.genre_tag) == genre.strip().lower() if genre else True
@@ -373,20 +376,39 @@ def search_films(
         return []
 
     film_ids = [f.id for f in films]
-    rankings = {
-        r.film_id: r
-        for r in db.query(Ranking).filter(
-            Ranking.film_id.in_(film_ids), Ranking.snapshot_at == snap
-        ).all()
-    }
+    rankings = {}
+    if snap:
+        rankings = {
+            r.film_id: r
+            for r in db.query(Ranking).filter(
+                Ranking.film_id.in_(film_ids), Ranking.snapshot_at == snap
+            ).all()
+        }
 
-    results = []
-    for f in films:
-        r = rankings.get(f.id)
-        if r:
-            results.append((f, r))
-    mentions = _mentions_map(db, [f.id for f, _ in results])
-    return _with_mentions(results, mentions)
+    # Ranked titles first (canonical chart data), then catalog-only titles —
+    # upcoming releases and off-chart films must still be findable: a search
+    # that silently drops most of the catalog breaks compare, watchlists, and
+    # deep links. Unranked films carry rank 0 / score 0 like the new-releases
+    # endpoint's upcoming section.
+    ranked = [(f, rankings[f.id]) for f in films if f.id in rankings]
+    unranked = [f for f in films if f.id not in rankings]
+    mentions = _mentions_map(db, film_ids)
+    out = _with_mentions(ranked, mentions) if ranked else []
+    for f in unranked:
+        out.append(
+            RankedFilm(
+                id=f.id, slug=f.slug, title=f.title,
+                original_title=f.original_title, content_type=f.content_type,
+                director=f.director or "Director TBA",
+                year=f.year, country_origin=f.country_origin, poster_url=f.poster_url,
+                backdrop_url=f.backdrop_url, synopsis=f.synopsis,
+                gradient_from=f.gradient_from, gradient_to=f.gradient_to,
+                release_date=f.release_date, first_air_date=f.first_air_date,
+                genre_tag=f.genre_tag,
+                rank=0, score=0.0,
+            )
+        )
+    return out
 
 
 def _title_similarity(a: str, b: str) -> float:
