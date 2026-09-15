@@ -10,7 +10,7 @@ const COMPANY_LINKS = [
 
 const EXPLORE_LINKS = [
   { to: "/", label: "The Index" },
-  { to: "/hot-50", label: "Hot 50" },
+  { to: "/top-50-tv", label: "Top 50 TV Shows" },
   { to: "/rising", label: "Biggest Movers" },
   { to: "/new-entries", label: "New Entries" },
   { to: "/trending", label: "Trending" },

@@ -8,7 +8,7 @@ import { Brand, BrandLink } from "@/components/lumiere/Brand";
  */
 const PRIMARY_LINKS = [
   { to: "/", label: "The Index", exact: true },
-  { to: "/hot-50", label: "Hot 50", exact: false },
+  { to: "/top-50-tv", label: "Top 50 TV", exact: false },
   { to: "/rising", label: "Biggest Movers", exact: false },
   { to: "/new-entries", label: "New Entries", exact: false },
   { to: "/trending", label: "Trending", exact: false },

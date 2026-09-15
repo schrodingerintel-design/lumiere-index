@@ -201,8 +201,14 @@ export interface TmdbMovie {
 export interface TmdbSearchResult {
   results: TmdbMovie[];
 }// ─── Backend API ──────────────────────────────────────────────────────────────
-export const getTopFilms = (limit: number = 10, offset: number = 0) =>
-  apiFetch<RankedFilm[]>(`/api/v1/films/top?limit=${limit}&offset=${offset}`);
+export const getTopFilms = (
+  limit: number = 10,
+  offset: number = 0,
+  contentType?: "MOVIE" | "TV_SHOW",
+) =>
+  apiFetch<RankedFilm[]>(
+    `/api/v1/films/top?limit=${limit}&offset=${offset}${contentType ? `&content_type=${contentType}` : ""}`,
+  );
 
 export const getGenreFilms = (tag: string, limit: number = 100, offset: number = 0) =>
   apiFetch<RankedFilm[]>(`/api/v1/genres/${encodeURIComponent(tag)}/films?limit=${limit}&offset=${offset}`);

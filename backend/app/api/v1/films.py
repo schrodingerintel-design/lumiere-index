@@ -101,7 +101,12 @@ def _days_at_one_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     return out
 
 
-def _ranked_query(db: Session, snapshot: datetime, genre: str | None = None):
+def _ranked_query(
+    db: Session,
+    snapshot: datetime,
+    genre: str | None = None,
+    content_type: str | None = None,
+):
     q = (
         db.query(Film, Ranking)
         .join(Ranking, Ranking.film_id == Film.id)
@@ -110,6 +115,9 @@ def _ranked_query(db: Session, snapshot: datetime, genre: str | None = None):
     )
     if genre:
         q = q.filter(func.lower(Film.genre_tag) == genre.strip().lower())
+    ct = normalize_content_type(content_type) if content_type else None
+    if ct:
+        q = q.filter(Film.content_type == ct)
     return q
 
 
@@ -170,12 +178,13 @@ def top_films(
     limit: int = Query(10, ge=1, le=200),
     offset: int = Query(0, ge=0),
     genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
+    content_type: str | None = Query(None, description="Filter by MOVIE or TV_SHOW (case-insensitive)."),
     db: Session = Depends(get_db),
 ):
     snap = _latest_snapshot(db)
     if not snap:
         return []
-    rows = _ranked_query(db, snap, genre=genre).offset(offset).limit(limit).all()
+    rows = _ranked_query(db, snap, genre=genre, content_type=content_type).offset(offset).limit(limit).all()
     mentions = _mentions_map(db, [f.id for f, _ in rows])
     days = _days_on_chart_map(db, [f.id for f, _ in rows])
     at_one = _days_at_one_map(db, [f.id for f, _ in rows])

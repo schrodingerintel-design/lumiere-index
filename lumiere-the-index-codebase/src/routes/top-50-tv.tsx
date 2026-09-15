@@ -8,25 +8,40 @@ import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { Movement } from "@/components/lumiere/Ranking";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 import { tenureLabel } from "@/lib/filmUtils";
+import { ShareButton } from "@/components/lumiere/ShareButton";
 
-export const Route = createFileRoute("/hot-50")({
+export const Route = createFileRoute("/top-50-tv")({
   head: () => ({
     meta: [
-      { title: "Hot 50 — The Index" },
+      { title: "Top 50 TV Shows — The Index" },
       {
         name: "description",
         content:
-          "The live Hot 50 — the 50 titles capturing the most cultural attention right now, refreshed every 15 minutes.",
+          "The live Top 50 TV Shows — the series capturing the most cultural attention right now, refreshed every 15 minutes.",
+      },
+      { property: "og:title", content: "Top 50 TV Shows — The Index" },
+      {
+        property: "og:description",
+        content:
+          "The 50 TV shows capturing the most cultural attention right now, re-ranked every 15 minutes.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Top 50 TV Shows — The Index" },
+      {
+        name: "twitter:description",
+        content:
+          "The 50 TV shows capturing the most cultural attention right now, re-ranked every 15 minutes.",
       },
     ],
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({
-      queryKey: ["films", "hot50", 50],
-      queryFn: () => getTopFilms(50),
+      queryKey: ["films", "top50tv", 50],
+      queryFn: () => getTopFilms(50, 0, "TV_SHOW"),
     });
   },
-  component: Hot50,
+  component: TopFiftyTV,
   errorComponent: RouteError,
 });
 
@@ -45,8 +60,8 @@ function useCountdown(nextRefreshAt: string | null): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** The live #1 — the Index Score leads, everything else supports it. */
-function Hot50Champion({ film }: { film: RankedFilm }) {
+/** The live #1 series — the Index Score leads, everything else supports it. */
+function ChampionSeries({ film }: { film: RankedFilm }) {
   const director =
     film.director && film.director !== "Unknown" ? film.director : null;
 
@@ -55,7 +70,7 @@ function Hot50Champion({ film }: { film: RankedFilm }) {
       <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-[1fr_auto]">
         <div className="min-w-0">
           <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
-            #1 Right Now
+            #1 Series Right Now
           </div>
           <h2 className="mt-2 truncate font-display text-4xl font-medium leading-tight sm:text-5xl">
             <Link
@@ -96,12 +111,12 @@ function Hot50Champion({ film }: { film: RankedFilm }) {
   );
 }
 
-function Hot50() {
-  // The Hot 50 IS the live computation layer — refreshed on the same
+function TopFiftyTV() {
+  // TV-only slice of the live computation layer — refreshed on the same
   // 15-minute cadence the backend recomputes rankings.
   const { data: films, isLoading, error } = useQuery({
-    queryKey: ["films", "hot50", 50],
-    queryFn: () => getTopFilms(50),
+    queryKey: ["films", "top50tv", 50],
+    queryFn: () => getTopFilms(50, 0, "TV_SHOW"),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
@@ -130,32 +145,39 @@ function Hot50() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
-              The Index · Live
+              The Index · Television · Live
             </div>
             <h1 className="mt-2 font-display text-4xl font-medium leading-tight sm:text-5xl">
-              Hot 50
+              Top 50 TV Shows
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              The 50 titles capturing the most cultural attention right now, re-ranked every 15
-              minutes.
+              The 50 series capturing the most cultural attention right now,
+              re-ranked every 15 minutes.
               {snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
             </p>
           </div>
-          {countdown && (
-            <div className="text-right">
-              <div className="font-mono text-2xl tabular text-foreground">{countdown}</div>
-              <div className="mt-0.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
-                Next refresh
+          <div className="flex items-end gap-6">
+            {countdown && (
+              <div className="text-right">
+                <div className="font-mono text-2xl tabular text-foreground">{countdown}</div>
+                <div className="mt-0.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Next refresh
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            <ShareButton
+              title="Top 50 TV Shows — The Index"
+              text="The 50 TV shows capturing the most cultural attention right now — The Index."
+              className="mb-1"
+            />
+          </div>
         </div>
       </section>
 
       {champion && (
         <section className="mt-8 px-4 sm:px-6">
           <div className="mx-auto max-w-6xl">
-            <Hot50Champion film={champion} />
+            <ChampionSeries film={champion} />
           </div>
         </section>
       )}
@@ -164,7 +186,7 @@ function Hot50() {
         <div className="mx-auto max-w-6xl">
           {error && (
             <div className="border-y border-foreground/10 bg-surface p-8 text-center text-sm text-muted-foreground">
-              Unable to load the Hot 50 right now. Please try again later.
+              Unable to load the Top 50 TV Shows right now. Please try again later.
             </div>
           )}
           <div className="border-t-2 border-foreground/20">
@@ -172,7 +194,7 @@ function Hot50() {
             <div className="hidden grid-cols-[64px_64px_1fr_80px_110px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
               <div>Rank</div>
               <div>Mvmt</div>
-              <div>Title</div>
+              <div>Series</div>
               <div>Days</div>
               <div className="text-right">Index Score</div>
             </div>
@@ -212,7 +234,7 @@ function Hot50() {
                                 {f.title}
                               </div>
                               <div className="truncate text-xs text-muted-foreground">
-                                {[director, f.year].filter(Boolean).join(" · ")}
+                                {[director, filmYear(f)].filter(Boolean).join(" · ")}
                               </div>
                             </div>
                           </div>
@@ -236,11 +258,17 @@ function Hot50() {
 
           {!isLoading && !error && entries.length === 0 && (
             <div className="p-10 text-center text-sm text-muted-foreground">
-              The Hot 50 is being prepared. Rankings appear after the next refresh cycle.
+              The Top 50 TV Shows is being prepared. Rankings appear after the next refresh cycle.
             </div>
           )}
         </div>
       </section>
     </Layout>
   );
+}
+
+/** TV rows show the first-air year; fall back to the film year field. */
+function filmYear(f: RankedFilm): number | null {
+  if (f.first_air_date) return new Date(f.first_air_date).getFullYear();
+  return f.year ?? null;
 }
