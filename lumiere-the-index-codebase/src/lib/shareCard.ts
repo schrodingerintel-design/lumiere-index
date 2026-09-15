@@ -23,15 +23,44 @@ const DISPLAY_FONT = '"Fraunces", Georgia, "Times New Roman", serif';
 const SANS_FONT = '"Inter", system-ui, -apple-system, sans-serif';
 const MONO_FONT = '"DM Mono", ui-monospace, "SF Mono", Menlo, monospace';
 
-/** Load an image with CORS so the canvas stays untainted and exportable. */
-function loadImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
+/** Load an image with CORS so the canvas stays untainted and exportable.
+ *  Cached per-URL (chart renders reuse the same posters) and bounded by a
+ *  timeout so a slow CDN request degrades to the gradient, never a hang. */
+const imgCache = new Map<string, Promise<HTMLImageElement | null>>();
+
+function loadImage(src: string, timeoutMs = 3500): Promise<HTMLImageElement | null> {
+  const cached = imgCache.get(src);
+  if (cached) return cached;
+  const promise = new Promise<HTMLImageElement | null>((resolve) => {
     const img = new Image();
+    let done = false;
+    const finish = (v: HTMLImageElement | null) => {
+      if (!done) {
+        done = true;
+        resolve(v);
+      }
+    };
     img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
+    img.onload = () => finish(img);
+    img.onerror = () => finish(null);
+    setTimeout(() => finish(null), timeoutMs);
     img.src = src;
   });
+  imgCache.set(src, promise);
+  return promise;
+}
+
+/** Build a TMDB poster URL at the requested size. The API stores full
+ *  image.tmdb.org URLs (sometimes bare paths) — normalize both. */
+function posterSrc(
+  posterUrl: string | null | undefined,
+  size: "w185" | "w500",
+): string | null {
+  if (!posterUrl) return null;
+  if (/^https?:\/\//.test(posterUrl)) {
+    return posterUrl.replace(/\/t\/p\/[^/]+\//, `/t/p/${size}/`);
+  }
+  return `https://image.tmdb.org/t/p/${size}/${posterUrl.replace(/^\//, "")}`;
 }
 
 /** Draw `img` into the target rect with cover-fit cropping. */
@@ -187,10 +216,10 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   const posterX = 80;
   const posterY = 210;
 
-  const posterUrl = film.poster_url
-    ? `https://image.tmdb.org/t/p/w780${film.poster_url.replace(/^.*\/t\/p\/w\d+\//, "")}`
-    : null;
-  const poster = posterUrl ? await loadImage(posterUrl) : null;
+  const poster = await (async () => {
+    const src = posterSrc(film.poster_url, "w500");
+    return src ? loadImage(src) : null;
+  })();
 
   if (poster) {
     ctx.save();
@@ -329,10 +358,20 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
   const rowH = 150;
   const listTop = 470;
 
+  // Fetch all row posters in parallel up front — sequential awaits made the
+  // card render take one network round-trip per row.
+  const posters = await Promise.all(
+    rows.map((f) => {
+      const src = posterSrc(f.poster_url, "w185");
+      return src ? loadImage(src) : Promise.resolve(null);
+    }),
+  );
+
   for (let i = 0; i < rows.length; i++) {
     const f = rows[i];
     const y = listTop + i * rowH;
     const rank = opts.rankOf ? opts.rankOf(f, i) : f.rank;
+    const poster = posters[i];
 
     // Hairline separator above each row (except first).
     if (i > 0) {
@@ -353,10 +392,6 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
     // Poster thumb.
     const thumbSize = rowH - 46;
     const thumbY = y + 8;
-    const posterUrl = f.poster_url
-      ? `https://image.tmdb.org/t/p/w185${f.poster_url.replace(/^.*\/t\/p\/w\d+\//, "")}`
-      : null;
-    const poster = posterUrl ? await loadImage(posterUrl) : null;
     if (poster) {
       ctx.save();
       roundRect(ctx, 220, thumbY, thumbSize * 0.68, thumbSize, 8);
@@ -419,24 +454,9 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
   return { blob, filename: `the-index-${opts.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png` };
 }
 
-/** Try navigator.share with the PNG file; fall back to a plain download. */
-export async function shareOrDownloadCard(
-  card: ShareCardResult,
-  text: string,
-): Promise<"shared" | "downloaded" | "failed"> {
-  const file = new File([card.blob], card.filename, { type: "image/png" });
-  const nav = typeof navigator !== "undefined" ? navigator : undefined;
-  if (nav && "canShare" in nav) {
-    const navAny = nav as Navigator & { canShare?: (data: ShareData) => boolean };
-    if (navAny.share && navAny.canShare?.({ files: [file] })) {
-      try {
-        await navAny.share({ files: [file], text, title: "The Index" });
-        return "shared";
-      } catch {
-        // user cancelled or share failed → fall through to download
-      }
-    }
-  }
+/** Save the rendered card as a PNG download — deterministic, no OS share
+ *  sheet (whose "copy to clipboard" path confused the intent). */
+export async function downloadCard(card: ShareCardResult): Promise<"downloaded" | "failed"> {
   try {
     const url = URL.createObjectURL(card.blob);
     const a = document.createElement("a");

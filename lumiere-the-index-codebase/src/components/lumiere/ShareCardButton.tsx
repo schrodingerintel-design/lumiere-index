@@ -1,24 +1,24 @@
 import { useState } from "react";
-import { Download, ImageDown, Share2 } from "lucide-react";
+import { Download, ImageDown } from "lucide-react";
 import {
   renderFilmCard,
   renderChartCard,
-  shareOrDownloadCard,
+  downloadCard,
   type ChartCardOptions,
 } from "@/lib/shareCard";
 import type { RankedFilm } from "@/lib/apiClient";
 
 /**
- * ShareCardButton — renders a branded poster-card PNG on demand and either
- * shares it through the OS share sheet (when file sharing is supported) or
- * downloads it directly. Rendering happens on click so no work is done
- * until the user asks for it.
+ * ShareCardButton — renders a branded poster-card PNG on demand and saves it
+ * as a download. Rendering happens on click so no work is done until the
+ * user asks for it; posters load in parallel with per-request timeouts so a
+ * slow CDN degrades to the gradient fallback, never a hang.
  */
 export function ShareCardButton({
   variant,
   card,
   className = "",
-  label = "Share card",
+  label = "Download card",
 }: {
   variant: "film" | "chart";
   /** film → RankedFilm; chart → ChartCardOptions */
@@ -26,7 +26,7 @@ export function ShareCardButton({
   className?: string;
   label?: string;
 }) {
-  const [state, setState] = useState<"idle" | "busy" | "shared" | "downloaded">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "saved">("idle");
 
   const handleClick = async () => {
     if (state === "busy") return;
@@ -36,13 +36,9 @@ export function ShareCardButton({
         variant === "film"
           ? await renderFilmCard(card as RankedFilm)
           : await renderChartCard(card as ChartCardOptions);
-      const text =
-        variant === "film"
-          ? `${(card as RankedFilm).title} is #${(card as RankedFilm).rank} on The Index with a score of ${(card as RankedFilm).score?.toFixed(1)}.`
-          : `${(card as ChartCardOptions).title} — ${(card as ChartCardOptions).subtitle}`;
-      const outcome = await shareOrDownloadCard(result, text);
-      if (outcome === "shared" || outcome === "downloaded") {
-        setState(outcome);
+      const outcome = await downloadCard(result);
+      if (outcome === "downloaded") {
+        setState("saved");
         setTimeout(() => setState("idle"), 2500);
       } else {
         setState("idle");
@@ -53,14 +49,8 @@ export function ShareCardButton({
   };
 
   const busy = state === "busy";
-  const Icon = busy ? ImageDown : state === "downloaded" ? Download : Share2;
-  const text = busy
-    ? "Rendering…"
-    : state === "shared"
-      ? "Shared"
-      : state === "downloaded"
-        ? "Card saved"
-        : label;
+  const Icon = busy ? ImageDown : Download;
+  const text = busy ? "Rendering…" : state === "saved" ? "Card saved ✓" : label;
 
   return (
     <button
