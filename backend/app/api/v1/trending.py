@@ -158,6 +158,8 @@ def _build_brief(
     weeks_on_chart: int,
     score: float,
     days_since_release: int | None,
+    observations_30d: int = 0,
+    observations_24h: int = 0,
 ) -> str:
     """Construct an evidence-appropriate editorial brief.
 
@@ -167,9 +169,20 @@ def _build_brief(
       low         → hedged sentence, no superlatives
       moderate/high → confident copy that cites only real signals (platform,
                       numbers, delta when a baseline exists)
+
+    Displayed volume is the raw observation count (the pageviews, searches,
+    views, and posts the ingest records aggregate), falling back to the
+    record count when a title's sources don't report aggregate volumes.
     """
     platform_str = PLATFORM_LABELS.get(top_platform or "") if top_platform else None
     platform_clause = f", driven primarily by {platform_str}" if platform_str else ""
+
+    def _vol(n: int) -> str:
+        return f"{n:,}"
+
+    obs = observations_30d if observations_30d > 0 else sample_size
+    obs_24h = observations_24h if observations_24h > 0 else mentions_24h
+    volume_unit = "observations" if observations_30d > 0 else "mentions"
 
     if confidence == "insufficient":
         return (
@@ -193,47 +206,47 @@ def _build_brief(
     if driver == "recency":
         days_str = f"{days_since_release}d" if days_since_release is not None else "opening"
         brief = (
-            f"In its {days_str} window, {title} has drawn {sample_size:,} signals "
+            f"In its {days_str} window, {title} has drawn {_vol(obs)} {volume_unit} "
             f"over the last 30 days{platform_clause}"
         )
-        if mentions_24h > 0:
-            brief += f", {mentions_24h:,} in the last 24 hours"
+        if obs_24h > 0:
+            brief += f", {_vol(obs_24h)} in the last 24 hours"
         brief += "."
     elif driver == "momentum":
         if delta_str:
             brief = (
                 f"Surging momentum: conversation around {title} is up {delta_str} "
-                f"over the last 3 days{platform_clause} — {sample_size:,} signals "
+                f"over the last 3 days{platform_clause} — {_vol(obs)} {volume_unit} "
                 f"tracked over the last 30 days."
             )
         else:
             brief = (
                 f"{title} is gaining momentum{platform_clause} — "
-                f"{sample_size:,} signals tracked over the last 30 days."
+                f"{_vol(obs)} {volume_unit} tracked over the last 30 days."
             )
     elif driver == "declining":
         if attention_delta_pct is not None and attention_delta_pct < 0:
             brief = (
                 f"{title} is pulling back — conversation down {delta_str} from its "
-                f"recent peak. {sample_size:,} signals tracked over the last 30 days"
+                f"recent peak. {_vol(obs)} {volume_unit} tracked over the last 30 days"
                 f"{platform_clause}."
             )
         else:
             brief = (
-                f"{title} is cooling after earlier momentum — {sample_size:,} signals "
+                f"{title} is cooling after earlier momentum — {_vol(obs)} {volume_unit} "
                 f"tracked over the last 30 days{platform_clause}."
             )
     elif driver == "engagement":
         brief = (
             f"{title} sustains high audience sentiment at {score:.1f} Index Score"
-            f"{platform_clause} — {sample_size:,} signals over the last 30 days."
+            f"{platform_clause} — {_vol(obs)} {volume_unit} over the last 30 days."
         )
     else:
         # attention / cross_platform / undetermined — steady-state framing
         wks = f"{weeks_on_chart} {'week' if weeks_on_chart == 1 else 'weeks'}"
         brief = (
             f"{title} holds its position after {wks} on the Index — "
-            f"{sample_size:,} signals over the last 30 days{platform_clause}"
+            f"{_vol(obs)} {volume_unit} over the last 30 days{platform_clause}"
         )
         if delta_str:
             brief += f", conversation {delta_str} over 3 days"
@@ -286,13 +299,20 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
     ]
     since_24h = now - timedelta(hours=24)
     count_q = (
-        db.query(Mention.film_id, func.count(Mention.id).label("cnt"))
+        db.query(
+            Mention.film_id,
+            func.count(Mention.id).label("cnt"),
+            func.coalesce(func.sum(Mention.observations), 0).label("obs"),
+        )
         .where(Mention.film_id.in_(film_ids), Mention.created_at >= since_24h)
     )
     if catalog_ids:
         count_q = count_q.filter(~Mention.source_id.in_(catalog_ids))
     count_rows = count_q.group_by(Mention.film_id).all()
-    mention_counts_24h: dict[int, int] = {fid: int(cnt) for fid, cnt in count_rows}
+    mention_counts_24h: dict[int, int] = {fid: int(cnt) for fid, cnt, _o in count_rows}
+    # Raw observation volume in the last 24h — the pageviews / searches /
+    # views / posts the 24h records aggregate.
+    obs_counts_24h: dict[int, int] = {fid: int(o) for fid, _c, o in count_rows}
 
     # ── 3-day attention delta from LIVE mentions (recent 3d vs prior 3d) ──────
     # The delta is None whenever there is no prior baseline — claiming "+0%" or
@@ -345,6 +365,22 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
     if catalog_ids:
         platform_rows_q = platform_rows_q.filter(~Mention.source_id.in_(catalog_ids))
     platform_rows = platform_rows_q.group_by(Mention.film_id, Source.key).all()
+
+    # 30-day raw observation volume per film — what the ingest records
+    # aggregate (Wikipedia pageviews, search interest, trailer views…).
+    # This is the number briefs display: record counts are ingest plumbing,
+    # not attention volume.
+    obs_rows_q = (
+        db.query(
+            Mention.film_id,
+            func.coalesce(func.sum(Mention.observations), 0).label("obs"),
+        )
+        .filter(Mention.film_id.in_(film_ids), Mention.created_at >= since_30d)
+    )
+    if catalog_ids:
+        obs_rows_q = obs_rows_q.filter(~Mention.source_id.in_(catalog_ids))
+    obs_rows = obs_rows_q.group_by(Mention.film_id).all()
+    observations_30d_map: dict[int, int] = {fid: int(o) for fid, o in obs_rows}
     sample_size_map: dict[int, int] = {fid: 0 for fid in film_ids}
     top_platform_map: dict[int, str | None] = {}
     _platform_counts: dict[int, dict[str, int]] = {fid: {} for fid in film_ids}
@@ -444,6 +480,8 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
             weeks_on_chart=ranking.weeks_on_chart or 1,
             score=ranking.score,
             days_since_release=days_since,
+            observations_30d=observations_30d_map.get(fid, 0),
+            observations_24h=obs_counts_24h.get(fid, 0),
         )
 
         results.append(TrendingFilmOut(

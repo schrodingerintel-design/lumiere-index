@@ -227,10 +227,12 @@ def test_trending_moderate_and_high_tiers_allow_confident_copy():
             assert mod["confidence"] == "moderate"
             assert high["sample_size"] == 140
             assert high["confidence"] == "high"
-            # Confident copy cites a real platform + a real number
+            # Confident copy cites a real platform + a real number.
+            # (These fixtures' mentions carry no aggregate observations, so the
+            # brief falls back to record counts with the "mentions" unit.)
             assert "reddit" in mod["trend_reason"].lower() or "Reddit" in mod["trend_reason"]
-            assert "40 signals" in mod["trend_reason"]
-            assert "140 signals" in high["trend_reason"]
+            assert "40 mentions" in mod["trend_reason"]
+            assert "140 mentions" in high["trend_reason"]
             # Momentum-driven confident copy may use "Surging"
             assert "surg" in mod["trend_reason"].lower()
             # Driver label names the momentum component
