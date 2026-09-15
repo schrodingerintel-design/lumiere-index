@@ -191,6 +191,14 @@ def _build_brief(
         )
 
     if confidence == "low":
+        # Same volume rule as the confident tiers: display what the records
+        # aggregate when aggregate sources are feeding the title.
+        if observations_30d > 0:
+            return (
+                f"Limited tracking history so far — {_vol(observations_30d):,} "
+                f"observations over the last 30 days"
+                f"{platform_clause}; too early for a confident trend call."
+            )
         noun = "mention" if sample_size == 1 else "mentions"
         return (
             f"Limited early signal — {sample_size:,} {noun} tracked so far; "
@@ -436,8 +444,14 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
         # Specificity cap: if we can't cite anything concrete for this title
         # (a real platform, a real 24h count, or a real delta), the tier is
         # capped at "low" no matter how big the raw count is.
+        # Aggregate observation volume also counts as a specific signal: a
+        # title with 85K tracked observations is not an "early signal" title
+        # even if its ingest records are few.
         has_specific_signal = (
-            top_platform is not None or mentions_24h > 0 or attn_delta is not None
+            top_platform is not None
+            or mentions_24h > 0
+            or attn_delta is not None
+            or observations_30d_map.get(fid, 0) > 0
         )
         if tier_at_least(confidence, "moderate") and not has_specific_signal:
             confidence = "low"
