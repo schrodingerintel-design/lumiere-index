@@ -16,7 +16,7 @@ import { filmTrend } from "@/lib/trend";
 import { RankRow, SectionHeading } from "./Ranking";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 import { TopTenSkeleton } from "./Skeletons";
-import { ShareButton } from "./ShareButton";
+import { ShareCardButton } from "./ShareCardButton";
 
 /** Preload the next slide's backdrop image so swaps are instant. */
 function useBackdropPreload(films: RankedFilm[], index: number) {
@@ -323,9 +323,13 @@ export function TopTen() {
           seeAllHref="/top-100"
           seeAllLabel="Full Top 100"
           action={
-            <ShareButton
-              title="The Top 10 — The Index"
-              text="Today's Top 10 on The Index — the ten titles capturing the most cultural attention."
+            <ShareCardButton
+              variant="chart"
+              card={{
+                title: "The Top 10",
+                subtitle: "The ten titles capturing the most cultural attention today.",
+                films: top10,
+              }}
             />
           }
         />

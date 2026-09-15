@@ -23,7 +23,7 @@ import {
 import { RouteError } from "@/lib/route-error";
 import { Skeleton } from "@/components/lumiere/Skeletons";
 import { PosterCard } from "@/components/lumiere/PosterCard";
-import { ShareButton } from "@/components/lumiere/ShareButton";
+import { ShareCardButton } from "@/components/lumiere/ShareCardButton";
 import {
   Bookmark,
   BookmarkCheck,
@@ -448,9 +448,10 @@ function FilmDetailView() {
                 )}
                 {saved ? "Saved" : "Watchlist"}
               </button>
-              <ShareButton
-                title={`${film.title} — The Index`}
-                text={`${film.title} is #${film.rank} on The Index with a score of ${film.score?.toFixed(1)}.`}
+              <ShareCardButton
+                variant="film"
+                card={film}
+                label="Share card"
               />
             </div>
           </div>

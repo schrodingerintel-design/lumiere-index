@@ -1,0 +1,453 @@
+/**
+ * shareCard.ts — renders downloadable share cards on an offscreen canvas.
+ *
+ * Two card types:
+ *  - "film":  one title — poster, rank pill, Index Score, brand lockup
+ *  - "chart": a ranked list — top rows with poster thumbs, brand lockup
+ *
+ * Everything is drawn locally (poster fetched via CORS-enabled TMDB CDN),
+ * so the output is a clean PNG the Web Share API can attach as a file.
+ * Fonts fall back gracefully if webfonts are unavailable in the canvas.
+ */
+
+import type { RankedFilm } from "@/lib/apiClient";
+
+const IVORY = "#F4F1EA";
+const INK = "#080808";
+const SURFACE = "#111111";
+const RED = "#E52B2B";
+const MUTED = "#A6A29B";
+const HAIRLINE = "rgba(244, 241, 234, 0.12)";
+
+const DISPLAY_FONT = '"Fraunces", Georgia, "Times New Roman", serif';
+const SANS_FONT = '"Inter", system-ui, -apple-system, sans-serif';
+const MONO_FONT = '"DM Mono", ui-monospace, "SF Mono", Menlo, monospace';
+
+/** Load an image with CORS so the canvas stays untainted and exportable. */
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/** Draw `img` into the target rect with cover-fit cropping. */
+function drawCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const scale = Math.max(w / img.width, h / img.height);
+  const sw = w / scale;
+  const sh = h / scale;
+  const sx = (img.width - sw) / 2;
+  const sy = (img.height - sh) / 2;
+  ctx.drawImage(img, x, y, w, h, sx, sy, sw, sh);
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/** The Index prismatic logo mark, drawn with vectors. */
+function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  // Rounded dark square.
+  ctx.fillStyle = INK;
+  roundRect(ctx, 0, 0, size, size, size * 0.2);
+  ctx.fill();
+  ctx.strokeStyle = HAIRLINE;
+  ctx.lineWidth = Math.max(1, size * 0.02);
+  ctx.stroke();
+  // Prismatic shard mark (three facets, like the favicon).
+  ctx.fillStyle = IVORY;
+  const u = size;
+  ctx.beginPath();
+  ctx.moveTo(u * 0.45, u * 0.08);
+  ctx.lineTo(u * 0.78, u * 0.62);
+  ctx.lineTo(u * 0.45, u * 0.46);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(u * 0.43, u * 0.46);
+  ctx.lineTo(u * 0.23, u * 0.64);
+  ctx.lineTo(u * 0.43, u * 0.86);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(u * 0.47, u * 0.46);
+  ctx.lineTo(u * 0.78, u * 0.62);
+  ctx.lineTo(u * 0.47, u * 0.86);
+  ctx.lineTo(u * 0.47, u * 0.6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBrandLockup(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  markSize: number,
+) {
+  drawBrandMark(ctx, x, y, markSize);
+  const tx = x + markSize + markSize * 0.35;
+  ctx.fillStyle = IVORY;
+  ctx.font = `600 ${markSize * 0.5}px ${SANS_FONT}`;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("Lumière", tx, y + markSize * 0.48);
+  ctx.fillStyle = MUTED;
+  ctx.font = `${markSize * 0.24}px ${SANS_FONT}`;
+  ctx.fillText(
+    "T H E   I N D E X",
+    tx + markSize * 0.04,
+    y + markSize * 0.82,
+  );
+}
+
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (ctx.measureText(candidate).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/** Shrink font size until the text fits maxWidth (single line). */
+function fitFont(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  startPx: number,
+  weight: number,
+  family: string,
+): number {
+  let px = startPx;
+  for (;;) {
+    ctx.font = `${weight} ${px}px ${family}`;
+    if (ctx.measureText(text).width <= maxWidth || px <= 18) return px;
+    px -= 2;
+  }
+}
+
+export interface ShareCardResult {
+  blob: Blob;
+  filename: string;
+}
+
+/** Render the one-title card. 1080×1350 (4:5) — ideal for social feeds. */
+export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult> {
+  const W = 1080;
+  const H = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // Background.
+  ctx.fillStyle = INK;
+  ctx.fillRect(0, 0, W, H);
+
+  // Poster panel, left-aligned with generous margin.
+  const posterW = 480;
+  const posterH = 720;
+  const posterX = 80;
+  const posterY = 210;
+
+  const posterUrl = film.poster_url
+    ? `https://image.tmdb.org/t/p/w780${film.poster_url.replace(/^.*\/t\/p\/w\d+\//, "")}`
+    : null;
+  const poster = posterUrl ? await loadImage(posterUrl) : null;
+
+  if (poster) {
+    ctx.save();
+    roundRect(ctx, posterX, posterY, posterW, posterH, 24);
+    ctx.clip();
+    drawCover(ctx, poster, posterX, posterY, posterW, posterH);
+    ctx.restore();
+  } else {
+    const grad = ctx.createLinearGradient(posterX, posterY, posterX + posterW, posterY + posterH);
+    grad.addColorStop(0, film.gradient_from || "#333");
+    grad.addColorStop(1, film.gradient_to || "#111");
+    ctx.fillStyle = grad;
+    roundRect(ctx, posterX, posterY, posterW, posterH, 24);
+    ctx.fill();
+  }
+  ctx.strokeStyle = HAIRLINE;
+  ctx.lineWidth = 2;
+  roundRect(ctx, posterX, posterY, posterW, posterH, 24);
+  ctx.stroke();
+
+  // Right column: rank pill, score, tenure.
+  const colX = posterX + posterW + 60;
+  const colW = W - colX - 80;
+
+  // Rank pill.
+  const pillText = `#${film.rank}`;
+  const pillFont = fitFont(ctx, pillText, colW, 84, 700, DISPLAY_FONT);
+  ctx.font = `700 ${pillFont}px ${DISPLAY_FONT}`;
+  const pillW = ctx.measureText(pillText).width + 48;
+  const pillH = 88;
+  ctx.fillStyle = RED;
+  roundRect(ctx, colX, posterY + 8, pillW, pillH, 10);
+  ctx.fill();
+  ctx.fillStyle = IVORY;
+  ctx.textBaseline = "middle";
+  ctx.fillText(pillText, colX + 24, posterY + 8 + pillH / 2 + 4);
+
+  // Index Score — the headline number.
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = MUTED;
+  ctx.font = `500 22px ${SANS_FONT}`;
+  const scoreY = posterY + 8 + pillH + 150;
+  ctx.fillText("INDEX SCORE", colX, scoreY - 120);
+  ctx.fillStyle = IVORY;
+  const scoreText = film.score?.toFixed(1) ?? "—";
+  const scoreFont = fitFont(ctx, scoreText, colW, 200, 600, DISPLAY_FONT);
+  ctx.font = `600 ${scoreFont}px ${DISPLAY_FONT}`;
+  ctx.fillText(scoreText, colX - 6, scoreY + 40);
+
+  // Tenure lines.
+  ctx.fillStyle = MUTED;
+  ctx.font = `24px ${MONO_FONT}`;
+  const metaLines = [
+    film.days_on_chart ? `${film.days_on_chart} days on chart` : null,
+    film.days_at_one ? `${film.days_at_one} day${film.days_at_one === 1 ? "" : "s"} at #1` : null,
+    film.director && film.director !== "Unknown"
+      ? film.director.replace(/ TBA$/, "")
+      : null,
+    film.year ? String(film.year) : null,
+  ].filter(Boolean) as string[];
+  metaLines.forEach((line, i) => {
+    ctx.fillText(line, colX, scoreY + 110 + i * 46);
+  });
+
+  // Title — bottom left, big.
+  ctx.fillStyle = IVORY;
+  const titleFont = fitFont(ctx, film.title, W - 160, 96, 600, DISPLAY_FONT);
+  ctx.font = `600 ${titleFont}px ${DISPLAY_FONT}`;
+  const titleLines = wrapText(ctx, film.title, W - 160).slice(0, 2);
+  let ty = H - 260 - (titleLines.length - 1) * (titleFont * 1.05);
+  for (const line of titleLines) {
+    ctx.fillText(line, 80, ty);
+    ty += titleFont * 1.05;
+  }
+
+  // Metadata under the title.
+  ctx.fillStyle = MUTED;
+  ctx.font = `26px ${SANS_FONT}`;
+  const underTitle = [film.year ? String(film.year) : null, film.genre_tag]
+    .filter(Boolean)
+    .join("  ·  ");
+  ctx.fillText(underTitle, 80, H - 180);
+
+  // Brand lockup, top.
+  drawBrandLockup(ctx, 80, 64, 64);
+
+  // Footer note.
+  ctx.fillStyle = MUTED;
+  ctx.font = `22px ${MONO_FONT}`;
+  ctx.fillText("The Index · Live cultural rankings · 0% critic weight", 80, H - 70);
+
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), "image/png"),
+  );
+  return { blob, filename: `the-index-${film.slug}.png` };
+}
+
+export interface ChartCardOptions {
+  title: string;          // e.g. "The Top 10" or "Top 50 TV Shows"
+  subtitle: string;       // supporting line under the heading
+  films: RankedFilm[];    // rows (max 5 shown)
+  /** Display rank override — chart pages renumber (TV chart shows 1–50). */
+  rankOf?: (film: RankedFilm, index: number) => number;
+}
+
+/** Render the ranked-list card. 1080×1350 (4:5). Up to 5 rows. */
+export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCardResult> {
+  const W = 1080;
+  const H = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = INK;
+  ctx.fillRect(0, 0, W, H);
+
+  drawBrandLockup(ctx, 80, 64, 64);
+
+  // Heading.
+  ctx.fillStyle = RED;
+  ctx.font = `500 24px ${SANS_FONT}`;
+  ctx.fillText("THE INDEX · LIVE", 80, 230);
+
+  ctx.fillStyle = IVORY;
+  const hFont = fitFont(ctx, opts.title, W - 160, 84, 600, DISPLAY_FONT);
+  ctx.font = `600 ${hFont}px ${DISPLAY_FONT}`;
+  ctx.fillText(opts.title, 80, 320);
+
+  ctx.fillStyle = MUTED;
+  ctx.font = `26px ${SANS_FONT}`;
+  ctx.fillText(opts.subtitle, 80, 372);
+
+  // Rows.
+  const rows = opts.films.slice(0, 5);
+  const rowH = 150;
+  const listTop = 470;
+
+  for (let i = 0; i < rows.length; i++) {
+    const f = rows[i];
+    const y = listTop + i * rowH;
+    const rank = opts.rankOf ? opts.rankOf(f, i) : f.rank;
+
+    // Hairline separator above each row (except first).
+    if (i > 0) {
+      ctx.strokeStyle = HAIRLINE;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(80, y - 14);
+      ctx.lineTo(W - 80, y - 14);
+      ctx.stroke();
+    }
+
+    // Rank number.
+    ctx.fillStyle = i === 0 ? RED : IVORY;
+    ctx.font = `600 ${i === 0 ? 64 : 48}px ${DISPLAY_FONT}`;
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(rank), 80, y + rowH / 2 - 26);
+
+    // Poster thumb.
+    const thumbSize = rowH - 46;
+    const thumbY = y + 8;
+    const posterUrl = f.poster_url
+      ? `https://image.tmdb.org/t/p/w185${f.poster_url.replace(/^.*\/t\/p\/w\d+\//, "")}`
+      : null;
+    const poster = posterUrl ? await loadImage(posterUrl) : null;
+    if (poster) {
+      ctx.save();
+      roundRect(ctx, 220, thumbY, thumbSize * 0.68, thumbSize, 8);
+      ctx.clip();
+      drawCover(ctx, poster, 220, thumbY, thumbSize * 0.68, thumbSize);
+      ctx.restore();
+    } else {
+      const grad = ctx.createLinearGradient(220, thumbY, 220 + thumbSize, thumbY + thumbSize);
+      grad.addColorStop(0, f.gradient_from || "#333");
+      grad.addColorStop(1, f.gradient_to || "#111");
+      ctx.fillStyle = grad;
+      roundRect(ctx, 220, thumbY, thumbSize * 0.68, thumbSize, 8);
+      ctx.fill();
+    }
+
+    // Title + meta.
+    const textX = 220 + thumbSize * 0.68 + 28;
+    const textW = W - textX - 240;
+    ctx.fillStyle = IVORY;
+    ctx.textBaseline = "alphabetic";
+    const tFont = fitFont(ctx, f.title, textW, 38, 600, SANS_FONT);
+    ctx.font = `600 ${tFont}px ${SANS_FONT}`;
+    ctx.fillText(f.title, textX, y + 58);
+
+    ctx.fillStyle = MUTED;
+    ctx.font = `22px ${MONO_FONT}`;
+    const meta = [
+      f.days_on_chart ? `${f.days_on_chart}d on chart` : null,
+      f.score?.toFixed(1) ? `Score ${f.score.toFixed(1)}` : null,
+    ]
+      .filter(Boolean)
+      .join("  ·  ");
+    ctx.fillText(meta, textX, y + 96);
+
+    // Score right-aligned.
+    ctx.fillStyle = IVORY;
+    ctx.font = `600 40px ${DISPLAY_FONT}`;
+    const scoreText = f.score?.toFixed(1) ?? "—";
+    ctx.fillText(scoreText, W - 80 - ctx.measureText(scoreText).width, y + rowH / 2 - 10);
+    ctx.fillStyle = MUTED;
+    ctx.font = `16px ${MONO_FONT}`;
+    const idxLabel = "INDEX";
+    ctx.fillText(idxLabel, W - 80 - ctx.measureText(idxLabel).width, y + rowH / 2 + 18);
+  }
+
+  // Footer.
+  ctx.strokeStyle = HAIRLINE;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(80, H - 130);
+  ctx.lineTo(W - 80, H - 130);
+  ctx.stroke();
+  ctx.fillStyle = MUTED;
+  ctx.font = `24px ${MONO_FONT}`;
+  ctx.fillText("The Index · Live cultural rankings · theindex.app", 80, H - 70);
+
+  const blob = await new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), "image/png"),
+  );
+  return { blob, filename: `the-index-${opts.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png` };
+}
+
+/** Try navigator.share with the PNG file; fall back to a plain download. */
+export async function shareOrDownloadCard(
+  card: ShareCardResult,
+  text: string,
+): Promise<"shared" | "downloaded" | "failed"> {
+  const file = new File([card.blob], card.filename, { type: "image/png" });
+  const nav = typeof navigator !== "undefined" ? navigator : undefined;
+  if (nav && "canShare" in nav) {
+    const navAny = nav as Navigator & { canShare?: (data: ShareData) => boolean };
+    if (navAny.share && navAny.canShare?.({ files: [file] })) {
+      try {
+        await navAny.share({ files: [file], text, title: "The Index" });
+        return "shared";
+      } catch {
+        // user cancelled or share failed → fall through to download
+      }
+    }
+  }
+  try {
+    const url = URL.createObjectURL(card.blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = card.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return "downloaded";
+  } catch {
+    return "failed";
+  }
+}

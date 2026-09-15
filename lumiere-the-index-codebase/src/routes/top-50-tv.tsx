@@ -8,7 +8,7 @@ import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { Movement } from "@/components/lumiere/Ranking";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 import { tenureLabel } from "@/lib/filmUtils";
-import { ShareButton } from "@/components/lumiere/ShareButton";
+import { ShareCardButton } from "@/components/lumiere/ShareCardButton";
 
 export const Route = createFileRoute("/top-50-tv")({
   head: () => ({
@@ -137,6 +137,7 @@ function TopFiftyTV() {
     : null;
 
   const entries = films ?? [];
+  const tvChartRank = tvChartRankFactory(entries);
   const champion = entries.length > 0 ? entries[0] : null;
 
   return (
@@ -165,9 +166,14 @@ function TopFiftyTV() {
                 </div>
               </div>
             )}
-            <ShareButton
-              title="Top 50 TV Shows — The Index"
-              text="The 50 TV shows capturing the most cultural attention right now — The Index."
+            <ShareCardButton
+              variant="chart"
+              card={{
+                title: "Top 50 TV Shows",
+                subtitle: "The series capturing the most cultural attention right now.",
+                films: entries.slice(0, 5),
+                rankOf: (_f, i) => i + 1,
+              }}
               className="mb-1"
             />
           </div>
@@ -215,7 +221,7 @@ function TopFiftyTV() {
                         >
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="index-score text-2xl font-semibold sm:text-xl">
-                              {String(f.rank).padStart(2, "0")}
+                              {String(tvChartRank(f)).padStart(2, "0")}
                             </span>
                             <span className="sm:hidden">
                               <Movement film={f} />
@@ -271,4 +277,12 @@ function TopFiftyTV() {
 function filmYear(f: RankedFilm): number | null {
   if (f.first_air_date) return new Date(f.first_air_date).getFullYear();
   return f.year ?? null;
+}
+
+/** The TV chart is its own ranking — position in this list (1–50), not the
+ *  global all-content rank the API carries. Index-of-lookup keeps this in
+ *  sync with map order regardless of sort. */
+function tvChartRankFactory(list: RankedFilm[]) {
+  const pos = new Map(list.map((f, i) => [f.slug, i + 1]));
+  return (f: RankedFilm): number => pos.get(f.slug) ?? f.rank;
 }
