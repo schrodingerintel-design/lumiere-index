@@ -98,7 +98,9 @@ function cdnPosterSrc(
   return `https://image.tmdb.org/t/p/${size}/${name}`;
 }
 
-/** Draw `img` into the target rect with cover-fit cropping. */
+/** Draw `img` filling the target rect with center-crop (object-fit: cover).
+ *  Uses the destination-rect form only — the caller's clip constrains the
+ *  overflow, so there is no source-rect math to get wrong. */
 function drawCover(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -107,12 +109,30 @@ function drawCover(
   w: number,
   h: number,
 ) {
-  const scale = Math.max(w / img.width, h / img.height);
-  const sw = w / scale;
-  const sh = h / scale;
-  const sx = (img.width - sw) / 2;
-  const sy = (img.height - sh) / 2;
-  ctx.drawImage(img, x, y, w, h, sx, sy, sw, sh);
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const scale = Math.max(w / iw, h / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
+/** The gradient placeholder block — always painted under a poster slot so
+ *  the card never shows a bare hole, even while/after an image fails. */
+function drawPosterFallback(
+  ctx: CanvasRenderingContext2D,
+  film: RankedFilm,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+  grad.addColorStop(0, film.gradient_from || "#333");
+  grad.addColorStop(1, film.gradient_to || "#111");
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
 }
 
 function roundRect(
@@ -257,15 +277,15 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
     ctx.save();
     roundRect(ctx, posterX, posterY, posterW, posterH, 24);
     ctx.clip();
+    drawPosterFallback(ctx, film, posterX, posterY, posterW, posterH);
     drawCover(ctx, poster, posterX, posterY, posterW, posterH);
     ctx.restore();
   } else {
-    const grad = ctx.createLinearGradient(posterX, posterY, posterX + posterW, posterY + posterH);
-    grad.addColorStop(0, film.gradient_from || "#333");
-    grad.addColorStop(1, film.gradient_to || "#111");
-    ctx.fillStyle = grad;
+    ctx.save();
     roundRect(ctx, posterX, posterY, posterW, posterH, 24);
-    ctx.fill();
+    ctx.clip();
+    drawPosterFallback(ctx, film, posterX, posterY, posterW, posterH);
+    ctx.restore();
   }
   ctx.strokeStyle = HAIRLINE;
   ctx.lineWidth = 2;
@@ -304,12 +324,15 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   // Tenure lines.
   ctx.fillStyle = MUTED;
   ctx.font = `24px ${MONO_FONT}`;
+  const rawDirector =
+    film.director && film.director !== "Unknown" ? film.director : null;
+  // "Director TBA" / "Creator TBA" are catalog placeholders, not names.
+  const directorName =
+    rawDirector && !/ TBA$/.test(rawDirector) ? rawDirector : null;
   const metaLines = [
     film.days_on_chart ? `${film.days_on_chart} days on chart` : null,
     film.days_at_one ? `${film.days_at_one} day${film.days_at_one === 1 ? "" : "s"} at #1` : null,
-    film.director && film.director !== "Unknown"
-      ? film.director.replace(/ TBA$/, "")
-      : null,
+    directorName,
     film.year ? String(film.year) : null,
   ].filter(Boolean) as string[];
   metaLines.forEach((line, i) => {
@@ -418,23 +441,16 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
     ctx.textBaseline = "middle";
     ctx.fillText(String(rank), 80, y + rowH / 2 - 26);
 
-    // Poster thumb.
+    // Poster thumb — gradient always under, image over it.
     const thumbSize = rowH - 46;
     const thumbY = y + 8;
-    if (poster) {
-      ctx.save();
-      roundRect(ctx, 220, thumbY, thumbSize * 0.68, thumbSize, 8);
-      ctx.clip();
-      drawCover(ctx, poster, 220, thumbY, thumbSize * 0.68, thumbSize);
-      ctx.restore();
-    } else {
-      const grad = ctx.createLinearGradient(220, thumbY, 220 + thumbSize, thumbY + thumbSize);
-      grad.addColorStop(0, f.gradient_from || "#333");
-      grad.addColorStop(1, f.gradient_to || "#111");
-      ctx.fillStyle = grad;
-      roundRect(ctx, 220, thumbY, thumbSize * 0.68, thumbSize, 8);
-      ctx.fill();
-    }
+    const thumbW = thumbSize * 0.68;
+    ctx.save();
+    roundRect(ctx, 220, thumbY, thumbW, thumbSize, 8);
+    ctx.clip();
+    drawPosterFallback(ctx, f, 220, thumbY, thumbW, thumbSize);
+    if (poster) drawCover(ctx, poster, 220, thumbY, thumbW, thumbSize);
+    ctx.restore();
 
     // Title + meta.
     const textX = 220 + thumbSize * 0.68 + 28;
