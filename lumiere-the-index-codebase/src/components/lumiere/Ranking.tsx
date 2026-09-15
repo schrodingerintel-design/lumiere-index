@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp } from "lucide-react";
+import type { ReactNode } from "react";
 import type { RankedFilm } from "@/lib/apiClient";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 import { ListSkeleton } from "./Skeletons";
@@ -102,12 +103,15 @@ export function SectionHeading({
   copy,
   seeAllHref,
   seeAllLabel = "See all",
+  action,
 }: {
   kicker?: string;
   title: string;
   copy?: string;
   seeAllHref?: string;
   seeAllLabel?: string;
+  /** Optional right-aligned action node (e.g. a Share button). */
+  action?: ReactNode;
 }) {
   return (
     <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -122,14 +126,17 @@ export function SectionHeading({
         </h2>
         {copy && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>}
       </div>
-      {seeAllHref && (
-        <Link
-          to={seeAllHref}
-          className="shrink-0 text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
-        >
-          {seeAllLabel} →
-        </Link>
-      )}
+      <div className="flex shrink-0 items-center gap-5">
+        {action}
+        {seeAllHref && (
+          <Link
+            to={seeAllHref}
+            className="text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            {seeAllLabel} →
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
