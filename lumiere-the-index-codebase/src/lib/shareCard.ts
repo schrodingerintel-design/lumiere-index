@@ -11,6 +11,7 @@
  */
 
 import type { RankedFilm } from "@/lib/apiClient";
+import { getApiBase } from "@/lib/apiClient";
 
 const IVORY = "#F4F1EA";
 const INK = "#080808";
@@ -24,11 +25,12 @@ const SANS_FONT = '"Inter", system-ui, -apple-system, sans-serif';
 const MONO_FONT = '"DM Mono", ui-monospace, "SF Mono", Menlo, monospace';
 
 /** Load an image with CORS so the canvas stays untainted and exportable.
- *  Cached per-URL (chart renders reuse the same posters) and bounded by a
- *  timeout so a slow CDN request degrades to the gradient, never a hang. */
+ *  Tries the backend proxy first (immune to the non-CORS image-cache trap),
+ *  then the CDN directly; cached per-URL with a timeout so a slow source
+ *  degrades to the gradient fallback, never a hang. */
 const imgCache = new Map<string, Promise<HTMLImageElement | null>>();
 
-function loadImage(src: string, timeoutMs = 3500): Promise<HTMLImageElement | null> {
+function loadImage(src: string, timeoutMs = 4000): Promise<HTMLImageElement | null> {
   const cached = imgCache.get(src);
   if (cached) return cached;
   const promise = new Promise<HTMLImageElement | null>((resolve) => {
@@ -50,17 +52,50 @@ function loadImage(src: string, timeoutMs = 3500): Promise<HTMLImageElement | nu
   return promise;
 }
 
-/** Build a TMDB poster URL at the requested size. The API stores full
- *  image.tmdb.org URLs (sometimes bare paths) — normalize both. */
+/** Proxy first, CDN second — first success wins. */
+async function loadPoster(
+  posterUrl: string | null | undefined,
+  size: "w185" | "w500",
+): Promise<HTMLImageElement | null> {
+  const proxied = posterSrc(posterUrl, size);
+  if (proxied) {
+    const viaProxy = await loadImage(proxied);
+    if (viaProxy) return viaProxy;
+  }
+  const direct = cdnPosterSrc(posterUrl, size);
+  return direct ? loadImage(direct) : null;
+}
+
+/** Build a TMDB poster URL at the requested size. Posters are fetched via
+ *  the backend image proxy — browsers key their image cache without CORS
+ *  attributes, so a canvas crossOrigin request to image.tmdb.org can be
+ *  served the site's non-CORS cache entry and the load fails. The proxy
+ *  (the same API host the app already fetches data from) sidesteps that.
+ *  Falls back to the CDN directly if the proxy is unreachable. */
 function posterSrc(
   posterUrl: string | null | undefined,
   size: "w185" | "w500",
 ): string | null {
   if (!posterUrl) return null;
+  let name: string;
   if (/^https?:\/\//.test(posterUrl)) {
-    return posterUrl.replace(/\/t\/p\/[^/]+\//, `/t/p/${size}/`);
+    name = posterUrl.split("?")[0].split("/").pop() ?? "";
+  } else {
+    name = posterUrl.split("?")[0].split("/").pop() ?? "";
   }
-  return `https://image.tmdb.org/t/p/${size}/${posterUrl.replace(/^\//, "")}`;
+  if (!/^[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/.test(name)) return null;
+  return `${getApiBase().replace(/\/+$/, "")}/api/v1/tmdb/image/${size}/${name}`;
+}
+
+/** Direct-CDN fallback used if the proxy request fails. */
+function cdnPosterSrc(
+  posterUrl: string | null | undefined,
+  size: "w185" | "w500",
+): string | null {
+  if (!posterUrl) return null;
+  const name = posterUrl.split("?")[0].split("/").pop() ?? "";
+  if (!name) return null;
+  return `https://image.tmdb.org/t/p/${size}/${name}`;
 }
 
 /** Draw `img` into the target rect with cover-fit cropping. */
@@ -216,10 +251,7 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   const posterX = 80;
   const posterY = 210;
 
-  const poster = await (async () => {
-    const src = posterSrc(film.poster_url, "w500");
-    return src ? loadImage(src) : null;
-  })();
+  const poster = await loadPoster(film.poster_url, "w500");
 
   if (poster) {
     ctx.save();
@@ -361,10 +393,7 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
   // Fetch all row posters in parallel up front — sequential awaits made the
   // card render take one network round-trip per row.
   const posters = await Promise.all(
-    rows.map((f) => {
-      const src = posterSrc(f.poster_url, "w185");
-      return src ? loadImage(src) : Promise.resolve(null);
-    }),
+    rows.map((f) => loadPoster(f.poster_url, "w185")),
   );
 
   for (let i = 0; i < rows.length; i++) {

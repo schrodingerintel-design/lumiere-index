@@ -3,10 +3,12 @@
 import asyncio
 import logging
 import random
+import re
 import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 import httpx
 
 from app.config import settings
@@ -214,6 +216,59 @@ async def tv_top_rated(page: int = Query(1)):
 @router.get("/tmdb/tv/{tmdb_id}")
 async def tv_details(tmdb_id: int):
     return await _proxy_get(f"/tv/{tmdb_id}", {"append_to_response": "keywords,content_ratings"})
+
+
+# ── Image proxy ──────────────────────────────────────────────────────────────
+# Poster bytes for share-card canvas rendering. Browsers key their image
+# cache without CORS attributes, so a canvas `crossOrigin` fetch of the same
+# TMDB URL can be served the non-CORS cache entry and the draw taints/fails.
+# Proxying bytes through this API gives the canvas one reliable, cache-aware
+# same-origin-style source (the API host the frontend already talks to).
+
+_ALLOWED_IMAGE_SIZES = {"w92", "w154", "w185", "w300", "w342", "w500", "w780", "w1280", "original"}
+_IMAGE_TTL_SECONDS = 30 * 60
+_IMAGE_CACHE_MAX = 400
+_image_cache: dict[str, tuple[float, bytes, str]] = {}
+_IMAGE_NAME_RE = re.compile(r"[A-Za-z0-9._-]+\.(?:jpg|jpeg|png|webp)")
+
+
+@router.get("/tmdb/image/{size}/{path:path}")
+async def tmdb_image(size: str, path: str):
+    """Serve a TMDB image at an allowlisted size, with a small TTL byte cache."""
+    if size not in _ALLOWED_IMAGE_SIZES:
+        raise HTTPException(400, "unsupported image size")
+
+    name = path.strip("/").rsplit("/", 1)[-1]
+    if not _IMAGE_NAME_RE.fullmatch(name):
+        raise HTTPException(400, "invalid image path")
+
+    key = f"{size}/{name}"
+    now = time.monotonic()
+    hit = _image_cache.get(key)
+    if hit and now - hit[0] < _IMAGE_TTL_SECONDS:
+        content, ctype = hit[1], hit[2]
+    else:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                res = await client.get(f"https://image.tmdb.org/t/p/{size}/{name}")
+        except httpx.TransportError as exc:
+            raise HTTPException(503, "image upstream unavailable") from exc
+        if res.status_code != 200:
+            raise HTTPException(res.status_code, "image not found upstream")
+        content = res.content
+        ctype = res.headers.get("content-type", "image/jpeg")
+        if not ctype.startswith("image/"):
+            raise HTTPException(502, "upstream did not return an image")
+        if len(_image_cache) >= _IMAGE_CACHE_MAX:
+            for stale in sorted(_image_cache, key=lambda k: _image_cache[k][0])[:50]:
+                _image_cache.pop(stale, None)
+        _image_cache[key] = (now, content, ctype)
+
+    return Response(
+        content=content,
+        media_type=ctype,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/tmdb/tv/{tmdb_id}/videos")
