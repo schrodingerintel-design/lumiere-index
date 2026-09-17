@@ -60,7 +60,7 @@ function useCountdown(nextRefreshAt: string | null): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** The live #1 series — the Index Score leads, everything else supports it. */
+/** The live #1 series — the TVDex Score leads, everything else supports it. */
 function ChampionSeries({ film }: { film: RankedFilm }) {
   const director =
     film.director && film.director !== "Unknown" ? film.director : null;
@@ -91,7 +91,7 @@ function ChampionSeries({ film }: { film: RankedFilm }) {
               {film.score?.toFixed(1)}
             </span>
             <span className="pb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Index
+              TVDex
               <br />
               Score
             </span>
@@ -185,6 +185,7 @@ function TopFiftyTV() {
                   score: tvScore(f),
                 })),
                 rankOf: (_f, i) => i + 1,
+                scoreLabel: "TVDex",
               }}
               className="mb-1"
             />
@@ -216,7 +217,7 @@ function TopFiftyTV() {
               <div>Mvmt</div>
               <div>Series</div>
               <div>Days</div>
-              <div className="text-right">Index Score</div>
+              <div className="text-right">TVDex Score</div>
             </div>
             <ul>
               {isLoading
@@ -266,7 +267,7 @@ function TopFiftyTV() {
                               {tvScore(f).toFixed(1)}
                             </div>
                             <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
-                              Index
+                              TVDex
                             </div>
                           </div>
                         </Link>

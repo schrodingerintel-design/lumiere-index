@@ -378,6 +378,8 @@ export interface ChartCardOptions {
   films: RankedFilm[];    // rows (max 5 shown)
   /** Display rank override — chart pages renumber (TV chart shows 1–50). */
   rankOf?: (film: RankedFilm, index: number) => number;
+  /** Per-chart score label — TV charts read "TVDEX". Defaults to "INDEX". */
+  scoreLabel?: string;
 }
 
 /** Render the ranked-list card. 1080×1350 (4:5). Up to 5 rows. */
@@ -478,7 +480,7 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
     ctx.fillText(scoreText, W - 80 - ctx.measureText(scoreText).width, y + rowH / 2 - 10);
     ctx.fillStyle = MUTED;
     ctx.font = `16px ${MONO_FONT}`;
-    const idxLabel = "INDEX";
+    const idxLabel = (opts.scoreLabel ?? "INDEX").toUpperCase();
     ctx.fillText(idxLabel, W - 80 - ctx.measureText(idxLabel).width, y + rowH / 2 + 18);
   }
 
