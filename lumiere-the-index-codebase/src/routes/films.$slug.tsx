@@ -43,7 +43,6 @@ import {
   MessageSquare,
   ArrowUp,
   ArrowDown,
-  Scale,
   Play,
   Info,
   X,
@@ -669,13 +668,6 @@ function FilmDetailView() {
                     Watch trailer
                   </button>
                 )}
-                <Link
-                  to="/compare"
-                  className="inline-flex items-center gap-2 rounded-md border border-foreground/20 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-foreground/45 hover:bg-foreground/5"
-                >
-                  <Scale className="h-4 w-4" />
-                  Compare
-                </Link>
                 <button
                   onClick={handleToggleSave}
                   aria-label={saved ? "Remove from Watchlist" : "Save to Watchlist"}
@@ -687,7 +679,12 @@ function FilmDetailView() {
                 >
                   {saved ? <BookmarkCheck className="h-4.5 w-4.5" /> : <Bookmark className="h-4.5 w-4.5" />}
                 </button>
-                <ShareCardButton variant="film" card={film} label="Share" />
+                <ShareCardButton
+                  variant="film"
+                  card={film}
+                  label="Share"
+                  className="rounded-md border border-foreground/20 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-foreground/45 hover:bg-foreground/5 hover:text-foreground"
+                />
               </div>
             </div>
           </div>
