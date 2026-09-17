@@ -140,6 +140,15 @@ function TopFiftyTV() {
   const tvChartRank = tvChartRankFactory(entries);
   const champion = entries.length > 0 ? entries[0] : null;
 
+  // The TV chart is its own ranking, so its scores are its own scale too:
+  // the #1 series anchors the chart at 98.5 and every other entry scales
+  // proportionally to it. The API's global all-content scores (which run
+  // against the whole catalog) would otherwise show dull mismatched numbers
+  // ("why is #1 an 18.0?") on a chart titled Top 50.
+  const tvTop = entries[0]?.score ?? 0;
+  const tvScore = (f: RankedFilm): number =>
+    tvTop > 0 ? Math.round(((f.score ?? 0) / tvTop) * 985) / 10 : 0;
+
   return (
     <Layout>
       <section className="px-4 pt-10 sm:px-6">
@@ -171,7 +180,10 @@ function TopFiftyTV() {
               card={{
                 title: "Top 50 TV Shows",
                 subtitle: "The series capturing the most cultural attention right now.",
-                films: entries.slice(0, 5),
+                films: entries.slice(0, 5).map((f) => ({
+                  ...f,
+                  score: tvScore(f),
+                })),
                 rankOf: (_f, i) => i + 1,
               }}
               className="mb-1"
@@ -183,7 +195,9 @@ function TopFiftyTV() {
       {champion && (
         <section className="mt-8 px-4 sm:px-6">
           <div className="mx-auto max-w-6xl">
-            <ChampionSeries film={champion} />
+            <ChampionSeries
+              film={{ ...champion, score: tvScore(champion) }}
+            />
           </div>
         </section>
       )}
@@ -249,7 +263,7 @@ function TopFiftyTV() {
                           </div>
                           <div className="text-right">
                             <div className="index-score text-xl font-semibold sm:text-lg">
-                              {f.score?.toFixed(1)}
+                              {tvScore(f).toFixed(1)}
                             </div>
                             <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
                               Index

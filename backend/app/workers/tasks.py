@@ -24,6 +24,17 @@ def _ingest(db, source_key: str, fetch_fn) -> int:
         raise
 
 
+def _no_credentials(source_key: str) -> int:
+    """Fast-exit for sources whose credentials are absent — record health and
+    skip. Every keyless cycle previously still built the full film list and
+    walked the adapter only to return nothing; the scheduler fires these
+    every 15–30 minutes, so the bypass keeps cycles free while keeping the
+    source visible as \"no key\" in Signal Health."""
+    with SessionLocal() as db:
+        record_ingest(db, source_key, error="skipped: no credentials")
+    return 0
+
+
 def _film_tuples(db):
     """(id, title, year, content_type) for the whole tracked catalog.
 
@@ -43,20 +54,25 @@ def ingest_reddit() -> int:
 
 @celery.task
 def ingest_news() -> int:
+    if not settings.newsapi_key:
+        return _no_credentials("news")
     with SessionLocal() as db:
         return _ingest(db, "news", lambda: fetch_news(_film_tuples(db)))
 
 
 @celery.task
 def ingest_youtube() -> int:
+    if not settings.youtube_api_key or not settings.youtube_api_key.strip():
+        return _no_credentials("youtube")
     with SessionLocal() as db:
         return _ingest(db, "youtube", lambda: fetch_youtube(_film_tuples(db), db=db))
 
 
 @celery.task
 def ingest_tiktok() -> int:
-    with SessionLocal() as db:
-        return _ingest(db, "tiktok", lambda: fetch_tiktok(_film_tuples(db)))
+    # TikTok is policy-disabled (no compliant API access) — the adapter is a
+    # stub. Skip the cycle outright instead of walking it every 30 minutes.
+    return _no_credentials("tiktok")
 
 
 @celery.task

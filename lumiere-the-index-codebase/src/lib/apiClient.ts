@@ -142,6 +142,13 @@ export interface TimelinePoint {
   score: number;
 }
 
+/** One daily sample of a title's chart position + score (film page history chart). */
+export interface RankHistoryPoint {
+  day: string;
+  rank: number;
+  score: number;
+}
+
 /** Film-centric trending entry returned by /api/v1/trending/films */
 export interface TrendingFilmOut {
   film_slug: string;
@@ -285,6 +292,10 @@ export const searchFilms = (q: string, limit: number = 20) =>
 export const getFilmTimeline = (slug: string, days: number = 30) =>
   apiFetch<TimelinePoint[]>(`/api/v1/films/${slug}/timeline?days=${days}`);
 
+/** Daily-sampled chart position + score for the film page history chart. */
+export const getFilmRankHistory = (slug: string, days: number = 60) =>
+  apiFetch<RankHistoryPoint[]>(`/api/v1/films/${slug}/rank-history?days=${days}`);
+
 /** Fetch films trending by audience engagement velocity. */
 export const getTrendingFilms = (limit: number = 20) =>
   apiFetch<TrendingFilmOut[]>(`/api/v1/trending/films?limit=${limit}`);
@@ -316,11 +327,15 @@ export const getTmdbMovieVideos = (tmdbId: number) =>
 
 export const getTmdbMovieDetails = (tmdbId: number) =>
   apiFetch<{
+    tagline: string | null;
+    status: string;
+    original_language: string;
     budget: number;
     revenue: number;
     runtime: number;
     genres: { id: number; name: string }[];
     production_countries: { iso_3166_1: string; name: string }[];
+    production_companies: { id: number; name: string; logo_path: string | null }[];
     vote_average: number;
     vote_count: number;
     popularity: number;
@@ -384,11 +399,16 @@ export const getTmdbTvVideos = (tmdbId: number) =>
 
 export const getTmdbTvDetails = (tmdbId: number) =>
   apiFetch<{
+    tagline: string | null;
+    status: string;
+    original_language: string;
+    created_by: { id: number; name: string }[];
     episode_run_time: number[];
     number_of_seasons: number;
     number_of_episodes: number;
     genres: { id: number; name: string }[];
     production_countries: { iso_3166_1: string; name: string }[];
+    production_companies: { id: number; name: string; logo_path: string | null }[];
     vote_average: number;
     vote_count: number;
     popularity: number;

@@ -14,6 +14,7 @@ from app.schemas import (
     FilmDetail,
     SentimentBreakdown,
     TimelinePoint,
+    RankHistoryPoint,
     CountryScoreOut,
     SourceSignalBreakdown,
     SignalFunnel,
@@ -582,6 +583,39 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         imdb=imdb_out,
         imdb_momentum=imdb_mom,
     )
+
+
+@router.get("/films/{slug}/rank-history", response_model=list[RankHistoryPoint])
+def film_rank_history(slug: str, days: int = 60, db: Session = Depends(get_db)):
+    """Daily-sampled rank + score history for a title's chart trajectory.
+
+    The chart is a continuous 15-minute snapshot series; this endpoint samples
+    one representative snapshot per calendar day (the last of the day) so the
+    film page can draw an honest "Index history" line without shipping every
+    snapshot. Days before the title's first appearance are naturally absent.
+    """
+    film = db.scalar(select(Film).where(Film.slug == slug))
+    if not film:
+        raise HTTPException(404, "Film not found")
+    cutoff = date.today() - timedelta(days=max(days, 1))
+    rows = (
+        db.query(
+            func.date(Ranking.snapshot_at).label("d"),
+            func.max(Ranking.snapshot_at).label("last_ts"),
+        )
+        .filter(Ranking.film_id == film.id, func.date(Ranking.snapshot_at) >= cutoff)
+        .group_by(func.date(Ranking.snapshot_at))
+        .order_by(func.date(Ranking.snapshot_at).asc())
+        .all()
+    )
+    out: list[RankHistoryPoint] = []
+    for d, last_ts in rows:
+        r = db.scalar(
+            select(Ranking).where(Ranking.film_id == film.id, Ranking.snapshot_at == last_ts)
+        )
+        if r:
+            out.append(RankHistoryPoint(day=d, rank=r.rank, score=r.score))
+    return out
 
 
 @router.get("/films/{slug}/timeline", response_model=list[TimelinePoint])

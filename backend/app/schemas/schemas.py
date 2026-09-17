@@ -130,6 +130,15 @@ class TimelinePoint(BaseModel):
     score: float
 
 
+class RankHistoryPoint(BaseModel):
+    """One daily observation of a title's chart position — a sampled view of
+    the continuous 15-minute snapshot history, plus the index score at that
+    moment. Powers the film page's index-history chart."""
+    day: date
+    rank: int
+    score: float
+
+
 class CountryScoreOut(BaseModel):
     country_code: str
     mentions: int

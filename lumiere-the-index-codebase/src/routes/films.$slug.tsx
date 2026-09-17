@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { Layout } from "@/components/lumiere/Layout";
 import {
   getFilmDetail,
@@ -9,16 +18,19 @@ import {
   searchTmdbMovie,
   searchTmdbTv,
   tmdbPosterUrl,
+  tmdbBackdropUrl,
   getTmdbMovieVideos,
   getTmdbMovieDetails,
   getTmdbWatchProviders,
   getTmdbTvVideos,
   getTmdbTvDetails,
   getTmdbTvWatchProviders,
+  getFilmRankHistory,
   TMDB_IMG,
   type RankedFilm,
   type TmdbWatchProviders,
   type WatchProvider,
+  type RankHistoryPoint,
 } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { Skeleton } from "@/components/lumiere/Skeletons";
@@ -37,7 +49,16 @@ import {
   X,
   Tv,
   Film as FilmIcon,
-} from "lucide-react";export const Route = createFileRoute("/films/$slug")({
+  Calendar,
+  Clock,
+  Globe,
+  Languages,
+  Wallet,
+  Ticket,
+  Landmark,
+} from "lucide-react";
+
+export const Route = createFileRoute("/films/$slug")({
   head: ({ params }) => ({
     meta: [
       { title: `${(params?.slug ?? "").replace(/-/g, " ")} — The Index` },
@@ -163,10 +184,102 @@ function ProviderGroup({
   );
 }
 
+// ── Index history chart (rank trajectory, inverted: #1 sits on top) ──────────
+function RankHistoryChart({ history }: { history: RankHistoryPoint[] }) {
+  if (history.length < 2) {
+    return (
+      <div className="flex h-48 items-center justify-center text-xs text-muted-foreground">
+        Chart history builds as the title spends more days ranked.
+      </div>
+    );
+  }
+  const maxRank = Math.max(...history.map((p) => p.rank));
+  const data = history.map((p) => ({
+    ...p,
+    dayLabel: new Date(`${p.day}T00:00:00`).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+    // Invert so rank 1 renders at the top of the chart.
+    pos: -p.rank,
+  }));
+  const weeks = Math.round(history.length / 7);
+  return (
+    <div className="h-56 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: -18 }}>
+          <CartesianGrid stroke="rgba(244,241,234,0.07)" strokeDasharray="3 6" vertical={false} />
+          <XAxis
+            dataKey="dayLabel"
+            tick={{ fill: "rgba(244,241,234,0.45)", fontSize: 10, fontFamily: "var(--font-mono)" }}
+            axisLine={false}
+            tickLine={false}
+            minTickGap={28}
+          />
+          <YAxis
+            domain={[-maxRank, -1]}
+            ticks={[-maxRank, -Math.ceil(maxRank / 2), -1]}
+            tickFormatter={(v: number) => `#${-v}`}
+            tick={{ fill: "rgba(244,241,234,0.45)", fontSize: 10, fontFamily: "var(--font-mono)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            cursor={{ stroke: "rgba(244,241,234,0.2)" }}
+            contentStyle={{
+              background: "#111",
+              border: "1px solid rgba(244,241,234,0.14)",
+              borderRadius: 6,
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+            }}
+            labelStyle={{ color: "rgba(244,241,234,0.6)" }}
+            formatter={(_v, _n, item) => [
+              `#${item?.payload?.rank} · score ${Number(item?.payload?.score ?? 0).toFixed(1)}`,
+              "",
+            ]}
+          />
+          <Line
+            type="monotone"
+            dataKey="pos"
+            stroke="#E2483D"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 3, fill: "#E2483D" }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <div className="mt-1 flex items-center gap-2 px-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="h-1 w-1 rounded-full bg-live" />
+        {weeks > 1 ? `${weeks} weeks` : `${history.length} days`} of chart history · sampled daily
+      </div>
+    </div>
+  );
+}
+
+// ── Facts sidebar row ────────────────────────────────────────────────────────
+function Fact({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 text-primary/80">{icon}</span>
+      <div className="min-w-0">
+        <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
+        <div className="mt-0.5 text-xs font-medium text-foreground/90">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+const money = (n: number) =>
+  n >= 1_000_000_000
+    ? `$${(n / 1_000_000_000).toFixed(2)}B`
+    : n >= 1_000_000
+      ? `$${(n / 1_000_000).toFixed(1)}M`
+      : `$${n.toLocaleString()}`;
+
 function FilmDetailView() {
   const { slug } = Route.useParams();
   const { saved, toggle } = useWatchlist(slug);
-  const [showMethodology, setShowMethodology] = useState(false);
   const [watchRegion, setWatchRegion] = useState("US");
   const [toast, setToast] = useState<string | null>(null);
 
@@ -198,7 +311,12 @@ function FilmDetailView() {
   // so the query is typed by the fields this page actually consumes.
   const isTvShow = film?.content_type === "TV_SHOW";
   const { data: tmdb } = useQuery<{
-    results: { id: number; poster_path: string | null; overview?: string }[];
+    results: {
+      id: number;
+      poster_path: string | null;
+      backdrop_path: string | null;
+      overview?: string;
+    }[];
   }>({
     queryKey: ["tmdb", isTvShow ? "tv" : "movie", film?.title, film?.year],
     queryFn: () =>
@@ -214,8 +332,6 @@ function FilmDetailView() {
 
   // Dynamic OG image — declared before the early returns below so the hook order
   // stays stable once film data arrives (which flips `filmLoading` off).
-  // Prefer the backend-provided poster so the hero renders instantly; the TMDB
-  // search still runs for trailers and details.
   const posterUrl = film?.poster_url || tmdbPosterUrl(tmdbFilm?.poster_path, "w500");
   useEffect(() => {
     if (posterUrl) {
@@ -245,9 +361,13 @@ function FilmDetailView() {
 
   // Normalized across both content types — per-type fields are optional.
   type TmdbDetailsUnion = {
-    vote_count?: number;
-    popularity?: number;
+    tagline?: string | null;
+    status?: string;
+    original_language?: string;
+    created_by?: { id: number; name: string }[];
     genres?: { id: number; name: string }[];
+    production_countries?: { iso_3166_1: string; name: string }[];
+    production_companies?: { id: number; name: string; logo_path: string | null }[];
     // Movie-only
     runtime?: number;
     budget?: number;
@@ -279,6 +399,14 @@ function FilmDetailView() {
         : null,
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
+  });
+
+  // Index history — the rank trajectory line on the film page.
+  const { data: rankHistory } = useQuery<RankHistoryPoint[]>({
+    queryKey: ["film", "rank-history", slug],
+    queryFn: () => getFilmRankHistory(slug, 60),
+    enabled: !!film,
+    staleTime: 5 * 60 * 1000,
   });
 
   // More Like This — the film's genre shelf (the backend catalog's genre_tag is
@@ -327,33 +455,36 @@ function FilmDetailView() {
   }
 
   // ── Derived values ────────────────────────────────────────────────────────
-  const director = film.director && film.director !== "Unknown" ? film.director : null;
+  const director = film.director && film.director !== "Unknown" && film.director !== "Director TBA"
+    ? film.director
+    : tmdbDetails?.created_by?.[0]?.name ?? null;
   const synopsis = tmdbFilm?.overview || film.synopsis || "No synopsis available.";
+  const tagline = tmdbDetails?.tagline?.trim() || null;
   const trailerKey =
     videos?.results?.find((v) => v.site === "YouTube" && v.type === "Trailer")?.key ??
     videos?.results?.find((v) => v.site === "YouTube")?.key ??
     null;
+  const backdropUrl = film.backdrop_url || tmdbBackdropUrl(tmdbFilm?.backdrop_path, "w1280");
 
-  // Real backend sentiment signals, with calibrated fallback from Index score if early in tracking
-  const rawSentiment = film.sentiment;
-  const hasBackendSentiment = rawSentiment?.sufficient_data === true && rawSentiment.positive != null;
-
-  // Real backend sentiment only — a fabricated breakdown would erode trust, so
-  // titles without sufficient signals show the honest empty state instead.
-  const sentiment = {
-    positive: rawSentiment?.positive ?? null,
-    neutral: rawSentiment?.neutral ?? null,
-    negative: rawSentiment?.negative ?? null,
-  };
-  const hasSentimentData = hasBackendSentiment;
+  const sentiment = film.sentiment;
+  const hasSentimentData = sentiment?.sufficient_data === true && sentiment.positive != null;
 
   // TMDB derived metrics
-  // Runtime/length differs per content type: movies have a single runtime,
-  // shows have per-episode runtimes (first value) — plus season/episode counts.
   const runtime = isTvShow ? tmdbDetails?.episode_run_time?.[0] : tmdbDetails?.runtime;
   const seasonCount = isTvShow ? tmdbDetails?.number_of_seasons : undefined;
   const episodeCount = isTvShow ? tmdbDetails?.number_of_episodes : undefined;
   const genres = tmdbDetails?.genres ?? [];
+  const budget = !isTvShow && tmdbDetails?.budget ? tmdbDetails.budget : null;
+  const revenue = !isTvShow && tmdbDetails?.revenue ? tmdbDetails.revenue : null;
+  const language = tmdbDetails?.original_language
+    ? new Intl.DisplayNames(["en"], { type: "language" }).of(tmdbDetails.original_language) ??
+      tmdbDetails.original_language
+    : null;
+  const country = tmdbDetails?.production_countries?.[0]?.name;
+  const companies = tmdbDetails?.production_companies?.slice(0, 3).map((c) => c.name) ?? [];
+  const status = tmdbDetails?.status === "Released" || tmdbDetails?.status === "Returning Series"
+    ? null
+    : tmdbDetails?.status;
   const tmdbMovieUrl = tmdbId ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}` : undefined;
   const watchRegionData = watchData?.results?.[watchRegion];
   const watchLink = tmdbId
@@ -371,172 +502,266 @@ function FilmDetailView() {
 
   // Chart tenure in days — the chart refreshes every 15 minutes, so days is
   // the honest unit. A NEW entry (no previous snapshot) is on day 1.
-  const isNewEntry = film.prev_rank == null;
   const daysOnChart = film.days_on_chart ?? 1;
-
-  // Index résumé — days on chart, days at #1, peak rank. The chart's own
-  // history presented as editorial fact; the résumé's first entry carries the
-  // emphasis (dominance streak for a current #1, peak crown for a former one).
   const daysAtOne = film.days_at_one ?? 0;
   const peakRank = film.peak_rank ?? film.rank;
+  const movement = film.movement ?? 0;
   const day = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
-  const resumeBits: string[] = [];
-  if (film.rank === 1) {
-    if (daysAtOne > 0) resumeBits.push(`${day(daysAtOne)} at #1`);
-    resumeBits.push(`${day(daysOnChart)} on chart`);
-  } else if (peakRank === 1) {
-    resumeBits.push("Peak #1");
-    if (daysAtOne > 0) resumeBits.push(`${day(daysAtOne)} at #1`);
-    resumeBits.push(`${day(daysOnChart)} on chart`);
-  } else {
-    resumeBits.push(`${day(daysOnChart)} on chart`);
-    resumeBits.push(`Peak #${peakRank}`);
-  }
-
-  // Index Total — one unified observation volume (raw upstream observations
-  // over the last 30 days, falling back to the tracked record count early in
-  // a title's life).
-  const indexTotalObs =
-    film.signal_funnel?.raw_observations_30d ?? film.mentions_total ?? 0;
-  const indexTotalLabel =
-    indexTotalObs > 0
-      ? indexTotalObs >= 1_000_000
-        ? `${(indexTotalObs / 1_000_000).toFixed(1)}M`
-        : indexTotalObs >= 1_000
-          ? `${(indexTotalObs / 1_000).toFixed(1)}k`
-          : indexTotalObs.toLocaleString()
-      : "—";
 
   const similar = (similarFilms ?? []).filter((f) => f.slug !== slug).slice(0, 6);
 
   return (
     <Layout>
-      <section className="px-4 pt-6 lg:px-6">
-        <div className="mx-auto max-w-5xl animate-fade-up space-y-6">
-          {/* Breadcrumb + Actions — editorial metadata row, no badges */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-foreground/10 pb-4">
-            <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              The Index · #{film.rank || "—"} · 0% critic weight
-            </div>
-            <div className="flex items-center gap-4">
-              {trailerKey && (
-                <button
-                  onClick={scrollToTrailer}
-                  className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                >
-                  <Play className="h-3.5 w-3.5" />
-                  Trailer
-                </button>
-              )}
-              <Link
-                to="/compare"
-                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+      {/* ── Hero: backdrop wash + poster left + identity right ── */}
+      <section className="relative overflow-hidden">
+        {/* Backdrop — full-bleed still, fading down into the page canvas */}
+        {backdropUrl && (
+          <div className="pointer-events-none absolute inset-0" aria-hidden>
+            <img
+              key={backdropUrl}
+              src={backdropUrl}
+              alt=""
+              className="h-full w-full object-cover opacity-50"
+            />
+            {/* Legibility scrims — heavier to the left where the text sits */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-background/20" />
+            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-background/80 to-transparent" />
+          </div>
+        )}
+
+        <div className="relative mx-auto max-w-6xl px-4 pb-8 pt-6 lg:px-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
+            {/* Poster — fixed rail */}
+            <figure className="w-40 shrink-0 sm:w-52 lg:w-60">
+              <div
+                className="relative aspect-[2/3] overflow-hidden rounded-lg shadow-2xl ring-1 ring-foreground/15"
+                style={{ background: gradientStyle(film) }}
               >
-                <Scale className="h-3.5 w-3.5" />
-                Compare
-              </Link>
-              <button
-                onClick={handleToggleSave}
-                className={`flex items-center gap-1.5 text-xs font-medium transition ${
-                  saved ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {saved ? (
-                  <BookmarkCheck className="h-3.5 w-3.5" />
+                {posterUrl ? (
+                  <img
+                    src={posterUrl}
+                    alt={film.title}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="eager"
+                  />
                 ) : (
-                  <Bookmark className="h-3.5 w-3.5" />
+                  <div
+                    className="absolute inset-0 opacity-40 mix-blend-overlay"
+                    style={{
+                      backgroundImage:
+                        "radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 60%)",
+                    }}
+                  />
                 )}
-                {saved ? "Saved" : "Watchlist"}
-              </button>
-              <ShareCardButton
-                variant="film"
-                card={film}
-                label="Share card"
-              />
+              </div>
+            </figure>
+
+            {/* Identity column */}
+            <div className="min-w-0 flex-1">
+              {/* Badges row — content type, rank, movement */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-sm border border-foreground/15 bg-foreground/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {isTvShow ? "TV Show" : "Movie"}
+                </span>
+                <span className="rounded-sm bg-primary px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">
+                  Rank #{film.rank || "—"}
+                </span>
+                {movement !== 0 && (
+                  <span
+                    className={`flex items-center gap-1 font-mono text-[11px] font-semibold ${
+                      movement > 0 ? "text-up" : "text-down"
+                    }`}
+                  >
+                    {movement > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                    {Math.abs(movement)} {movement > 0 ? "up" : "down"}
+                  </span>
+                )}
+              </div>
+
+              {/* Title */}
+              <h1 className="mt-3 font-display text-4xl font-medium leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl">
+                {film.title}
+              </h1>
+
+              {/* Tagline */}
+              {tagline && (
+                <p className="mt-3 font-display text-lg italic text-muted-foreground">“{tagline}”</p>
+              )}
+
+              {/* Year · runtime · genres */}
+              <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
+                <span>{film.year || "—"}</span>
+                {runtime && (
+                  <>
+                    <span className="text-foreground/25">·</span>
+                    <span>
+                      {Math.floor(runtime / 60) > 0 ? `${Math.floor(runtime / 60)}h ` : ""}
+                      {runtime % 60}m
+                    </span>
+                  </>
+                )}
+                {genres.slice(0, 4).map((g) => (
+                  <span key={g.id} className="flex items-center gap-2.5">
+                    <span className="text-foreground/25">·</span>
+                    <span>{g.name}</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* Synopsis */}
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-foreground/75 sm:text-[15px]">
+                {synopsis}
+              </p>
+
+              {/* Score ring + stats + actions */}
+              <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-5">
+                {/* Score ring */}
+                <div className="relative h-24 w-24 shrink-0">
+                  <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                    <circle cx="50" cy="50" r="44" fill="none" strokeWidth="6" className="stroke-foreground/10" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="44"
+                      fill="none"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      className="stroke-primary transition-[stroke-dasharray] duration-700"
+                      strokeDasharray={`${Math.max(0, Math.min(100, film.score ?? 0)) * 2.7646} 276.46`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="index-score text-2xl">{film.score?.toFixed(1) ?? "—"}</span>
+                    <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
+                      Index
+                    </span>
+                  </div>
+                </div>
+
+                {/* Chart stats */}
+                <div className="space-y-1.5 text-xs">
+                  <div className="text-muted-foreground">
+                    {movement > 0 && <>up {movement} place{movement === 1 ? "" : "s"} this week</>}
+                    {movement < 0 && <>down {Math.abs(movement)} place{Math.abs(movement) === 1 ? "" : "s"}</>}
+                    {movement === 0 && <span title="Held its rank">held its position</span>}
+                  </div>
+                  <div className="text-muted-foreground">
+                    <span className="font-medium text-foreground">{day(daysOnChart)}</span> on chart
+                  </div>
+                  {peakRank === 1 && (
+                    <div className="text-primary">
+                      Peak <span className="font-semibold">#1</span>
+                      {daysAtOne > 0 && <span className="text-muted-foreground"> · {day(daysAtOne)} at #1</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                {trailerKey && (
+                  <button
+                    onClick={scrollToTrailer}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-primary/90"
+                  >
+                    <Play className="h-4 w-4" />
+                    Watch trailer
+                  </button>
+                )}
+                <Link
+                  to="/compare"
+                  className="inline-flex items-center gap-2 rounded-md border border-foreground/20 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-foreground/45 hover:bg-foreground/5"
+                >
+                  <Scale className="h-4 w-4" />
+                  Compare
+                </Link>
+                <button
+                  onClick={handleToggleSave}
+                  aria-label={saved ? "Remove from Watchlist" : "Save to Watchlist"}
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-md border transition ${
+                    saved
+                      ? "border-primary/50 text-primary"
+                      : "border-foreground/20 text-muted-foreground hover:border-foreground/45 hover:text-foreground"
+                  }`}
+                >
+                  {saved ? <BookmarkCheck className="h-4.5 w-4.5" /> : <Bookmark className="h-4.5 w-4.5" />}
+                </button>
+                <ShareCardButton variant="film" card={film} label="Share" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Body: history + sentiment left, facts right ── */}
+      <section className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pb-12 lg:grid-cols-12 lg:px-6">
+        {/* Main column */}
+        <div className="space-y-6 lg:col-span-8">
+          {/* Index history */}
+          <div className="border border-foreground/10 bg-surface p-5">
+            <div className="flex items-baseline justify-between">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+                Index history
+              </div>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                Rank #{film.rank || "—"} today · peak #{peakRank}
+              </span>
+            </div>
+            <div className="mt-4">
+              <RankHistoryChart history={rankHistory ?? []} />
             </div>
           </div>
 
-          {/* Poster — a clean window onto the artwork. No glow, no frame. */}
-          <figure className="float-right ml-5 mb-3 w-[34%] max-w-[210px] sm:ml-8 sm:mb-4 sm:w-[30%] sm:max-w-[280px] lg:max-w-[320px]">
-            <div
-              className="relative aspect-[2/3] overflow-hidden bg-ink"
-              style={{ background: gradientStyle(film) }}
-            >
-              {posterUrl ? (
-                <img
-                  src={posterUrl}
-                  alt={film.title}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  loading="eager"
-                />
-              ) : (
-                <div
-                  className="absolute inset-0 opacity-40 mix-blend-overlay"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 30% 30%, rgba(255,255,255,.3), transparent 60%)",
-                  }}
-                />
-              )}
+          {/* Audience sentiment */}
+          <div className="border border-foreground/10 bg-surface p-5">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Audience Sentiment Breakdown
+              </div>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {hasSentimentData ? "Verified" : "Awaiting Data"}
+              </span>
             </div>
-          </figure>
-
-          {/* Title */}
-          <div>
-            <h1 className="font-serif text-5xl leading-[0.95] sm:text-6xl lg:text-7xl">
-              {film.title}
-            </h1>
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-lg text-muted-foreground">
-              {director && (
-                <span>
-                  {isTvShow ? (
-                    <>
-                      Created by <span className="text-foreground">{director}</span>
-                    </>
-                  ) : (
-                    <>
-                      Directed by <span className="text-foreground">{director}</span>
-                    </>
-                  )}
-                </span>
-              )}
-              {director && <span>·</span>}
-              <span>{film.year || "—"}</span>
-              {runtime && (
-                <>
-                  <span>·</span>
-                  <span>{runtime} min</span>
-                </>
-              )}
-              {seasonCount != null && (
-                <>
-                  <span>·</span>
-                  <span>
-                    {seasonCount} season{seasonCount === 1 ? "" : "s"}
-                    {episodeCount != null ? ` · ${episodeCount} episodes` : ""}
-                  </span>
-                </>
-              )}
-            </div>
-            {/* Genres — quiet editorial metadata, not pills */}
-            {genres.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-x-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                {genres.map((g, i) => (
-                  <span key={g.id} className="flex items-center gap-2">
-                    {i > 0 && <span className="text-foreground/25">·</span>}
-                    {g.name}
-                  </span>
-                ))}
+            {hasSentimentData ? (
+              <>
+                <div className="mt-4 flex h-1.5">
+                  <div style={{ width: `${sentiment.positive}%` }} className="bg-up" />
+                  <div style={{ width: `${sentiment.neutral}%` }} className="bg-foreground/20" />
+                  <div style={{ width: `${sentiment.negative}%` }} className="bg-down" />
+                </div>
+                <div className="mt-5 grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <div className="font-mono text-2xl tabular text-forest-deep">
+                      {sentiment.positive}%
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Positive
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-mono text-2xl tabular">{sentiment.neutral}%</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Neutral
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-mono text-2xl tabular text-down">{sentiment.negative}%</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Negative
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="mt-4 flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
+                <MessageSquare className="h-8 w-8 opacity-30" />
+                <p className="text-xs">Not enough data yet.</p>
               </div>
             )}
           </div>
 
-          {/* Synopsis */}
-          <p className="text-base leading-relaxed text-foreground/80">{synopsis}</p>
-          <div className="clear-both" />
-
-          {/* Trailer — embedded and ready on arrival; pressing play runs right
-              here on the page. No navigation, no separate player view. */}
+          {/* Trailer — plays inline */}
           <div id="trailer" className="scroll-mt-24">
             {trailerKey ? (
               <div className="relative">
@@ -562,197 +787,60 @@ function FilmDetailView() {
                   </span>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center justify-between rounded-full border border-foreground/10 bg-surface px-4 py-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Official Trailer
-                </span>
-                <span className="text-xs text-muted-foreground">Not yet available</span>
-              </div>
-            )}
-          </div>
-
-          {/* ── Index Score block — the measurement, treated as one ── */}
-          <div className="relative border-y border-foreground/10 bg-surface p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
-                Index Score
-              </div>
-              <button
-                onClick={() => setShowMethodology(!showMethodology)}
-                className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground hover:text-foreground"
-              >
-                <Info className="h-3 w-3" />
-                <span>How is this calculated?</span>
-              </button>
-            </div>
-
-            {/* Methodology popover */}
-            {showMethodology && (
-              <div className="mb-5 border border-foreground/15 bg-background p-4 text-xs leading-relaxed text-foreground animate-fade-up">
-                <div className="flex items-center justify-between font-bold text-primary mb-1">
-                  <span>Methodology & Transparency</span>
-                  <button onClick={() => setShowMethodology(false)}>
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <p>
-                  The Index Score measures a title's current cultural momentum on a 0–100 scale,
-                  computed from real audience attention across the web and normalized within the
-                  active pool. It is not a review score — it never grades quality.{" "}
-                  <a href="/methodology" className="font-medium text-primary underline">
-                    Full methodology →
-                  </a>
-                </p>
-              </div>
-            )}
-
-            {/* Score + movement — the number is the hero, no ring theatrics */}
-            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-              <div>
-                <div className="index-score text-6xl font-bold lg:text-7xl">
-                  {film.score?.toFixed(1) || "—"}
-                </div>
-                <div className="mt-2 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-                  of 100 · audience-driven
-                </div>
-              </div>
-              {/* Index résumé — the title's chart history, one quiet line */}
-              <div className="pb-1.5 text-xs leading-relaxed text-muted-foreground">
-                {resumeBits.map((bit, i) => (
-                  <span key={bit}>
-                    {i > 0 && <span className="mx-1.5 text-foreground/25">·</span>}
-                    <span className={i === 0 ? "font-medium text-foreground" : undefined}>{bit}</span>
-                  </span>
-                ))}
-              </div>
-              <div className="pb-1.5 font-mono text-base">
-                {(film.movement ?? 0) > 0 ? (
-                  <span className="flex items-center gap-1 font-semibold text-up">
-                    <ArrowUp className="h-5 w-5" /> {film.movement}
-                  </span>
-                ) : (film.movement ?? 0) < 0 ? (
-                  <span className="flex items-center gap-1 font-semibold text-down">
-                    <ArrowDown className="h-5 w-5" /> {Math.abs(film.movement ?? 0)}
-                  </span>
-                ) : (
-                  <span className="font-medium text-muted-foreground" title="Held its rank">—</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Index Total — one unified number ── */}
-          <div className="border-y border-foreground/10 bg-surface p-6">
-            <div className="flex items-baseline gap-3">
-              <div className="index-score text-5xl font-bold lg:text-6xl">{indexTotalLabel}</div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                Index Total
-              </div>
-            </div>
-          </div>
-
-          {/* Audience Sentiment — real backend data, or an honest empty state */}
-          <div className="border-y border-foreground/10 bg-surface p-6">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Audience Sentiment Breakdown
-              </div>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {hasBackendSentiment ? "Verified" : "Awaiting Data"}
-              </span>
-            </div>
-            {hasSentimentData && sentiment.positive != null ? (
-              <>
-                <div className="mt-4 flex h-1.5">
-                  <div style={{ width: `${sentiment.positive}%` }} className="bg-up" />
-                  <div style={{ width: `${sentiment.neutral}%` }} className="bg-foreground/20" />
-                  <div style={{ width: `${sentiment.negative}%` }} className="bg-down" />
-                </div>
-                <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-                  <div>
-                    <div className="font-mono text-2xl tabular text-forest-deep">
-                      {sentiment.positive}%
-                    </div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Positive
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-mono text-2xl tabular">{sentiment.neutral}%</div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Neutral
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-mono text-2xl tabular text-down">
-                      {sentiment.negative}%
-                    </div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Negative
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="mt-4 flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
-                <MessageSquare className="h-8 w-8 opacity-30" />
-                <p className="text-xs">
-                  Not enough data yet.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Chart stats — one quiet line, print-facts style */}
-          <div className="flex flex-wrap gap-x-8 gap-y-3 border-y border-foreground/10 bg-surface px-6 py-4">
-            {[
-              { label: "Days on chart", value: `${daysOnChart}` },
-              { label: "Days at #1", value: `${daysAtOne}` },
-              { label: "Peak rank", value: `#${peakRank}` },
-              { label: "Index Total", value: indexTotalLabel },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="font-mono text-sm tabular text-foreground">{stat.value}</div>
-                <div className="mt-0.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
+            ) : null}
           </div>
         </div>
 
-        {/* ── Right aside — More Like This + Where to Watch ── */}
-        <aside className="mx-auto mt-10 w-full max-w-5xl animate-fade-up delay-100 space-y-8 px-0 lg:mt-6">
-          {/* More Like This — the genre shelf next to Where to Watch */}
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                More Like This
-              </div>
-              {film.genre_tag && (
-                <Link
-                  to="/genres"
-                  className="font-mono text-[10px] text-muted-foreground transition hover:text-foreground"
-                >
-                  {film.genre_tag} →
-                </Link>
+        {/* Facts sidebar */}
+        <aside className="space-y-6 lg:col-span-4">
+          <div className="border border-foreground/10 bg-surface p-5">
+            <div className="space-y-3.5">
+              <Fact
+                icon={<Calendar className="h-3.5 w-3.5" />}
+                label="Release date"
+                value={
+                  (isTvShow ? film.first_air_date : film.release_date)
+                    ? new Date(`${isTvShow ? film.first_air_date : film.release_date}T00:00:00`).toLocaleDateString(
+                        "en-US",
+                        { month: "short", day: "numeric", year: "numeric" },
+                      )
+                    : status || "—"
+                }
+              />
+              {runtime && (
+                <Fact
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                  label={isTvShow ? "Episode length" : "Runtime"}
+                  value={`${Math.floor(runtime / 60) > 0 ? `${Math.floor(runtime / 60)}h ` : ""}${runtime % 60}m`}
+                />
+              )}
+              {director && (
+                <Fact
+                  icon={<FilmIcon className="h-3.5 w-3.5" />}
+                  label={isTvShow ? "Creator" : "Director"}
+                  value={director}
+                />
+              )}
+              {country && (
+                <Fact icon={<Globe className="h-3.5 w-3.5" />} label="Country" value={country} />
+              )}
+              {language && (
+                <Fact icon={<Languages className="h-3.5 w-3.5" />} label="Language" value={language} />
+              )}
+              {budget && (
+                <Fact icon={<Wallet className="h-3.5 w-3.5" />} label="Budget" value={money(budget)} />
+              )}
+              {revenue && (
+                <Fact icon={<Ticket className="h-3.5 w-3.5" />} label="Box office" value={money(revenue)} />
+              )}
+              {companies.length > 0 && (
+                <Fact icon={<Landmark className="h-3.5 w-3.5" />} label="Studio" value={companies.join(", ")} />
               )}
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              {similar.map((f) => (
-                <PosterCard key={f.slug} film={f} width="100%" />
-              ))}
-            </div>
-            {similar.length === 0 && (
-              <div className="mt-3 border border-foreground/10 bg-surface p-4 text-xs text-muted-foreground">
-                Similar titles will appear as the catalog grows.
-              </div>
-            )}
           </div>
 
           {/* Where to Watch */}
-          <div className="border-t border-foreground/10 pt-6">
+          <div className="border border-foreground/10 bg-surface p-5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 <Tv className="h-4 w-4 text-primary" />
@@ -773,11 +861,7 @@ function FilmDetailView() {
             </div>
             {watchData && hasWatchOptions ? (
               <>
-                <ProviderGroup
-                  label="Streaming"
-                  providers={watchRegionData?.flatrate}
-                  link={watchLink}
-                />
+                <ProviderGroup label="Streaming" providers={watchRegionData?.flatrate} link={watchLink} />
                 <ProviderGroup
                   label="Free"
                   providers={
@@ -790,55 +874,99 @@ function FilmDetailView() {
                 <ProviderGroup label="Rent" providers={watchRegionData?.rent} link={watchLink} />
                 <ProviderGroup label="Buy" providers={watchRegionData?.buy} link={watchLink} />
               </>
-            ) : null}
+            ) : (
+              watchData && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  No streaming options listed for {regionLabel} yet.
+                </p>
+              )
+            )}
 
             {/* Universal Theater & Streaming Finder */}
-            <div className="mt-4 pt-3 border-t border-foreground/10 space-y-2">
-              {watchData && !hasWatchOptions && (
-                <p className="pb-1 text-xs text-muted-foreground">
-                  No streaming options listed for this region yet.
-                </p>
-              )}
+            <div className="mt-4 space-y-2 border-t border-foreground/10 pt-3">
               <a
                 href={`https://www.google.com/search?q=${encodeURIComponent(`${film.title} showtimes tickets`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:bg-foreground/[0.08] hover:border-foreground/20"
+                className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:border-foreground/20 hover:bg-foreground/[0.08]"
               >
                 <div className="flex items-center gap-2.5">
-                  <FilmIcon className="h-4 w-4 text-primary shrink-0" />
+                  <FilmIcon className="h-4 w-4 shrink-0 text-primary" />
                   <div>
                     <div className="font-medium text-foreground">Cinema & Theaters</div>
                     <div className="text-[10px] text-muted-foreground">Find local showtimes & tickets</div>
                   </div>
                 </div>
-                <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </a>
-
               <a
                 href={`https://www.justwatch.com/us/search?q=${encodeURIComponent(film.title)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:bg-foreground/[0.08] hover:border-foreground/20"
+                className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:border-foreground/20 hover:bg-foreground/[0.08]"
               >
                 <div className="flex items-center gap-2.5">
-                  <Tv className="h-4 w-4 text-primary shrink-0" />
+                  <Tv className="h-4 w-4 shrink-0 text-primary" />
                   <div>
                     <div className="font-medium text-foreground">Streaming & Digital</div>
                     <div className="text-[10px] text-muted-foreground">Search streaming platforms & providers</div>
                   </div>
                 </div>
-                <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </a>
+              {tmdbMovieUrl && (
+                <a
+                  href={tmdbMovieUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:border-foreground/20 hover:bg-foreground/[0.08]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Info className="h-4 w-4 shrink-0 text-primary" />
+                    <div>
+                      <div className="font-medium text-foreground">Full details</div>
+                      <div className="text-[10px] text-muted-foreground">Credits & metadata on TMDB</div>
+                    </div>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </a>
+              )}
             </div>
           </div>
         </aside>
       </section>
 
+      {/* More Like This — full width shelf */}
+      <section className="mx-auto max-w-6xl px-4 pb-14 lg:px-6">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            More Like This
+          </div>
+          {film.genre_tag && (
+            <Link
+              to="/genres"
+              className="font-mono text-[10px] text-muted-foreground transition hover:text-foreground"
+            >
+              {film.genre_tag} →
+            </Link>
+          )}
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
+          {similar.map((f) => (
+            <PosterCard key={f.slug} film={f} width="100%" />
+          ))}
+        </div>
+        {similar.length === 0 && (
+          <div className="mt-3 border border-foreground/10 bg-surface p-4 text-xs text-muted-foreground">
+            Similar titles will appear as the catalog grows.
+          </div>
+        )}
+      </section>
+
       {/* Floating Save/Watchlist Toast Notification */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 border border-primary/30 bg-background p-4 shadow-2xl animate-fade-up">
-          <BookmarkCheck className="h-5 w-5 text-primary shrink-0" />
+          <BookmarkCheck className="h-5 w-5 shrink-0 text-primary" />
           <div className="text-xs">
             <span className="font-medium text-foreground">{toast}</span>
             <Link to="/watchlist" className="ml-2 font-mono text-primary underline">
@@ -853,4 +981,3 @@ function FilmDetailView() {
     </Layout>
   );
 }
-

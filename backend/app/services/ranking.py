@@ -508,9 +508,26 @@ def recompute_rankings(db: Session) -> datetime:
     if not composite:
         return now
 
+    # ── Score scale: dominance-driven, not pinned ──────────────────────────
+    # The old normalization pinned the top composite to exactly 98.5 every
+    # run, so the leaderboard opened with a constant "98.5" and near-ties
+    # read as identical scores. Now the leader's score is driven by its real
+    # dominance over the runner-up: a runaway #1 earns up to 98.5, while a
+    # photo-finish at the top lands around 90. Every other score stays
+    # proportional to the leader, so order and spacing always come from the
+    # composites — the number itself carries information about the race.
     max_composite = max(composite.values()) or 1.0
+    ordered = sorted(composite.items(), key=lambda x: -x[1])
+    s1 = ordered[0][1]
+    s2 = ordered[1][1] if len(ordered) > 1 else 0.0
+    dominance = (s1 - s2) / s1 if s1 > 0 else 1.0
+    top_score = MAX_INDEX_SCORE - (1.0 - dominance) * (MAX_INDEX_SCORE - 90.0)
+
     normalized = sorted(
-        [(fid, round(s * MAX_INDEX_SCORE / max_composite, 1)) for fid, s in composite.items()],
+        [
+            (fid, round((s / s1) * top_score, 1) if s1 > 0 else 0.0)
+            for fid, s in ordered
+        ],
         key=lambda x: -x[1],
     )
 

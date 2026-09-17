@@ -4,6 +4,7 @@ from .schemas import (
     SentimentBreakdown,
     FilmDetail,
     TimelinePoint,
+    RankHistoryPoint,
     CountryScoreOut,
     TrendingFilmOut,
     LiveStats,
