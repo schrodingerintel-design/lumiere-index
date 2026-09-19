@@ -275,6 +275,41 @@ def live_stats(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/meta/chart-integrity")
+def chart_integrity(db: Session = Depends(get_db)):
+    """Public chart-health counters (aggregate counts only — no entity data,
+    no internals): per-chart rows in the latest continuous snapshot, recent
+    published daily chart dates, and what the daily publisher would see.
+    """
+    from app.services.index_publication import (
+        OFFICIAL_CHARTS,
+        _latest_continuous_ranking,
+    )
+    latest = db.scalar(select(func.max(Ranking.snapshot_at)))
+    per_chart: dict[str, int] = {}
+    publisher_rows: dict[str, int] = {}
+    if latest is not None:
+        rows = db.query(Ranking.chart_type, func.count(Ranking.id)).filter(
+            Ranking.snapshot_at == latest
+        ).group_by(Ranking.chart_type).all()
+        per_chart = {ct: int(n) for ct, n in rows}
+    for chart_id, _ct in OFFICIAL_CHARTS:
+        publisher_rows[chart_id] = len(_latest_continuous_ranking(db, chart_type=chart_id))
+    published: dict[str, list[str]] = {}
+    from app.models import DailyIndexSnapshot
+    for chart_id, _ct in OFFICIAL_CHARTS:
+        dates = db.query(DailyIndexSnapshot.snapshot_date).filter(
+            DailyIndexSnapshot.chart_type == chart_id
+        ).order_by(DailyIndexSnapshot.snapshot_date.desc()).limit(3).all()
+        published[chart_id] = [str(d[0]) for d in dates]
+    return {
+        "latest_continuous_snapshot": latest.isoformat() if latest else None,
+        "continuous_rows_by_chart": per_chart,
+        "publisher_view_rows": publisher_rows,
+        "published_daily_dates": published,
+    }
+
+
 @router.get("/meta/schema-status")
 def schema_status(
     db: Session = Depends(get_db),
