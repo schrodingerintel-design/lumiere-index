@@ -397,6 +397,23 @@ def schema_status(db: Session = Depends(get_db)):
     _probe("serialize_search", _ser_search)
     _probe("serialize_weekly_entry", _ser_weekly)
 
+    # Call the actual (decorated) endpoint functions with a synthetic Request —
+    # this exercises the cache decorator + full body exactly as a request does.
+    from starlette.requests import Request as _Req
+    from app.api.v1.films import top_films as _top, search_films as _search
+    from app.api.v1.index import weekly_index as _weekly
+
+    def _req(path: str, qs: str = "") -> _Req:
+        return _Req({
+            "type": "http", "method": "GET", "path": path,
+            "query_string": qs.encode(), "headers": [], "server": ("x", 80),
+            "scheme": "http", "client": ("x", 0),
+        })
+
+    _probe("call_top_films", lambda: _top(request=_req("/films/top", "limit=3"), limit=3, offset=0, genre=None, chart=None, content_type=None, db=db))
+    _probe("call_search_films", lambda: _search(request=_req("/films/search", "q=a"), q="a", limit=5, genre=None, content_type=None, db=db))
+    _probe("call_weekly_index", lambda: _weekly(request=_req("/index/weekly"), chart=None, limit=10, offset=0, db=db))
+
     return {
         "alembic_version": version_row[0] if version_row else None,
         "tables": tables,
