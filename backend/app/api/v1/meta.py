@@ -273,3 +273,54 @@ def live_stats(db: Session = Depends(get_db)):
         active_countries=int(countries),
         snapshot_at=snap,
     )
+
+
+@router.get("/meta/schema-status")
+def schema_status(db: Session = Depends(get_db)):
+    """Read-only schema ground truth for production diagnostics.
+
+    Reports whether the columns the chart-architecture code depends on
+    actually exist in the live database, which tables carry an alembic
+    version, and whether the Ranking table is queryable. Exposes no data.
+    """
+    from sqlalchemy import inspect, text
+    from app.db import engine, Base
+
+    insp = inspect(db.bind)
+    expected = {
+        "rankings": ["chart_type", "composite_raw"],
+        "daily_index_snapshots": ["chart_type"],
+        "weekly_index_snapshots": ["chart_type"],
+        "index_debuts": ["chart_type"],
+    }
+    tables: dict[str, dict[str, object]] = {}
+    for tname, cols in expected.items():
+        if not insp.has_table(tname):
+            tables[tname] = {"exists": False}
+            continue
+        existing = {c["name"] for c in insp.get_columns(tname)}
+        tables[tname] = {
+            "exists": True,
+            "columns": {c: (c in existing) for c in cols},
+            "row_probe_ok": None,
+        }
+    # Probe the exact queries the failing endpoints run — the error text is
+    # the diagnosis; redact nothing because only column/table names appear.
+    probes: dict[str, str] = {}
+    for label, stmt in (
+        ("rankings_simple", text("SELECT id FROM rankings LIMIT 1")),
+        ("rankings_chart", text("SELECT id, chart_type FROM rankings LIMIT 1")),
+        ("weekly_chart", text("SELECT id, chart_type FROM weekly_index_snapshots LIMIT 1")),
+    ):
+        try:
+            db.execute(stmt).first()
+            probes[label] = "ok"
+        except Exception as exc:
+            probes[label] = f"{type(exc).__name__}: {str(exc)[:200]}"
+    version_row = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).first()
+    return {
+        "alembic_version": version_row[0] if version_row else None,
+        "tables": tables,
+        "probes": probes,
+        "models_declared": sorted(t.name for t in Base.metadata.sorted_tables),
+    }
