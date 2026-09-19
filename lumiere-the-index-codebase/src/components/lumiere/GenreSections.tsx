@@ -88,8 +88,13 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
     });
   };
 
+  // Rank only exists on an official chart. Catalogue-only titles are part of
+  // the collection without being ranked — never a fake 0.0 or "New entry".
+  const isRanked = (film: RankedFilm): boolean => (film.rank ?? 0) > 0;
+
   // Editorial one-liner per card, derived from Index signals.
   const cardNote = (film: RankedFilm): string => {
+    if (!isRanked(film)) return "Not currently ranked";
     if (film.prev_rank == null) return "New entry";
     const move = film.movement ?? 0;
     if (move > 0) return `↑ ${move} position${move === 1 ? "" : "s"} this cycle`;
@@ -156,11 +161,12 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
-              {/* Index Score — ivory on the artwork, like every other card */}
+              {/* Index Score — ivory on the artwork, like every other card.
+                  Unranked catalogue titles show "—" instead of a fake 0.0. */}
               <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
-                {film.score?.toFixed(1)}
+                {isRanked(film) ? film.score?.toFixed(1) : "—"}
               </div>
-              {film.prev_rank == null && (
+              {isRanked(film) && film.prev_rank == null && (
                 <div className="absolute left-1.5 top-1.5 bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none text-ink">
                   New
                 </div>
@@ -185,7 +191,7 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
         ))}
         {films.length === 0 && (
           <div className="flex h-40 w-full items-center justify-center border border-dashed border-foreground/10 text-xs text-muted-foreground">
-            Not enough {category.title.toLowerCase()} titles on the chart yet.
+            Not enough {category.title.toLowerCase()} titles in the catalogue yet.
           </div>
         )}
       </div>
@@ -217,8 +223,8 @@ export function GenreSections() {
         </div>
         <h2 className="mt-1.5 font-display text-2xl font-medium sm:text-3xl">Collections</h2>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Chart titles grouped by their genre — every collection only ever contains films that
-          genuinely belong to it.
+          Every title in the catalogue, grouped by genre — ranked or not. Chart membership and
+          catalogue membership are independent.
         </p>
       </div>
 
