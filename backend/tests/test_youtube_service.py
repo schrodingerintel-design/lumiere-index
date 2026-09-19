@@ -11,7 +11,7 @@ from datetime import datetime, date, timezone, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -21,6 +21,10 @@ from app.models import Film, Ranking, DailyScore, Source
 from app.models.youtube import YouTubeSignal
 from app.services.youtube_service import YouTubeService, QuotaGuard, TrailerMatch, YouTubeVideoStats
 from app.services.ranking import recompute_rankings
+# app.main / app are still imported for their side effects (router + model
+# registration on Base) but no test constructs TestClient(app) directly; the
+# shared fixture in conftest.py owns the TestClient so requests never touch
+# the production MySQL engine.
 
 
 # ── Sample of 18 diverse test films for matcher validation ────────────────────
@@ -357,13 +361,24 @@ def test_ranking_scoring_incorporates_youtube_signals(test_db):
     assert r_a.ca_score >= r_b.ca_score
 
 
-def test_attention_signals_endpoint_security_and_format():
-    """Verify the internal endpoint exposes only derived data and no secrets."""
-    client = TestClient(app)
+def test_attention_signals_endpoint_security_and_format(client):
+    """Verify the internal endpoint exposes only derived data and no secrets.
 
+    Uses the shared ``client`` fixture so the request runs against the seeded
+    in-memory SQLite database — the real app engine points at MySQL, which no
+    test environment should require.
+    """
     # Calling with non-existent film returns 404
     resp = client.get("/api/v1/films/non-existent-film-xyz/attention-signals")
     assert resp.status_code == 404
+
+    # A seeded catalogue film without YouTube signals responds 200 with an
+    # explicit "unavailable" status rather than failing or leaking internals
+    resp = client.get("/api/v1/films/mickey-17/attention-signals")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["has_youtube_signal"] is False
+    assert body["data_status"] == "unavailable"
 
     # Verify no raw YouTube headers or keys are returned
     assert "YOUTUBE_API_KEY" not in resp.text
