@@ -195,7 +195,7 @@ def _build_brief(
         # aggregate when aggregate sources are feeding the title.
         if observations_30d > 0:
             return (
-                f"Limited tracking history so far — {_vol(observations_30d):,} "
+                f"Limited tracking history so far — {_vol(observations_30d)} "
                 f"observations over the last 30 days"
                 f"{platform_clause}; too early for a confident trend call."
             )

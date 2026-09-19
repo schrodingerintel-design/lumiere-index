@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
@@ -276,7 +276,20 @@ def live_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/meta/schema-status")
-def schema_status(db: Session = Depends(get_db)):
+def schema_status(
+    db: Session = Depends(get_db),
+    x_admin_key: str = Header(default=""),
+):
+    """Read-only schema ground truth for production diagnostics.
+
+    ADMIN-GATED: reports internals (alembic version, model table list, probe
+    errors, and the last unhandled server exception's traceback). Nothing
+    here belongs in public hands.
+    """
+    from fastapi import HTTPException as _HTTPException
+    from app.config import settings as _settings
+    if not _settings.admin_key or x_admin_key != _settings.admin_key:
+        raise _HTTPException(status_code=403, detail="Invalid or missing X-Admin-Key header")
     """Read-only schema ground truth for production diagnostics.
 
     Reports whether the columns the chart-architecture code depends on

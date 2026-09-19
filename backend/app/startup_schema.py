@@ -56,6 +56,29 @@ def _alembic_config():
     return cfg
 
 
+def _schema_converged(engine: Engine) -> bool:
+    """True when every ORM-declared table and column exists in the live DB.
+
+    Used to decide whether a failed migration replay means "the schema is
+    already ahead of the migration chain" (safe to stamp) or genuinely
+    broken (must not stamp — let the backfill heal it first).
+    """
+    try:
+        from app.db import Base
+
+        insp = inspect(engine)
+        for table in Base.metadata.sorted_tables:
+            if not insp.has_table(table.name):
+                return False
+            existing = {c["name"] for c in insp.get_columns(table.name)}
+            for column in table.columns:
+                if column.name not in existing:
+                    return False
+        return True
+    except Exception:
+        return False
+
+
 def run_migrations(engine: Engine) -> bool:
     """Apply pending alembic migrations (or stamp a history-less DB).
 
@@ -80,9 +103,28 @@ def run_migrations(engine: Engine) -> bool:
             log.info("startup_schema: no alembic history but tables exist — stamped head")
             return True
 
-        command.upgrade(cfg, "head")
-        log.info("startup_schema: alembic upgrade head complete")
-        return True
+        try:
+            command.upgrade(cfg, "head")
+            log.info("startup_schema: alembic upgrade head complete")
+            return True
+        except Exception:
+            # A failed replay against a live database is usually the
+            # backfill-hybrid state: the column backfill already added what a
+            # migration now tries to ADD COLUMN again, so the version row
+            # never advances and every boot replays (and re-fails) the chain.
+            # If the schema already matches the models, the replay is
+            # redundant — stamp head so future boots skip it. If the schema
+            # is NOT converged, do not stamp: the backfill heals, and the
+            # next boot retries the chain honestly.
+            if _schema_converged(engine):
+                command.stamp(cfg, "head")
+                log.warning(
+                    "startup_schema: migration replay failed but schema matches "
+                    "the models — stamped head to stop the boot-time replay loop"
+                )
+                return True
+            log.exception("startup_schema: alembic upgrade failed (schema not converged; backfill will heal)")
+            return False
     except Exception:
         log.exception("startup_schema: alembic step failed (continuing to column backfill)")
         return False
