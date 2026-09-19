@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { BrandLink } from "@/components/lumiere/Brand";
+import { XIcon, Music2 } from "lucide-react";
 
 const COMPANY_LINKS = [
   { to: "/about", label: "About" },
@@ -28,6 +29,27 @@ export function Footer() {
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
               The cultural index for film and television — published daily.
             </p>
+            {/* Official channels */}
+            <div className="mt-5 flex items-center gap-2">
+              <a
+                href="https://x.com/lumieretheindex"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="The Index on X (Twitter)"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+              >
+                <XIcon className="h-4 w-4" />
+              </a>
+              <a
+                href="https://vm.tiktok.com/ZS9A2fUMJVCGT-rygfl/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="The Index on TikTok"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+              >
+                <Music2 className="h-4 w-4" />
+              </a>
+            </div>
           </div>
 
           <nav aria-label="Explore">

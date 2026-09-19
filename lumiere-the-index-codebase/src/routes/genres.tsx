@@ -6,6 +6,7 @@ import { getGenreFilms, getGenres, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { FilmCardSkeleton } from "@/components/lumiere/Skeletons";
 import { PosterCard } from "@/components/lumiere/PosterCard";
+import { AdSlot, isAdSlotActive } from "@/components/lumiere/AdSlot";
 
 export const Route = createFileRoute("/genres")({
   head: () => ({
@@ -62,6 +63,15 @@ function GenresPage() {
 
   const isLoading = genresLoading || filmsLoading;
   const displayFilms = genreFilms;
+
+  // Future ad: genre-inline — ONE deliberately low-frequency slot between the
+  // first and second halves of a large shelf. Never "after every few titles".
+  // With advertising disabled (current state) this collapses to a single
+  // contiguous grid identical to today's render.
+  const genreAdActive = isAdSlotActive("genre-inline");
+  const splitShelf = genreAdActive && displayFilms.length > 16;
+  const firstGroup = splitShelf ? displayFilms.slice(0, 12) : displayFilms;
+  const secondGroup = splitShelf ? displayFilms.slice(12) : [];
 
   return (
     <Layout>
@@ -131,11 +141,23 @@ function GenresPage() {
                 ))}
               </div>
             ) : displayFilms.length > 0 ? (
-              <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                {displayFilms.map((film: RankedFilm) => (
-                  <PosterCard key={film.slug} film={film} width="100%" showRank />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {firstGroup.map((film: RankedFilm) => (
+                    <PosterCard key={film.slug} film={film} width="100%" showRank />
+                  ))}
+                </div>
+                {splitShelf && (
+                  <AdSlot placement="genre-inline" />
+                )}
+                {splitShelf && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {secondGroup.map((film: RankedFilm) => (
+                      <PosterCard key={film.slug} film={film} width="100%" showRank />
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="border-y border-foreground/10 bg-surface p-12 text-center text-sm text-muted-foreground">
                 No titles found for {selectedGenre.name} yet.

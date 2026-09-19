@@ -3,6 +3,7 @@ import { Layout } from "@/components/lumiere/Layout";
 import { RouteError } from "@/lib/route-error";
 import { Hero, TopTen, TvTopFive, PulseRow } from "@/components/lumiere/Hero";
 import { GenreSections } from "@/components/lumiere/GenreSections";
+import { AdSlot } from "@/components/lumiere/AdSlot";
 import { getTopFilms } from "@/lib/apiClient";
 
 export const Route = createFileRoute("/")({
@@ -53,8 +54,15 @@ function Home() {
     <Layout>
       <Hero />
       <TopTen />
+      {/* Future ad: home-after-top10 — after the primary ranking experience.
+          Never inside the hero, under the #1 title, or inside Top 10.
+          Renders nothing while advertising is disabled. */}
+      <AdSlot placement="home-after-top10" />
       <TvTopFive />
       <PulseRow />
+      {/* Future ad: home-secondary — far down the page between discovery
+          sections. Renders nothing while advertising is disabled. */}
+      <AdSlot placement="home-secondary" />
       <GenreSections />
     </Layout>
   );

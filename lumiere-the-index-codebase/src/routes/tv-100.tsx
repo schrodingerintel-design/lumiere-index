@@ -9,6 +9,10 @@ import { Movement } from "@/components/lumiere/Ranking";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 import { tenureLabel } from "@/lib/filmUtils";
 import { ShareCardButton } from "@/components/lumiere/ShareCardButton";
+import { AdSlot, isAdSlotActive } from "@/components/lumiere/AdSlot";
+
+/** Render-order row: a ranked series, or a future non-ranked ad separator. */
+type TvChartRow = { kind: "film"; film: RankedFilm } | { kind: "ad"; placement: string };
 
 export const Route = createFileRoute("/tv-100")({
   head: () => ({
@@ -140,6 +144,21 @@ function TV100() {
   const entries = films ?? [];
   const champion = entries.length > 0 ? entries[0] : null;
 
+  // RANKING INDEPENDENCE: ad rows are interleaved as non-ranked separators
+  // only — they never receive a TVDex score or TV-chart rank, and the ad
+  // system has no connection to the ranking engine. With advertising
+  // disabled (current state) the list is exactly as it is today.
+  const adsAfter10 = isAdSlotActive("tv100-after-10");
+  const adsAfter30 = isAdSlotActive("tv100-after-30");
+  const rows: TvChartRow[] = [];
+  if (!isLoading && !error) {
+    entries.forEach((f, i) => {
+      if (adsAfter10 && i === 10) rows.push({ kind: "ad", placement: "tv100-after-10" });
+      if (adsAfter30 && i === 30) rows.push({ kind: "ad", placement: "tv100-after-30" });
+      rows.push({ kind: "film", film: f });
+    });
+  }
+
   // The TV chart runs on its own TVDex scale: the #1 series anchors at 98.5
   // and every other entry scales proportionally within the chart — so the
   // page reads like a true standalone ranking rather than a slice of the
@@ -221,7 +240,17 @@ function TV100() {
             <ul>
               {isLoading
                 ? [...Array(20)].map((_, i) => <FilmRowSkeleton key={i} />)
-                : entries.map((f) => {
+                : rows.map((row) => {
+                    if (row.kind === "ad") {
+                      // Non-ranked separator: no rank number, no TVDex score,
+                      // no movement. Zero space while ads are disabled.
+                      return (
+                        <li key={row.placement}>
+                          <AdSlot placement={row.placement} />
+                        </li>
+                      );
+                    }
+                    const f = row.film;
                     const director =
                       f.director && f.director !== "Unknown" ? f.director : null;
                     return (

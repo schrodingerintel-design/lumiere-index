@@ -1,13 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import { getTopFilms } from "@/lib/apiClient";
+import { getTopFilms, type RankedFilm } from "@/lib/apiClient";
+import { AdSlot, isAdSlotActive } from "@/components/lumiere/AdSlot";
 import { isNewRelease, tenureLabel } from "@/lib/filmUtils";
 import { filmTrend } from "@/lib/trend";
 import { RouteError } from "@/lib/route-error";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
+
+/** Render-order row: a ranked film, or a future non-ranked ad separator. */
+type ChartRow = { kind: "film"; film: RankedFilm } | { kind: "ad"; placement: string };
 
 export const Route = createFileRoute("/top-100")({
   head: () => ({
@@ -40,6 +44,22 @@ function Top100() {
     queryFn: () => getTopFilms(100),
     staleTime: 5 * 60 * 1000,
   });
+
+  // RANKING INDEPENDENCE: rows below are a render-order concern only. Ad rows
+  // are interleaved as non-ranked separators — they never receive a rank
+  // number, never shift the numbering (ranks come from the API), and never
+  // touch the ranking engine. With advertising disabled (current state) no ad
+  // row exists and this list is byte-identical to a build without ads.
+  const adsAfter20 = isAdSlotActive("top100-after-20");
+  const adsAfter50 = isAdSlotActive("top100-after-50");
+  const rows: ChartRow[] = [];
+  if (!isLoading && !error) {
+    (films ?? []).forEach((f, i) => {
+      if (adsAfter20 && i === 20) rows.push({ kind: "ad", placement: "top100-after-20" });
+      if (adsAfter50 && i === 50) rows.push({ kind: "ad", placement: "top100-after-50" });
+      rows.push({ kind: "film", film: f });
+    });
+  }
 
   return (
     <Layout>
@@ -78,7 +98,18 @@ function Top100() {
           <ul>
             {isLoading
               ? [...Array(20)].map((_, i) => <FilmRowSkeleton key={i} />)
-              : films?.map((f) => {
+              : rows.map((row) => {
+                  if (row.kind === "ad") {
+                    // Ad separator — deliberately NOT a ranked row: no rank
+                    // number, no movement, no score, no poster, no title
+                    // typography. Occupies zero space while ads are disabled.
+                    return (
+                      <li key={row.placement}>
+                        <AdSlot placement={row.placement} />
+                      </li>
+                    );
+                  }
+                  const f = row.film;
                   const change = f.movement ?? null;
                   const director =
                     f.director && f.director !== "Unknown" ? f.director : null;

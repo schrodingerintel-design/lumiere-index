@@ -89,7 +89,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "What's capturing cultural attention in film and television, right now.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "The Index — by Lumière" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@lumieretheindex" },
+      { name: "twitter:creator", content: "@lumieretheindex" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },

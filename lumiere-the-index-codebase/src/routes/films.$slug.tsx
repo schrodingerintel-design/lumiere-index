@@ -35,6 +35,7 @@ import {
 import { RouteError } from "@/lib/route-error";
 import { Skeleton } from "@/components/lumiere/Skeletons";
 import { PosterCard } from "@/components/lumiere/PosterCard";
+import { AdSlot } from "@/components/lumiere/AdSlot";
 import { ShareCardButton } from "@/components/lumiere/ShareCardButton";
 import {
   Bookmark,
@@ -960,6 +961,13 @@ function FilmDetailView() {
           </div>
         </aside>
       </section>
+
+      {/* Future ad: title-secondary — after ALL primary title information
+          (header, Index/TVDex score, rank, history, sentiment, trailer,
+          facts, where-to-watch). Never over the backdrop, beside the title
+          or its score, over posters, or inside the trailer. Renders nothing
+          while advertising is disabled. */}
+      <AdSlot placement="title-secondary" />
 
       {/* More Like This — full width shelf */}
       <section className="mx-auto max-w-6xl px-4 pb-14 lg:px-6">
