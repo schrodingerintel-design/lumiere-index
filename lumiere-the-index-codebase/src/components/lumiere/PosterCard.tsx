@@ -38,6 +38,11 @@ export function PosterCard({
 
   const posterUrl = film.poster_url || tmdbPosterUrl(tmdb?.results?.[0]?.poster_path, "w342");
 
+  // Rank only exists on an official chart (1–100). rank 0 / chart null ⇒ the
+  // title is catalogue-only — render "Not currently ranked" semantics, never
+  // a fake 0.0 score or a false "New" chart badge.
+  const isRanked = (film.rank ?? 0) > 0;
+
   return (
     <Link
       to="/films/$slug"
@@ -62,18 +67,20 @@ export function PosterCard({
             {film.title}
           </div>
         )}
-        {/* Index Score — ivory, quiet, on the artwork */}
+        {/* Index Score — ivory, quiet, on the artwork. Unranked catalogue
+            titles show "—": the score only exists once measured onto the
+            official charts. */}
         <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
-          {film.score?.toFixed(1)}
+          {isRanked ? film.score?.toFixed(1) : "—"}
         </div>
-        {/* NEW badge takes the corner; the rank badge yields to it */}
-        {film.prev_rank == null ? (
+        {/* NEW badge takes the corner; the rank badge yields to it. Unranked
+            titles get neither — they are simply not currently ranked. */}
+        {!isRanked ? null : film.prev_rank == null ? (
           <div className="absolute left-1.5 top-1.5 bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none text-ink">
             New
           </div>
         ) : (
-          showRank &&
-          film.rank > 0 && (
+          showRank && (
             <div className="absolute left-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-cream/90">
               {String(film.rank).padStart(2, "0")}
             </div>
@@ -83,8 +90,13 @@ export function PosterCard({
 
       <div className="mt-2">
         <div className="truncate text-sm font-medium leading-snug">{film.title}</div>
-        <div className="truncate font-mono text-[11px] tabular text-muted-foreground">
-          {film.year ?? ""}
+        <div
+          className={`truncate font-mono text-[11px] tabular ${
+            isRanked ? "text-muted-foreground" : "text-muted-foreground/70"
+          }`}
+          title={isRanked ? undefined : "Not currently ranked"}
+        >
+          {isRanked ? (film.year ?? "") : [film.year, "Not currently ranked"].filter(Boolean).join(" · ")}
         </div>
       </div>
     </Link>

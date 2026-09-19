@@ -13,7 +13,8 @@ export const Route = createFileRoute("/genres")({
       { title: "Browse by Genre — The Index" },
       {
         name: "description",
-        content: "Explore chart titles grouped by genre — every collection only ever contains films that genuinely belong to it.",
+        content:
+          "Explore the full catalogue grouped by genre — ranked or not. Genre membership is independent of chart ranking.",
       },
     ],
   }),
@@ -73,8 +74,9 @@ function GenresPage() {
             Genres
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            Chart titles grouped by their canonical genre — every collection only ever contains
-            films that genuinely belong to it.
+            Every title in the catalogue, grouped by its canonical genre — ranked or not. Chart
+            membership and catalogue membership are independent: a title needs conversation signals
+            to rank, not to belong.
           </p>
 
           {/* Genre selector — quiet pills, red marks the active shelf */}
@@ -113,12 +115,12 @@ function GenresPage() {
       <section className="mt-8 px-4 pb-16 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between border-b border-foreground/10 pb-3">
-            <h2 className="font-display text-2xl font-medium">
-              Top {selectedGenre.name} titles
-            </h2>
-            <span className="font-mono text-xs tabular text-muted-foreground">
-              {displayFilms.length} {displayFilms.length === 1 ? "title" : "titles"} · by Index score
-            </span>
+          <h2 className="font-display text-2xl font-medium">
+            {selectedGenre.name} in the catalogue
+          </h2>
+          <span className="font-mono text-xs tabular text-muted-foreground">
+            {displayFilms.length} {displayFilms.length === 1 ? "title" : "titles"} · ranked titles first
+          </span>
           </div>
 
           <div className="mt-6">
