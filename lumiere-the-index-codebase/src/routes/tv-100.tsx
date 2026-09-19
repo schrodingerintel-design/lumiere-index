@@ -10,38 +10,38 @@ import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 import { tenureLabel } from "@/lib/filmUtils";
 import { ShareCardButton } from "@/components/lumiere/ShareCardButton";
 
-export const Route = createFileRoute("/top-50-tv")({
+export const Route = createFileRoute("/tv-100")({
   head: () => ({
     meta: [
-      { title: "Top 50 TV Shows — The Index" },
+      { title: "TV 100 — The Index" },
       {
         name: "description",
         content:
-          "The live Top 50 TV Shows — the series capturing the most cultural attention right now, refreshed every 15 minutes.",
+          "The official TV 100 — the 100 television series generating the strongest measured cultural momentum, refreshed every 15 minutes.",
       },
-      { property: "og:title", content: "Top 50 TV Shows — The Index" },
+      { property: "og:title", content: "TV 100 — The Index" },
       {
         property: "og:description",
         content:
-          "The 50 TV shows capturing the most cultural attention right now, re-ranked every 15 minutes.",
+          "The 100 television series generating the strongest measured cultural momentum right now, re-ranked every 15 minutes.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Top 50 TV Shows — The Index" },
+      { name: "twitter:title", content: "TV 100 — The Index" },
       {
         name: "twitter:description",
         content:
-          "The 50 TV shows capturing the most cultural attention right now, re-ranked every 15 minutes.",
+          "The 100 television series generating the strongest measured cultural momentum right now, re-ranked every 15 minutes.",
       },
     ],
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({
-      queryKey: ["films", "top50tv", 50],
-      queryFn: () => getTopFilms(50, 0, "TV_SHOW"),
+      queryKey: ["films", "tv100", 100],
+      queryFn: () => getTopFilms(100, 0, "TV_100"),
     });
   },
-  component: TopFiftyTV,
+  component: TV100,
   errorComponent: RouteError,
 });
 
@@ -70,7 +70,7 @@ function ChampionSeries({ film }: { film: RankedFilm }) {
       <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-[1fr_auto]">
         <div className="min-w-0">
           <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
-            #1 Series Right Now
+            #1 TV 100
           </div>
           <h2 className="mt-2 truncate font-display text-4xl font-medium leading-tight sm:text-5xl">
             <Link
@@ -111,12 +111,13 @@ function ChampionSeries({ film }: { film: RankedFilm }) {
   );
 }
 
-function TopFiftyTV() {
-  // TV-only slice of the live computation layer — refreshed on the same
-  // 15-minute cadence the backend recomputes rankings.
+function TV100() {
+  // The official TV 100 — the live TV chart on its own 1–100 numbering.
+  // The API serves this chart directly (chart=TV_100), so rows carry their
+  // real TV-chart positions; no client-side renumbering, no global ranks.
   const { data: films, isLoading, error } = useQuery({
-    queryKey: ["films", "top50tv", 50],
-    queryFn: () => getTopFilms(50, 0, "TV_SHOW"),
+    queryKey: ["films", "tv100", 100],
+    queryFn: () => getTopFilms(100, 0, "TV_100"),
     staleTime: 5 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
@@ -137,14 +138,12 @@ function TopFiftyTV() {
     : null;
 
   const entries = films ?? [];
-  const tvChartRank = tvChartRankFactory(entries);
   const champion = entries.length > 0 ? entries[0] : null;
 
-  // The TV chart is its own ranking, so its scores are its own scale too:
-  // the #1 series anchors the chart at 98.5 and every other entry scales
-  // proportionally to it. The API's global all-content scores (which run
-  // against the whole catalog) would otherwise show dull mismatched numbers
-  // ("why is #1 an 18.0?") on a chart titled Top 50.
+  // The TV chart runs on its own TVDex scale: the #1 series anchors at 98.5
+  // and every other entry scales proportionally within the chart — so the
+  // page reads like a true standalone ranking rather than a slice of the
+  // global index.
   const tvTop = entries[0]?.score ?? 0;
   const tvScore = (f: RankedFilm): number =>
     tvTop > 0 ? Math.round(((f.score ?? 0) / tvTop) * 985) / 10 : 0;
@@ -155,14 +154,14 @@ function TopFiftyTV() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
             <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
-              The Index · Television · Live
+              The Index · TV 100 · Live
             </div>
             <h1 className="mt-2 font-display text-4xl font-medium leading-tight sm:text-5xl">
-              Top 50 TV Shows
+              TV 100
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              The 50 series capturing the most cultural attention right now,
-              re-ranked every 15 minutes.
+              The 100 television series generating the strongest measured
+              cultural momentum right now, re-ranked every 15 minutes.
               {snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
             </p>
           </div>
@@ -178,8 +177,8 @@ function TopFiftyTV() {
             <ShareCardButton
               variant="chart"
               card={{
-                title: "Top 50 TV Shows",
-                subtitle: "The series capturing the most cultural attention right now.",
+                title: "TV 100",
+                subtitle: "The series generating the strongest cultural momentum right now.",
                 films: entries.slice(0, 5).map((f) => ({
                   ...f,
                   score: tvScore(f),
@@ -207,7 +206,7 @@ function TopFiftyTV() {
         <div className="mx-auto max-w-6xl">
           {error && (
             <div className="border-y border-foreground/10 bg-surface p-8 text-center text-sm text-muted-foreground">
-              Unable to load the Top 50 TV Shows right now. Please try again later.
+              Unable to load the TV 100 right now. Please try again later.
             </div>
           )}
           <div className="border-t-2 border-foreground/20">
@@ -236,7 +235,7 @@ function TopFiftyTV() {
                         >
                           <div className="flex flex-col items-start gap-0.5">
                             <span className="index-score text-2xl font-semibold sm:text-xl">
-                              {String(tvChartRank(f)).padStart(2, "0")}
+                              {String(f.rank).padStart(2, "0")}
                             </span>
                             <span className="sm:hidden">
                               <Movement film={f} />
@@ -279,7 +278,7 @@ function TopFiftyTV() {
 
           {!isLoading && !error && entries.length === 0 && (
             <div className="p-10 text-center text-sm text-muted-foreground">
-              The Top 50 TV Shows is being prepared. Rankings appear after the next refresh cycle.
+              The TV 100 is being prepared. Rankings appear after the next refresh cycle.
             </div>
           )}
         </div>
@@ -292,12 +291,4 @@ function TopFiftyTV() {
 function filmYear(f: RankedFilm): number | null {
   if (f.first_air_date) return new Date(f.first_air_date).getFullYear();
   return f.year ?? null;
-}
-
-/** The TV chart is its own ranking — position in this list (1–50), not the
- *  global all-content rank the API carries. Index-of-lookup keeps this in
- *  sync with map order regardless of sort. */
-function tvChartRankFactory(list: RankedFilm[]) {
-  const pos = new Map(list.map((f, i) => [f.slug, i + 1]));
-  return (f: RankedFilm): number => pos.get(f.slug) ?? f.rank;
 }

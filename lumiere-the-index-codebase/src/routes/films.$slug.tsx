@@ -501,8 +501,14 @@ function FilmDetailView() {
 
   // Chart tenure in days — the chart refreshes every 15 minutes, so days is
   // the honest unit. A NEW entry (no previous snapshot) is on day 1.
+  // Chart law: a public rank only exists between #1 and #100 on the title's
+  // OWN chart. rank 0 ⇒ "Not currently ranked" — never an internal position.
+  const isRanked = (film.rank ?? 0) > 0;
+  const chartLabel = film.chart_type === "TV_100" ? "TV 100" : "Movie 100";
   const daysOnChart = film.days_on_chart ?? 1;
   const daysAtOne = film.days_at_one ?? 0;
+  const top10Days = (film as typeof film & { top10_days?: number | null }).top10_days ?? null;
+  const longestStreak = (film as typeof film & { longest_streak_at_one?: number | null }).longest_streak_at_one ?? null;
   const peakRank = film.peak_rank ?? film.rank;
   const movement = film.movement ?? 0;
   const day = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
@@ -563,17 +569,25 @@ function FilmDetailView() {
                 <span className="rounded-sm border border-foreground/15 bg-foreground/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                   {isTvShow ? "TV Show" : "Movie"}
                 </span>
-                <span className="rounded-sm bg-primary px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">
-                  Rank #{film.rank || "—"}
-                </span>
-                {movement !== 0 && (
-                  <span
-                    className={`flex items-center gap-1 font-mono text-[11px] font-semibold ${
-                      movement > 0 ? "text-up" : "text-down"
-                    }`}
-                  >
-                    {movement > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                    {Math.abs(movement)} {movement > 0 ? "up" : "down"}
+                {isRanked ? (
+                  <>
+                    <span className="rounded-sm bg-primary px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">
+                      #{film.rank} {chartLabel}
+                    </span>
+                    {movement !== 0 && (
+                      <span
+                        className={`flex items-center gap-1 font-mono text-[11px] font-semibold ${
+                          movement > 0 ? "text-up" : "text-down"
+                        }`}
+                      >
+                        {movement > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                        {Math.abs(movement)} {movement > 0 ? "up" : "down"}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="rounded-sm border border-foreground/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Not currently ranked
                   </span>
                 )}
               </div>
@@ -638,20 +652,34 @@ function FilmDetailView() {
                   </div>
                 </div>
 
-                {/* Chart stats */}
+                {/* Chart stats — the title's Index résumé, chart-scoped */}
                 <div className="space-y-1.5 text-xs">
-                  <div className="text-muted-foreground">
-                    {movement > 0 && <>up {movement} place{movement === 1 ? "" : "s"} this week</>}
-                    {movement < 0 && <>down {Math.abs(movement)} place{Math.abs(movement) === 1 ? "" : "s"}</>}
-                    {movement === 0 && <span title="Held its rank">held its position</span>}
-                  </div>
-                  <div className="text-muted-foreground">
-                    <span className="font-medium text-foreground">{day(daysOnChart)}</span> on chart
-                  </div>
-                  {peakRank === 1 && (
-                    <div className="text-primary">
-                      Peak <span className="font-semibold">#1</span>
-                      {daysAtOne > 0 && <span className="text-muted-foreground"> · {day(daysAtOne)} at #1</span>}
+                  {isRanked ? (
+                    <>
+                      <div className="text-muted-foreground">
+                        {movement > 0 && <>up {movement} place{movement === 1 ? "" : "s"} this week</>}
+                        {movement < 0 && <>down {Math.abs(movement)} place{Math.abs(movement) === 1 ? "" : "s"}</>}
+                        {movement === 0 && <span title="Held its rank">held its position</span>}
+                      </div>
+                      <div className="text-muted-foreground">
+                        <span className="font-medium text-foreground">{day(daysOnChart)}</span> on chart
+                      </div>
+                      {peakRank === 1 && (
+                        <div className="text-primary">
+                          Peak <span className="font-semibold">#1</span>
+                          {daysAtOne > 0 && <span className="text-muted-foreground"> · {day(daysAtOne)} at #1</span>}
+                          {longestStreak != null && longestStreak > 0 && (
+                            <span className="text-muted-foreground"> · best run {day(longestStreak)}</span>
+                          )}
+                        </div>
+                      )}
+                      {top10Days != null && top10Days > 0 && (
+                        <div className="text-muted-foreground">{day(top10Days)} in the Top 10</div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground">
+                      Not currently ranked on the {chartLabel}
                     </div>
                   )}
                 </div>
@@ -702,7 +730,7 @@ function FilmDetailView() {
                 Index history
               </div>
               <span className="font-mono text-[10px] text-muted-foreground">
-                Rank #{film.rank || "—"} today · peak #{peakRank}
+                {isRanked ? `#${film.rank} ${chartLabel} today · peak #${peakRank}` : "Not currently ranked"}
               </span>
             </div>
             <div className="mt-4">

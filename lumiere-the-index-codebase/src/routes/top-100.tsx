@@ -12,11 +12,11 @@ import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 export const Route = createFileRoute("/top-100")({
   head: () => ({
     meta: [
-      { title: "Top 100 — The Index" },
+      { title: "Movie 100 — The Index" },
       {
         name: "description",
         content:
-          "The 100 films currently generating the strongest cultural momentum.",
+          "The official Movie 100 — the 100 films currently generating the strongest measured cultural momentum.",
       },
     ],
   }),
@@ -45,16 +45,18 @@ function Top100() {
     <Layout>
       <section className="px-4 pt-6 lg:px-6">
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          The Index · Daily Ranking ·{" "}
+          The Index · Movie 100 · Daily ·{" "}
           {new Date().toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
             year: "numeric",
           })}
         </div>
-        <h1 className="mt-2 font-display text-5xl lg:text-6xl">The Top 100</h1>
+        <h1 className="mt-2 font-display text-5xl lg:text-6xl">Movie 100</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          The 100 films currently generating the strongest cultural momentum.
+          The 100 films currently generating the strongest measured cultural
+          momentum. A public rank only exists between #1 and #100 — titles
+          beyond the chart are simply not currently ranked.
         </p>
       </section>
 

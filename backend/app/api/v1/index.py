@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import DailyIndexSnapshot, Film, IndexDebut, WeeklyIndexSnapshot
+from app.services.index_publication import MOVIE_100, normalize_chart
 from app.schemas import (
     DailyIndexOut,
     IndexEntryOut,
@@ -111,19 +112,29 @@ def _weekly_entry_out(film: Film, row: WeeklyIndexSnapshot) -> WeeklyEntryOut:
 @cache_response(expire_seconds=60)
 def daily_index(
     snapshot_date: date | None = Query(None, alias="date", description="Historical snapshot date (YYYY-MM-DD). Defaults to the latest published."),
+    chart: str | None = Query(None, description="Official chart: MOVIE_100 (default) or TV_100."),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    """The official Daily Index — latest published Top 100 (or a historical date)."""
+    """One official daily chart — latest published Top 100 (or a historical date)."""
+    chart_id = normalize_chart(chart)
+    if chart_id is None:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(400, "Unknown chart — use MOVIE_100 or TV_100")
+
     if snapshot_date is not None:
         target = snapshot_date
     else:
-        target = db.scalar(select(func.max(DailyIndexSnapshot.snapshot_date)))
+        target = db.scalar(
+            select(func.max(DailyIndexSnapshot.snapshot_date))
+            .where(DailyIndexSnapshot.chart_type == chart_id)
+        )
         if target is None:
             return DailyIndexOut(
                 meta=IndexMetaOut(
                     snapshot_date=datetime.now(timezone.utc).date(),
+                    chart_type=chart_id,
                     published_at=None,
                     entry_count=0,
                 ),
@@ -132,7 +143,10 @@ def daily_index(
 
     q = (
         db.query(DailyIndexSnapshot)
-        .filter(DailyIndexSnapshot.snapshot_date == target)
+        .filter(
+            DailyIndexSnapshot.snapshot_date == target,
+            DailyIndexSnapshot.chart_type == chart_id,
+        )
         .order_by(DailyIndexSnapshot.rank.asc())
     )
     total = q.count()
@@ -143,6 +157,7 @@ def daily_index(
     return DailyIndexOut(
         meta=IndexMetaOut(
             snapshot_date=target,
+            chart_type=chart_id,
             published_at=published_at,
             entry_count=total,
         ),
@@ -154,25 +169,37 @@ def daily_index(
 @cache_response(expire_seconds=60)
 def weekly_index(
     week_start: date | None = Query(None, description="Historical week start (Monday, YYYY-MM-DD). Defaults to the latest published week."),
+    chart: str | None = Query(None, description="Official chart: MOVIE_100 (default) or TV_100."),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    """The official Weekly Index — latest published week (or a historical week)."""
+    """One official Weekly chart — latest published week (or a historical week)."""
+    chart_id = normalize_chart(chart)
+    if chart_id is None:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(400, "Unknown chart — use MOVIE_100 or TV_100")
+
     if week_start is not None:
         target = week_start
     else:
-        target = db.scalar(select(func.max(WeeklyIndexSnapshot.week_start)))
+        target = db.scalar(
+            select(func.max(WeeklyIndexSnapshot.week_start))
+            .where(WeeklyIndexSnapshot.chart_type == chart_id)
+        )
         if target is None:
             monday, sunday = week_bounds(datetime.now(timezone.utc).date())
             return WeeklyIndexOut(
-                meta=WeeklyMetaOut(week_start=monday, week_end=sunday, published_at=None, entry_count=0),
+                meta=WeeklyMetaOut(week_start=monday, week_end=sunday, chart_type=chart_id, published_at=None, entry_count=0),
                 entries=[],
             )
 
     q = (
         db.query(WeeklyIndexSnapshot)
-        .filter(WeeklyIndexSnapshot.week_start == target)
+        .filter(
+            WeeklyIndexSnapshot.week_start == target,
+            WeeklyIndexSnapshot.chart_type == chart_id,
+        )
         .order_by(WeeklyIndexSnapshot.rank.asc())
     )
     total = q.count()
@@ -182,7 +209,7 @@ def weekly_index(
     entries = [_weekly_entry_out(films[r.film_id], r) for r in rows if r.film_id in films]
     week_end = rows[0].week_end if rows else target + timedelta(days=6)
     return WeeklyIndexOut(
-        meta=WeeklyMetaOut(week_start=target, week_end=week_end, published_at=published_at, entry_count=total),
+        meta=WeeklyMetaOut(week_start=target, week_end=week_end, chart_type=chart_id, published_at=published_at, entry_count=total),
         entries=entries,
     )
 
@@ -191,13 +218,18 @@ def weekly_index(
 @cache_response(expire_seconds=60)
 def index_movers(
     limit: int = Query(10, ge=1, le=50),
+    chart: str | None = Query(None, description="Official chart: MOVIE_100 (default) or TV_100."),
     db: Session = Depends(get_db),
 ):
-    """Biggest Movers — largest rank changes between published Daily Indexes.
-
-    Movement is rank-position based; score delta is reported separately.
+    """Biggest Movers — largest rank changes between consecutive publications
+    of ONE chart.  Movement is rank-position based, never computed across
+    chart types; score delta is reported separately.
     """
-    result = biggest_movers(db, limit=limit)
+    chart_id = normalize_chart(chart)
+    if chart_id is None:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(400, "Unknown chart — use MOVIE_100 or TV_100")
+    result = biggest_movers(db, limit=limit, chart_type=chart_id)
 
     # Films for content_type/original_title — movers stay rank-based products.
     film_ids = [m.film_id for side in (result["gainers"], result["decliners"]) for m in side]
@@ -227,20 +259,32 @@ def index_movers(
 def index_new_entries(
     limit: int = Query(20, ge=1, le=100),
     days: int | None = Query(None, ge=1, le=365, description="Restrict to debuts within the last N days."),
+    chart: str | None = Query(None, description="Official chart: MOVIE_100 (default) or TV_100."),
     db: Session = Depends(get_db),
 ):
-    """New Entries — films making their first-ever appearance on The Index.
+    """New Entries — titles making their first-ever appearance on ONE chart.
 
-    A film debuts exactly once; it never repeats as a New Entry.
+    A title debuts exactly once per chart; it never repeats as NEW there.
+    Release date plays no part in the definition.
     """
-    debut_rows = new_entries(db, limit=limit, days=days)
-    # Current ranks come from the latest published daily (may be absent).
-    latest_date = db.scalar(select(func.max(DailyIndexSnapshot.snapshot_date)))
+    chart_id = normalize_chart(chart)
+    if chart_id is None:
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(400, "Unknown chart — use MOVIE_100 or TV_100")
+    debut_rows = new_entries(db, limit=limit, days=days, chart_type=chart_id)
+    # Current ranks come from the latest published daily for THIS chart.
+    latest_date = db.scalar(
+        select(func.max(DailyIndexSnapshot.snapshot_date))
+        .where(DailyIndexSnapshot.chart_type == chart_id)
+    )
     current_ranks: dict[int, int] = {}
     if latest_date is not None:
         for fid, rank in db.query(
             DailyIndexSnapshot.film_id, DailyIndexSnapshot.rank
-        ).filter(DailyIndexSnapshot.snapshot_date == latest_date).all():
+        ).filter(
+            DailyIndexSnapshot.snapshot_date == latest_date,
+            DailyIndexSnapshot.chart_type == chart_id,
+        ).all():
             current_ranks[fid] = rank
 
     out: list[NewEntryOut] = []

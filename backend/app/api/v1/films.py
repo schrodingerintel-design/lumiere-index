@@ -9,6 +9,7 @@ from app.db import get_db
 from app.models import Film, Ranking, Mention, DailyScore, CountryScore, Source, YouTubeSignal, IMDbEnrichment
 from app.models.film import normalize_content_type
 from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
+from app.services.index_publication import MOVIE_100, TV_100, normalize_chart
 from app.schemas import (
     RankedFilm,
     FilmDetail,
@@ -43,9 +44,19 @@ def _latest_snapshot(db: Session) -> datetime | None:
     return db.scalar(select(func.max(Ranking.snapshot_at)))
 
 
-def _days_on_chart_map(db: Session, film_ids: list[int]) -> dict[int, int]:
+def _chart_for_content_type(content_type: str | None) -> str:
+    """The official chart a title belongs to — rank is ALWAYS contextual.
+    Movies live on Movie 100, TV shows on TV 100.  NULL legacy rows coerce
+    to MOVIE exactly like the ranking engine."""
+    ct = (content_type or "MOVIE").upper()
+    return TV_100 if ct == "TV_SHOW" else MOVIE_100
+
+
+def _days_on_chart_map(
+    db: Session, film_ids: list[int], chart_type: str | None = None
+) -> dict[int, int]:
     """Days on chart per film — calendar days since the title's FIRST
-    appearance on the continuous 15-minute chart (min snapshot_at).
+    appearance on the given chart (min snapshot_at).
 
     Computed at read time from the snapshot history, so the number stays
     truthful and self-heals instead of carrying a counter. Titles never
@@ -56,12 +67,14 @@ def _days_on_chart_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     if not film_ids:
         return {}
     now = datetime.now(timezone.utc)
-    first_seen: dict[int, datetime] = {
-        fid: ts
-        for fid, ts in db.query(Ranking.film_id, func.min(Ranking.snapshot_at))
+    q = (
+        db.query(Ranking.film_id, func.min(Ranking.snapshot_at))
         .filter(Ranking.film_id.in_(film_ids))
-        .group_by(Ranking.film_id)
-        .all()
+    )
+    if chart_type is not None:
+        q = q.filter(Ranking.chart_type == chart_type)
+    first_seen: dict[int, datetime] = {
+        fid: ts for fid, ts in q.group_by(Ranking.film_id).all()
     }
     out: dict[int, int] = {}
     for fid in film_ids:
@@ -79,9 +92,11 @@ def _days_on_chart_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     return out
 
 
-def _days_at_one_map(db: Session, film_ids: list[int]) -> dict[int, int]:
+def _days_at_one_map(
+    db: Session, film_ids: list[int], chart_type: str | None = None
+) -> dict[int, int]:
     """Days at #1 per film — the number of DISTINCT calendar days on which
-    the title held rank 1 in any snapshot of the continuous chart.
+    the title held rank 1 in any snapshot of the given chart.
 
     This is the historical dominance measure: a title that entered yesterday
     and has been #1 ever since reports 2, while a title ranked #7 for a
@@ -90,15 +105,70 @@ def _days_at_one_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     """
     if not film_ids:
         return {}
-    rows = (
+    q = (
         db.query(Ranking.film_id, func.date(Ranking.snapshot_at))
         .filter(Ranking.film_id.in_(film_ids), Ranking.rank == 1)
-        .group_by(Ranking.film_id, func.date(Ranking.snapshot_at))
-        .all()
     )
+    if chart_type is not None:
+        q = q.filter(Ranking.chart_type == chart_type)
+    rows = q.group_by(Ranking.film_id, func.date(Ranking.snapshot_at)).all()
     out: dict[int, int] = {fid: 0 for fid in film_ids}
     for fid, _day in rows:
         out[fid] += 1
+    return out
+
+
+def _top10_days_map(
+    db: Session, film_ids: list[int], chart_type: str | None = None
+) -> dict[int, int]:
+    """Distinct calendar days the title spent inside the Top 10 of one chart."""
+    if not film_ids:
+        return {}
+    q = (
+        db.query(Ranking.film_id, func.date(Ranking.snapshot_at))
+        .filter(Ranking.film_id.in_(film_ids), Ranking.rank <= 10)
+    )
+    if chart_type is not None:
+        q = q.filter(Ranking.chart_type == chart_type)
+    rows = q.group_by(Ranking.film_id, func.date(Ranking.snapshot_at)).all()
+    out: dict[int, int] = {fid: 0 for fid in film_ids}
+    for fid, _day in rows:
+        out[fid] += 1
+    return out
+
+
+def _longest_streak_at_one_map(
+    db: Session, film_ids: list[int], chart_type: str | None = None
+) -> dict[int, int]:
+    """Longest consecutive run of calendar days at #1 within one chart.
+
+    Derived from the distinct #1 calendar days — a streak continues while
+    each consecutive day appears; any gap ends it.  Derived from snapshots,
+    never carried as a mutable counter."""
+    if not film_ids:
+        return {}
+    q = (
+        db.query(Ranking.film_id, func.date(Ranking.snapshot_at))
+        .filter(Ranking.film_id.in_(film_ids), Ranking.rank == 1)
+    )
+    if chart_type is not None:
+        q = q.filter(Ranking.chart_type == chart_type)
+    days_by_film: dict[int, set[date]] = {}
+    for fid, day in q.distinct().all():
+        d = day if isinstance(day, date) else datetime.strptime(str(day), "%Y-%m-%d").date()
+        days_by_film.setdefault(fid, set()).add(d)
+    out: dict[int, int] = {fid: 0 for fid in film_ids}
+    for fid, days in days_by_film.items():
+        best = 0
+        run = 0
+        for day in sorted(days):
+            if run and (day - _prev).days == 1:
+                run += 1
+            else:
+                run = 1
+            best = max(best, run)
+            _prev = day
+        out[fid] = best
     return out
 
 
@@ -107,13 +177,19 @@ def _ranked_query(
     snapshot: datetime,
     genre: str | None = None,
     content_type: str | None = None,
+    chart_type: str | None = None,
 ):
+    """Rows of one continuous snapshot, optionally scoped to one official
+    chart and/or a content type.  Chart scope and content type agree by
+    construction (a chart only contains its own entity type)."""
     q = (
         db.query(Film, Ranking)
         .join(Ranking, Ranking.film_id == Film.id)
         .filter(Ranking.snapshot_at == snapshot)
         .order_by(Ranking.rank.asc())
     )
+    if chart_type is not None:
+        q = q.filter(Ranking.chart_type == chart_type)
     if genre:
         q = q.filter(func.lower(Film.genre_tag) == genre.strip().lower())
     ct = normalize_content_type(content_type) if content_type else None
@@ -133,7 +209,8 @@ def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
         gradient_to=film.gradient_to, release_date=film.release_date,
         first_air_date=film.first_air_date,
         genre_tag=film.genre_tag,
-        rank=r.rank, score=r.score, prev_rank=r.prev_rank,
+        rank=r.rank, score=r.score, chart_type=r.chart_type,
+        prev_rank=r.prev_rank,
         movement=r.movement, peak_rank=r.peak_rank, weeks_on_chart=r.weeks_on_chart,
         ca_score=r.ca_score, momentum_score=r.momentum_score,
         recency_score=r.recency_score, ae_score=r.ae_score, cp_score=r.cp_score,
@@ -179,16 +256,29 @@ def top_films(
     limit: int = Query(10, ge=1, le=200),
     offset: int = Query(0, ge=0),
     genre: str | None = Query(None, description="Filter to canonical genre_tag (case-insensitive)."),
-    content_type: str | None = Query(None, description="Filter by MOVIE or TV_SHOW (case-insensitive)."),
+    chart: str | None = Query(None, description="Official chart: MOVIE_100 (default) or TV_100."),
+    content_type: str | None = Query(None, description="Legacy alias for chart selection (MOVIE/TV_SHOW)."),
     db: Session = Depends(get_db),
 ):
+    """A slice of an official chart (Movie 100 / TV 100).
+
+    Ranks are ALWAYS chart-scoped: a TV show's rank only exists on TV 100,
+    a movie's only on Movie 100.  The continuous computation keeps at most
+    100 positions per chart, so no rank beyond #100 can ever surface here.
+    """
+    chart_id = normalize_chart(chart)
+    if chart_id is None and content_type:
+        chart_id = _chart_for_content_type(normalize_content_type(content_type))
+    if chart_id is None:
+        raise HTTPException(400, "Unknown chart — use MOVIE_100 or TV_100")
+
     snap = _latest_snapshot(db)
     if not snap:
         return []
-    rows = _ranked_query(db, snap, genre=genre, content_type=content_type).offset(offset).limit(limit).all()
+    rows = _ranked_query(db, snap, genre=genre, chart_type=chart_id).offset(offset).limit(limit).all()
     mentions = _mentions_map(db, [f.id for f, _ in rows])
-    days = _days_on_chart_map(db, [f.id for f, _ in rows])
-    at_one = _days_at_one_map(db, [f.id for f, _ in rows])
+    days = _days_on_chart_map(db, [f.id for f, _ in rows], chart_type=chart_id)
+    at_one = _days_at_one_map(db, [f.id for f, _ in rows], chart_type=chart_id)
     return _with_mentions(rows, mentions, days, at_one)
 
 
@@ -207,7 +297,7 @@ def new_releases(
         return []
     min_year = datetime.now(timezone.utc).year - year_window
     rows = (
-        _ranked_query(db, snap, genre=genre)
+        _ranked_query(db, snap, genre=genre, chart_type=MOVIE_100)
         .filter(Film.year.isnot(None), Film.year >= min_year)
         .order_by(Ranking.score.desc())
         .offset(offset)
@@ -323,24 +413,27 @@ def new_entries(
         .filter(func.lower(Film.genre_tag) == genre.strip().lower() if genre else True)
         .all()
     )
+
+    def _own_chart_rank(f: Film) -> Ranking | None:
+        r = db.scalar(
+            select(Ranking).where(
+                Ranking.film_id == f.id,
+                Ranking.snapshot_at == snap,
+                Ranking.chart_type == _chart_for_content_type(f.content_type),
+            )
+        )
+        return r
     recent = [f for f in films if f.air_date is not None and f.air_date <= today]
     upcoming = [f for f in films if f.air_date is not None and f.air_date > today]
     recent.sort(key=lambda f: (f.air_date or today), reverse=True)
     upcoming.sort(key=lambda f: (f.air_date or today))
     ordered = (recent + upcoming)[offset : offset + limit]
 
-    rankings = {
-        r.film_id: r
-        for r in db.query(Ranking).filter(
-            Ranking.film_id.in_([f.id for f in ordered]),
-            Ranking.snapshot_at == snap,
-        ).all()
-    }
     mentions = _mentions_map(db, [f.id for f in ordered])
 
     result = []
     for f in ordered:
-        r = rankings.get(f.id)
+        r = _own_chart_rank(f)
         if r:
             item = _to_ranked(f, r).model_copy(update={"mentions_total": mentions.get(f.id, 0)})
         else:
@@ -395,13 +488,22 @@ def search_films(
             ).all()
         }
 
+    def _rank_on_own_chart(f) -> Ranking | None:
+        """The title's rank on its OWN chart only — a TV show must never
+        surface a movie-chart position and vice versa."""
+        r = rankings.get(f.id)
+        if r is None:
+            return None
+        expected = _chart_for_content_type(f.content_type)
+        return r if r.chart_type == expected else None
+
     # Ranked titles first (canonical chart data), then catalog-only titles —
-    # upcoming releases and off-chart films must still be findable: a search
+    # upcoming releases and off-chart titles must still be findable: a search
     # that silently drops most of the catalog breaks compare, watchlists, and
-    # deep links. Unranked films carry rank 0 / score 0 like the new-releases
-    # endpoint's upcoming section.
-    ranked = [(f, rankings[f.id]) for f in films if f.id in rankings]
-    unranked = [f for f in films if f.id not in rankings]
+    # deep links. Unranked titles carry rank 0 / score 0 — the client renders
+    # "Not currently ranked", never an internal candidate rank.
+    ranked = [(f, _rank_on_own_chart(f)) for f in films if _rank_on_own_chart(f) is not None]
+    unranked = [f for f in films if _rank_on_own_chart(f) is None]
     mentions = _mentions_map(db, film_ids)
     out = _with_mentions(ranked, mentions) if ranked else []
     for f in unranked:
@@ -507,12 +609,19 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
     if not film:
         raise HTTPException(404, "Film not found")
     snap = _latest_snapshot(db)
+    # A title's rank only exists on its OWN chart.  A TV show is #N on TV 100
+    # — it never simultaneously carries a global movie-chart position.
+    chart_id = _chart_for_content_type(film.content_type)
     r = db.scalar(
-        select(Ranking).where(Ranking.film_id == film.id, Ranking.snapshot_at == snap)
+        select(Ranking).where(
+            Ranking.film_id == film.id,
+            Ranking.snapshot_at == snap,
+            Ranking.chart_type == chart_id,
+        )
     ) if snap else None
     mentions_total = _mentions_map(db, [film.id]).get(film.id, 0)
-    days_on_chart = _days_on_chart_map(db, [film.id]).get(film.id)
-    days_at_one = _days_at_one_map(db, [film.id]).get(film.id, 0)
+    days_on_chart = _days_on_chart_map(db, [film.id], chart_type=chart_id).get(film.id)
+    days_at_one = _days_at_one_map(db, [film.id], chart_type=chart_id).get(film.id, 0)
     # Sentiment split counts real audience conversation only — catalog-only
     # sources ("tmdb" vote rows) never contribute.
     catalog_ids = _catalog_source_ids(db)
@@ -578,6 +687,8 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         mentions_total=mentions_total,
         days_on_chart=days_on_chart,
         days_at_one=days_at_one,
+        top10_days=_top10_days_map(db, [film.id], chart_type=chart_id).get(film.id, 0),
+        longest_streak_at_one=_longest_streak_at_one_map(db, [film.id], chart_type=chart_id).get(film.id, 0),
         sentiment=sentiment,
         signal_funnel=_signal_funnel(db, film.id),
         imdb=imdb_out,
@@ -587,23 +698,31 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
 
 @router.get("/films/{slug}/rank-history", response_model=list[RankHistoryPoint])
 def film_rank_history(slug: str, days: int = 60, db: Session = Depends(get_db)):
-    """Daily-sampled rank + score history for a title's chart trajectory.
+    """Daily-sampled rank + score history for a title's trajectory on its OWN
+    chart.
 
     The chart is a continuous 15-minute snapshot series; this endpoint samples
     one representative snapshot per calendar day (the last of the day) so the
     film page can draw an honest "Index history" line without shipping every
-    snapshot. Days before the title's first appearance are naturally absent.
+    snapshot.  History is chart-scoped: a TV show's line is its TV 100
+    trajectory, never a mixed-chart position.  Days before the title's first
+    appearance are naturally absent.
     """
     film = db.scalar(select(Film).where(Film.slug == slug))
     if not film:
         raise HTTPException(404, "Film not found")
+    chart_id = _chart_for_content_type(film.content_type)
     cutoff = date.today() - timedelta(days=max(days, 1))
     rows = (
         db.query(
             func.date(Ranking.snapshot_at).label("d"),
             func.max(Ranking.snapshot_at).label("last_ts"),
         )
-        .filter(Ranking.film_id == film.id, func.date(Ranking.snapshot_at) >= cutoff)
+        .filter(
+            Ranking.film_id == film.id,
+            Ranking.chart_type == chart_id,
+            func.date(Ranking.snapshot_at) >= cutoff,
+        )
         .group_by(func.date(Ranking.snapshot_at))
         .order_by(func.date(Ranking.snapshot_at).asc())
         .all()
@@ -611,7 +730,11 @@ def film_rank_history(slug: str, days: int = 60, db: Session = Depends(get_db)):
     out: list[RankHistoryPoint] = []
     for d, last_ts in rows:
         r = db.scalar(
-            select(Ranking).where(Ranking.film_id == film.id, Ranking.snapshot_at == last_ts)
+            select(Ranking).where(
+                Ranking.film_id == film.id,
+                Ranking.snapshot_at == last_ts,
+                Ranking.chart_type == chart_id,
+            )
         )
         if r:
             out.append(RankHistoryPoint(day=d, rank=r.rank, score=r.score))

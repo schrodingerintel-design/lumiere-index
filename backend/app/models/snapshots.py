@@ -24,6 +24,12 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
+
+# Official chart identifiers.  Rank is ALWAYS contextual to a chart; the
+# string values double as the persisted chart_id across every layer.
+MOVIE_100 = "MOVIE_100"
+TV_100 = "TV_100"
+OFFICIAL_CHART_TYPES = (MOVIE_100, TV_100)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -39,14 +45,17 @@ class DailyIndexSnapshot(Base):
 
     __tablename__ = "daily_index_snapshots"
     __table_args__ = (
-        UniqueConstraint("snapshot_date", "film_id", name="uq_daily_snap_date_film"),
-        UniqueConstraint("snapshot_date", "rank", name="uq_daily_snap_date_rank"),
-        Index("ix_daily_snap_date_rank", "snapshot_date", "rank"),
+        UniqueConstraint("snapshot_date", "chart_type", "film_id", name="uq_daily_snap_date_chart_film"),
+        UniqueConstraint("snapshot_date", "chart_type", "rank", name="uq_daily_snap_date_chart_rank"),
+        Index("ix_daily_snap_date_chart_rank", "snapshot_date", "chart_type", "rank"),
         Index("ix_daily_snap_film", "film_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     snapshot_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # The official chart this row belongs to — historical rank is ALWAYS tied
+    # to a chart_id.  Legacy rows predate charts and are treated as MOVIE_100.
+    chart_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="MOVIE_100")
     film_id: Mapped[int] = mapped_column(ForeignKey("films.id", ondelete="CASCADE"), nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
@@ -81,15 +90,17 @@ class WeeklyIndexSnapshot(Base):
 
     __tablename__ = "weekly_index_snapshots"
     __table_args__ = (
-        UniqueConstraint("week_start", "film_id", name="uq_weekly_snap_week_film"),
-        UniqueConstraint("week_start", "rank", name="uq_weekly_snap_week_rank"),
-        Index("ix_weekly_snap_week_rank", "week_start", "rank"),
+        UniqueConstraint("week_start", "chart_type", "film_id", name="uq_weekly_snap_week_chart_film"),
+        UniqueConstraint("week_start", "chart_type", "rank", name="uq_weekly_snap_week_chart_rank"),
+        Index("ix_weekly_snap_week_chart_rank", "week_start", "chart_type", "rank"),
         Index("ix_weekly_snap_film", "film_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     week_start: Mapped[date] = mapped_column(Date, nullable=False)
     week_end: Mapped[date] = mapped_column(Date, nullable=False)
+    # Chart this weekly chart belongs to — weekly rank is chart-scoped too.
+    chart_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="MOVIE_100")
     film_id: Mapped[int] = mapped_column(ForeignKey("films.id", ondelete="CASCADE"), nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
@@ -112,19 +123,24 @@ class WeeklyIndexSnapshot(Base):
 
 
 class IndexDebut(Base):
-    """First-ever appearance of a film on a published Daily Index.
+    """First-ever appearance of a title on a published Daily chart.
 
-    One row per film, ever — the unique constraint on film_id makes "debuted
-    once, never again" a database invariant, not application discipline.
+    One row per (chart, title), ever — the unique constraint makes "debuted
+    once per chart, never again" a database invariant, not application
+    discipline.  NEW is always chart-scoped.
     """
 
     __tablename__ = "index_debuts"
     __table_args__ = (
-        UniqueConstraint("film_id", name="uq_debut_film"),
+        UniqueConstraint("chart_type", "film_id", name="uq_debut_chart_film"),
         Index("ix_debut_date", "debut_date"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # Chart-scoped debut — a title can debut on Movie 100 and separately on
+    # TV 100 only if it were both, which cannot happen; the chart dimension
+    # still keeps the record unambiguous for the ACTOR/DIRECTOR charts later.
+    chart_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="MOVIE_100")
     film_id: Mapped[int] = mapped_column(ForeignKey("films.id", ondelete="CASCADE"), nullable=False)
     debut_date: Mapped[date] = mapped_column(Date, nullable=False)
     debut_rank: Mapped[int] = mapped_column(Integer, nullable=False)

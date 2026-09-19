@@ -86,6 +86,10 @@ export interface RankedFilm {
   first_air_date?: string | null;
   rank: number;
   score: number;
+  /** The official chart this rank belongs to — "MOVIE_100" or "TV_100".
+   *  Rank is ALWAYS contextual to a chart; null + rank 0 means the title is
+   *  not currently ranked and clients must render "Not currently ranked". */
+  chart_type?: "MOVIE_100" | "TV_100" | null;
   prev_rank: number | null;
   movement: number | null;
   peak_rank: number | null;
@@ -211,10 +215,10 @@ export interface TmdbSearchResult {
 export const getTopFilms = (
   limit: number = 10,
   offset: number = 0,
-  contentType?: "MOVIE" | "TV_SHOW",
+  chart?: "MOVIE_100" | "TV_100",
 ) =>
   apiFetch<RankedFilm[]>(
-    `/api/v1/films/top?limit=${limit}&offset=${offset}${contentType ? `&content_type=${contentType}` : ""}`,
+    `/api/v1/films/top?limit=${limit}&offset=${offset}${chart ? `&chart=${chart}` : ""}`,
   );
 
 export const getGenreFilms = (tag: string, limit: number = 100, offset: number = 0) =>

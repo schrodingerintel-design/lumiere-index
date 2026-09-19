@@ -373,7 +373,7 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
 }
 
 export interface ChartCardOptions {
-  title: string;          // e.g. "The Top 10" or "Top 50 TV Shows"
+  title: string;          // e.g. "The Top 10" or "TV 100"
   subtitle: string;       // supporting line under the heading
   films: RankedFilm[];    // rows (max 5 shown)
   /** Display rank override — chart pages renumber (TV chart shows 1–50). */

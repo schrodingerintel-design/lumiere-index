@@ -123,7 +123,7 @@ function Methodology() {
         <List
           items={[
             "Data collection — continuous. Audience activity is measured around the clock.",
-            "The official Top 100 — a published ranking cycle. Each cycle writes one immutable snapshot; ranks, movement, and days-on-chart are computed between consecutive snapshots only.",
+            "The official charts (Movie 100, TV 100) — a published ranking cycle. Each cycle writes one immutable snapshot per chart; ranks, movement, and days-on-chart are computed between consecutive snapshots of the same chart.",
             "Biggest Movers — derived from rank changes between consecutive published Indexes. It highlights the titles climbing or falling fastest; it is not a separate ranking with separate math.",
           ]}
         />

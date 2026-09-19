@@ -1,7 +1,14 @@
-"""Admin endpoints for on-demand ingest triggers.
+"""Admin endpoints for on-demand ingest triggers + the score inspector.
 
 Protected by X-Admin-Key header matched against settings.admin_key.
 Use these to bootstrap live data without waiting for the Celery beat schedule.
+
+The score inspector (GET /admin/score/{slug}) is the §25 anomaly view: for one
+entity it exposes the full scoring pipeline — raw inputs, normalized
+components, raw cultural momentum, final Index Score, eligibility, internal
+candidate position and published chart rank — so scoring anomalies can be
+identified BEFORE publication.  It is never publicly accessible and the
+composite_raw values it surfaces must never appear in public responses.
 """
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
@@ -89,3 +96,120 @@ def sync_all(db: Session = Depends(get_db)):
         results["news"] = {"ok": False, "error": str(exc)}
 
     return {"ok": True, "results": results}
+
+
+# ── §25 — admin-only score inspector ────────────────────────────────────────
+
+@router.get("/admin/score/{slug}", dependencies=[Depends(_require_admin)])
+def score_inspector(slug: str, db: Session = Depends(get_db)):
+    """The full scoring pipeline for one entity — ADMIN ONLY.
+
+    Shows, in pipeline order: raw inputs (mention evidence), normalized
+    component scores, the raw cultural momentum (composite) BEFORE the 0–100
+    mapping, the final Index Score, eligibility state, the internal candidate
+    position, and the published chart rank per chart.  Missing/fallback data
+    is flagged rather than papered over.  Use it to diagnose repeated-score
+    anomalies, stale defaults, or provider contamination before publication.
+    """
+    from datetime import date as _date
+
+    from sqlalchemy import func as _func, select as _select
+
+    from app.models import DailyScore, Film, Ranking
+
+    film = db.scalar(_select(Film).where(Film.slug == slug))
+    if not film:
+        raise HTTPException(404, "Film not found")
+
+    snap = db.scalar(_select(_func.max(Ranking.snapshot_at)))
+    rows = (
+        db.query(Ranking)
+        .filter(Ranking.film_id == film.id, Ranking.snapshot_at == snap)
+        .all()
+        if snap else []
+    )
+
+    # 30-day raw evidence (catalog-only sources excluded upstream by design;
+    # shown here as the availability picture).
+    from app.models import Mention
+    evidence_days = db.query(_func.count(_func.distinct(_func.date(Mention.created_at)))).filter(
+        Mention.film_id == film.id
+    ).scalar() or 0
+    evidence_records = db.query(_func.count(Mention.id)).filter(
+        Mention.film_id == film.id
+    ).scalar() or 0
+    observations = db.query(_func.sum(Mention.observations)).filter(
+        Mention.film_id == film.id
+    ).scalar() or 0
+
+    daily_rows = (
+        db.query(DailyScore)
+        .filter(DailyScore.film_id == film.id)
+        .order_by(DailyScore.day.desc())
+        .limit(30)
+        .all()
+    )
+
+    charts = []
+    for r in sorted(rows, key=lambda x: x.chart_type):
+        # Internal candidate position: rank within the full continuous pool
+        # of this chart/snapshot — may exceed 100 and is NEVER public.
+        candidate_pos = db.scalar(
+            _select(_func.count(Ranking.id)).where(
+                Ranking.snapshot_at == snap,
+                Ranking.chart_type == r.chart_type,
+                Ranking.score > r.score,
+            )
+        )
+        charts.append({
+            "chart_type": r.chart_type,
+            "published_rank": r.rank if 1 <= r.rank <= 100 else None,
+            "internal_candidate_position": (candidate_pos or 0) + 1,
+            "index_score": r.score,
+            "raw_composite": r.composite_raw,
+            "normalized_components": {
+                "current_attention": r.ca_score,
+                "momentum": r.momentum_score,
+                "recency_of_activity": r.recency_score,
+                "audience_engagement": r.ae_score,
+                "cross_platform": r.cp_score,
+            },
+            "signal_volume": r.sample_size,
+            "confidence": r.confidence,
+            "peak_rank": r.peak_rank,
+            "previous_rank": r.prev_rank,
+            "movement": r.movement,
+        })
+
+    return {
+        "entity": {
+            "id": film.id,
+            "slug": film.slug,
+            "title": film.title,
+            "content_type": film.content_type or "MOVIE",
+        },
+        "snapshot_at": snap,
+        "eligibility": {
+            "has_signal_evidence": evidence_records > 0,
+            "active_days_30d": evidence_days,
+            "mention_records_30d": evidence_records,
+            "raw_observations_30d": int(observations or 0),
+            "last_daily_rollup": daily_rows[0].day if daily_rows else None,
+            "daily_scores_tracked_30d": len(daily_rows),
+        },
+        "charts": charts,
+        "notes": [
+            "composite_raw is the pre-scale cultural momentum; the Index Score "
+            "maps it onto 0-100 via the pool's p95 anchor — never via rank.",
+            "A rank beyond 100 is an internal candidate position and must never "
+            "be published; the continuous table only persists the Top 100.",
+            "identical scores across many titles usually indicate a normalization "
+            "degeneration — check normalized_components for saturation at 0 or 1.",
+        ],
+        "inspected_at": datetime_now_utc(),
+    }
+
+
+def datetime_now_utc():
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc)

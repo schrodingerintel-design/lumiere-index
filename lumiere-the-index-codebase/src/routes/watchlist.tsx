@@ -125,7 +125,7 @@ function WatchlistPage() {
                 to="/top-100"
                 className="mt-6 inline-block rounded-full bg-foreground px-5 py-2.5 text-[13px] font-medium text-background transition hover:bg-foreground/85"
               >
-                Browse the Top 100
+                Browse the Movie 100
               </Link>
             </div>
           ) : (

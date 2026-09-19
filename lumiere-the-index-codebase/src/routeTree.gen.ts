@@ -17,7 +17,7 @@ import { Route as RisingRouteImport } from './routes/rising'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NewEntriesRouteImport } from './routes/new-entries'
 import { Route as MethodologyRouteImport } from './routes/methodology'
-import { Route as Top50TvRouteImport } from './routes/top-50-tv'
+import { Route as Tv100RouteImport } from './routes/tv-100'
 import { Route as GenresRouteImport } from './routes/genres'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as CalendarRouteImport } from './routes/calendar'
@@ -65,9 +65,9 @@ const MethodologyRoute = MethodologyRouteImport.update({
   path: '/methodology',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Top50TvRoute = Top50TvRouteImport.update({
-  id: '/top-50-tv',
-  path: '/top-50-tv',
+const Tv100Route = Tv100RouteImport.update({
+  id: '/tv-100',
+  path: '/tv-100',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GenresRoute = GenresRouteImport.update({
@@ -107,7 +107,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
-  '/top-50-tv': typeof Top50TvRoute
+  '/tv-100': typeof Tv100Route
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -124,7 +124,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
-  '/top-50-tv': typeof Top50TvRoute
+  '/tv-100': typeof Tv100Route
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -142,7 +142,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
   '/genres': typeof GenresRoute
-  '/top-50-tv': typeof Top50TvRoute
+  '/tv-100': typeof Tv100Route
   '/methodology': typeof MethodologyRoute
   '/new-entries': typeof NewEntriesRoute
   '/privacy': typeof PrivacyRoute
@@ -161,7 +161,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
-    | '/top-50-tv'
+    | '/tv-100'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -178,7 +178,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
-    | '/top-50-tv'
+    | '/tv-100'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -195,7 +195,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/compare'
     | '/genres'
-    | '/top-50-tv'
+    | '/tv-100'
     | '/methodology'
     | '/new-entries'
     | '/privacy'
@@ -213,7 +213,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CompareRoute: typeof CompareRoute
   GenresRoute: typeof GenresRoute
-  Top50TvRoute: typeof Top50TvRoute
+  Tv100Route: typeof Tv100Route
   MethodologyRoute: typeof MethodologyRoute
   NewEntriesRoute: typeof NewEntriesRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -283,11 +283,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MethodologyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/top-50-tv': {
-      id: '/top-50-tv'
-      path: '/top-50-tv'
-      fullPath: '/top-50-tv'
-      preLoaderRoute: typeof Top50TvRouteImport
+    '/tv-100': {
+      id: '/tv-100'
+      path: '/tv-100'
+      fullPath: '/tv-100'
+      preLoaderRoute: typeof Tv100RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/genres': {
@@ -341,7 +341,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CompareRoute: CompareRoute,
   GenresRoute: GenresRoute,
-  Top50TvRoute: Top50TvRoute,
+  Tv100Route: Tv100Route,
   MethodologyRoute: MethodologyRoute,
   NewEntriesRoute: NewEntriesRoute,
   PrivacyRoute: PrivacyRoute,

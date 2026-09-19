@@ -116,10 +116,13 @@ def _add_mention(db, film_id, source_id, hours_ago, engagement=10, ext_id_suffix
     ))
 
 
-# ── 3. R_raw decay boundary tests ─────────────────────────────────────────────
+# ── 3. R decay boundary tests (signal-activity recency) ──────────────────────
+# Recency measures SIGNAL ACTIVITY — how recently the title generated real
+# measured attention — never the release date (§5 of the product brief: an
+# old film that suddenly explodes culturally must be capable of reaching #1).
 
-def test_recency_score_day_0(db_session):
-    """A film released today should have R = 1.0 (max recency)."""
+def test_recency_score_fresh_signal(db_session):
+    """A title with a mention today should have R = 1.0 (max recency)."""
     src = _add_source(db_session)
     today = date.today()
     film = _add_film(db_session, "fresh", "Fresh Film", release_date=today)
@@ -132,25 +135,29 @@ def test_recency_score_day_0(db_session):
     assert r.recency_score == pytest.approx(1.0, abs=0.01)
 
 
-def test_recency_score_day_21(db_session):
-    """A film released exactly 21 days ago should have R = 0.0."""
+def test_recency_ignores_release_date_old_film_fresh_signal(db_session):
+    """A film released long ago that is being discussed TODAY scores R ≈ 1.0.
+
+    The release date must never cap the recency component — measured signal
+    activity is what recency means."""
     src = _add_source(db_session)
-    old_date = date.today() - timedelta(days=21)
-    film = _add_film(db_session, "day21", "Day 21 Film", release_date=old_date)
-    _add_mention(db_session, film.id, src.id, 1, ext_id_suffix="d21")
+    film = _add_film(db_session, "old-classic", "Old Classic",
+                     release_date=date.today() - timedelta(days=3650))
+    _add_mention(db_session, film.id, src.id, 2, ext_id_suffix="revival")
     db_session.commit()
     recompute_rankings(db_session)
     r = db_session.query(Ranking).filter(Ranking.film_id == film.id).order_by(Ranking.id.desc()).first()
     assert r is not None
-    assert r.recency_score == pytest.approx(0.0, abs=0.01)
+    assert r.recency_score == pytest.approx(1.0, abs=0.01)
 
 
-def test_recency_score_day_30(db_session):
-    """A film released 30+ days ago should have R = 0.0 (expired window)."""
+def test_recency_score_stale_signal(db_session):
+    """A title whose newest measured signal is 21+ days old scores R = 0.0 —
+    regardless of when it was released."""
     src = _add_source(db_session)
-    old_date = date.today() - timedelta(days=30)
-    film = _add_film(db_session, "old-release", "Old Release Film", release_date=old_date)
-    _add_mention(db_session, film.id, src.id, 1, ext_id_suffix="d30")
+    film = _add_film(db_session, "quiet", "Quiet Film",
+                     release_date=date.today() - timedelta(days=2))
+    _add_mention(db_session, film.id, src.id, 24 * 25, ext_id_suffix="stale")  # 25 days ago
     db_session.commit()
     recompute_rankings(db_session)
     r = db_session.query(Ranking).filter(Ranking.film_id == film.id).order_by(Ranking.id.desc()).first()
@@ -325,6 +332,11 @@ def test_cp_decays_for_old_cross_platform_activity(db_session):
     toward Cross-Platform Reach — the same recency rule as Current Attention.
     Only platforms with non-trivial decay-weighted presence count, so cumulative
     30-day history can never inflate CP.
+
+    Under signal-activity recency, the old film's 20-day-old platforms have
+    decayed below the CP threshold, so they contribute nothing — the same
+    decay rule as Current Attention.  The new film's fresher, broader platform
+    presence must outrank the mid film's single platform.
     """
     src_a = _add_source(db_session, "reddit")
     src_b = _add_source(db_session, "youtube")
@@ -374,6 +386,11 @@ def test_cp_decays_for_old_cross_platform_activity(db_session):
     assert new.cp_score > mid.cp_score, (
         f"More recent platforms should rank higher on CP (new={new.cp_score}, mid={mid.cp_score})"
     )
+    # Chart order follows signal strength: the fresh, broader title outranks
+    # the single-platform one, and the cold title sits at the bottom.  With a
+    # larger production pool the cold title drops off the 100-position chart
+    # entirely ("not currently ranked").
+    assert new.rank < mid.rank < old.rank
 
 
 # ── 10. Empty DB is safe ───────────────────────────────────────────────────────

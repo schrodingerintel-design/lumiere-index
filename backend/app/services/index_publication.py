@@ -5,14 +5,25 @@ Separation of concerns (the architectural rule this module enforces):
   continuous computation  — `rankings` table, recomputed every refresh cycle
                             by app.services.ranking.recompute_rankings. Never
                             shown as "the official chart".
-  official publication    — `daily_index_snapshots`, written once per day from
-                            the latest computed snapshot (with validation).
-  weekly publication      — `weekly_index_snapshots`, once per ISO week,
-                            aggregated from daily signal measurements over
-                            the week window (NOT a copy of any daily chart).
+  official publication    — `daily_index_snapshots`, written once per day per
+                            official chart (Movie 100, TV 100) from the latest
+                            computed snapshot (with validation).
+  weekly publication      — `weekly_index_snapshots`, once per ISO week per
+                            chart, aggregated from daily signal measurements
+                            over the week window (NOT a copy of any daily
+                            chart).
   derived products        — Biggest Movers (rank deltas between published
-                            dailies) and New Entries (first appearances,
-                            enforced unique per film by `index_debuts`).
+                            dailies of the SAME chart) and New Entries
+                            (first appearances per chart, enforced unique by
+                            `index_debuts`).
+
+Chart law this module enforces:
+  * A public rank ONLY exists between #1 and #100 — the publication writes at
+    most CHART_SIZE rows per chart; internal candidate positions beyond that
+    are never persisted, so "#153" can never surface as a rank.
+  * Rank is ALWAYS contextual to a chart.  Movement is never computed across
+    chart types; every historical row carries its chart_id.
+  * Movies never hold TV 100 positions; TV shows never hold Movie 100 ones.
 
 All publish functions are idempotent: unique constraints + existence checks
 make re-running on the same date/week a no-op.  Validation runs BEFORE any
@@ -21,6 +32,7 @@ write; a failed validation leaves the previous valid snapshot untouched.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
@@ -43,6 +55,34 @@ log = logging.getLogger(__name__)
 
 CHART_SIZE = 100
 
+# Official chart identifiers (mirror app.models.snapshots / ranking engine).
+MOVIE_100 = "MOVIE_100"
+TV_100 = "TV_100"
+OFFICIAL_CHARTS: tuple[tuple[str, str], ...] = (
+    (MOVIE_100, "MOVIE"),
+    (TV_100, "TV_SHOW"),
+)
+VALID_CHART_TYPES = frozenset({c for c, _ in OFFICIAL_CHARTS})
+
+
+def normalize_chart(chart: str | None) -> str | None:
+    """Coerce a client-supplied chart slug to a canonical chart id.
+
+    Accepts MOVIE_100 / TV_100 (case-insensitive, dashes/underscores both).
+    Returns None for unknown values — the caller decides whether that is a
+    404 or a default-to-Movie-100.
+    """
+    if not chart:
+        return MOVIE_100
+    key = chart.strip().upper().replace("-", "_")
+    if key in VALID_CHART_TYPES:
+        return key
+    if key in ("MOVIE", "MOVIES"):
+        return MOVIE_100
+    if key in ("TV", "TV_SHOW", "TV_SHOWS", "SHOWS"):
+        return TV_100
+    return None
+
 
 class SnapshotValidationError(Exception):
     """Raised when a candidate ranking fails publication validation."""
@@ -50,12 +90,16 @@ class SnapshotValidationError(Exception):
 
 # ── validation ───────────────────────────────────────────────────────────────
 
-def _validate_ranking_rows(rows: list[tuple[Film, Ranking]]) -> None:
+def _validate_ranking_rows(
+    rows: list[tuple[Film, Ranking]], chart_type: str | None = None
+) -> None:
     """Validate a candidate (film, ranking) list before publishing.
 
     Checks the full data-integrity contract; raises SnapshotValidationError
     with a specific reason on the first violation.  The caller must NOT write
-    anything when this raises.
+    anything when this raises.  When `chart_type` is given, also enforces the
+    chart/entity-type contract: only MOVIE titles may sit on MOVIE_100 and
+    only TV_SHOW titles on TV_100.
     """
     if not rows:
         raise SnapshotValidationError("no ranked rows to publish")
@@ -91,17 +135,30 @@ def _validate_ranking_rows(rows: list[tuple[Film, Ranking]]) -> None:
             # release_date present but year missing — metadata gap
             raise SnapshotValidationError(f"film {film.id} has release_date but no year")
 
+        if chart_type is not None:
+            ct = (film.content_type or "MOVIE").upper()
+            expected = "MOVIE" if chart_type == MOVIE_100 else "TV_SHOW"
+            if ct != expected:
+                raise SnapshotValidationError(
+                    f"chart/entity mismatch: {ct} {film.slug!r} cannot hold a {chart_type} position"
+                )
 
-def _validate_daily_snapshot_rows(db: Session, snapshot_date: date) -> None:
+
+def _validate_daily_snapshot_rows(
+    db: Session, snapshot_date: date, chart_type: str = MOVIE_100
+) -> None:
     """Post-write integrity check on what actually landed in the DB."""
     rows = db.query(DailyIndexSnapshot).filter(
-        DailyIndexSnapshot.snapshot_date == snapshot_date
+        DailyIndexSnapshot.snapshot_date == snapshot_date,
+        DailyIndexSnapshot.chart_type == chart_type,
     ).order_by(DailyIndexSnapshot.rank).all()
     ranks = [r.rank for r in rows]
     if len(ranks) != len(set(ranks)):
         raise SnapshotValidationError("published rows contain duplicate ranks")
     if ranks != list(range(1, len(ranks) + 1)):
         raise SnapshotValidationError(f"published ranks not sequential: {ranks[:10]}…")
+    if any(r < 1 or r > CHART_SIZE for r in ranks):
+        raise SnapshotValidationError("published rank outside 1..100")
     film_ids = {r.film_id for r in rows}
     existing = {
         fid for (fid,) in db.query(Film.id).filter(Film.id.in_(film_ids)).all()
@@ -109,30 +166,51 @@ def _validate_daily_snapshot_rows(db: Session, snapshot_date: date) -> None:
     missing = film_ids - existing
     if missing:
         raise SnapshotValidationError(f"published rows reference missing films: {sorted(missing)[:5]}")
+    # Chart/entity-type contract: every published row must match its chart.
+    expected_ct = "MOVIE" if chart_type == MOVIE_100 else "TV_SHOW"
+    ct_map = {
+        f.id: (f.content_type or "MOVIE").upper()
+        for f in db.query(Film).filter(Film.id.in_(film_ids)).all()
+    }
+    for r in rows:
+        if ct_map.get(r.film_id) != expected_ct:
+            raise SnapshotValidationError(
+                f"published {chart_type} row {r.rank} has wrong entity type {ct_map.get(r.film_id)!r}"
+            )
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _latest_continuous_ranking(db: Session) -> list[tuple[Film, Ranking]]:
-    """The freshest rows from the continuous computation layer."""
+def _latest_continuous_ranking(
+    db: Session, chart_type: str | None = None
+) -> list[tuple[Film, Ranking]]:
+    """The freshest rows from the continuous computation layer, optionally
+    restricted to one official chart."""
     snap = db.scalar(select(func.max(Ranking.snapshot_at)))
     if snap is None:
         return []
-    return (
+    q = (
         db.query(Film, Ranking)
         .join(Ranking, Ranking.film_id == Film.id)
         .filter(Ranking.snapshot_at == snap)
-        .order_by(Ranking.rank.asc())
-        .all()
     )
+    if chart_type is not None:
+        q = q.filter(Ranking.chart_type == chart_type)
+    return q.order_by(Ranking.rank.asc()).all()
 
 
-def _previous_published_ranks(db: Session, before_date: date) -> dict[int, int]:
-    """Most recent published daily rank per film strictly before `before_date`."""
+def _previous_published_ranks(
+    db: Session, before_date: date, chart_type: str = MOVIE_100
+) -> dict[int, int]:
+    """Most recent published daily rank per film strictly before `before_date`,
+    within one chart.  Movement is NEVER computed across chart types."""
     rows = db.query(
         DailyIndexSnapshot.film_id,
         DailyIndexSnapshot.rank,
-    ).filter(DailyIndexSnapshot.snapshot_date < before_date).all()
+    ).filter(
+        DailyIndexSnapshot.snapshot_date < before_date,
+        DailyIndexSnapshot.chart_type == chart_type,
+    ).all()
     return {fid: rank for fid, rank in rows}
 
 
@@ -201,112 +279,131 @@ def _sentiment_split(db: Session, film_ids: list[int]) -> dict[int, tuple[float,
 # ── daily publication ────────────────────────────────────────────────────────
 
 def publish_daily_index(db: Session, publish_date: date | None = None) -> date | None:
-    """Publish the official Daily Index for `publish_date` (default: today UTC).
+    """Publish the official daily charts for `publish_date` (default: today UTC).
 
-    Idempotent: if a snapshot for this date already exists, return None (no
-    duplicate publication).  Validates before writing; on post-write failure
-    the transaction is rolled back so the previous valid snapshot survives.
+    Publishes ONE immutable snapshot per official chart — Movie 100 and
+    TV 100 — from the latest continuous computation.  Ranks beyond position
+    100 are never persisted: a public rank only exists between #1 and #100.
 
-    Returns the publication date on success, None when already published or
-    when there is nothing to publish.
+    Idempotent per (chart, date): an already-published chart is skipped.
+    Validates before writing; on post-write failure the transaction is rolled
+    back so the previous valid snapshot survives.
+
+    Returns the publication date if at least one chart was newly published,
+    None otherwise.
     """
     target_date = publish_date or datetime.now(timezone.utc).date()
 
-    existing = db.query(DailyIndexSnapshot.id).filter(
-        DailyIndexSnapshot.snapshot_date == target_date
-    ).first()
-    if existing:
-        log.info("publish_daily: %s already published — skipping", target_date)
-        return None
+    published_any = False
+    for chart_id, _entity_ct in OFFICIAL_CHARTS:
+        existing = db.query(DailyIndexSnapshot.id).filter(
+            DailyIndexSnapshot.snapshot_date == target_date,
+            DailyIndexSnapshot.chart_type == chart_id,
+        ).first()
+        if existing:
+            log.info("publish_daily: %s %s already published — skipping", chart_id, target_date)
+            continue
 
-    ranked = _latest_continuous_ranking(db)
-    if not ranked:
-        log.warning("publish_daily: no continuous ranking snapshot available")
-        return None
+        ranked = _latest_continuous_ranking(db, chart_type=chart_id)
+        if not ranked:
+            log.warning("publish_daily: no continuous ranking for %s — skipping", chart_id)
+            continue
 
-    top = [(f, r) for f, r in ranked[:CHART_SIZE]]
-    try:
-        _validate_ranking_rows(top)
-    except SnapshotValidationError as exc:
-        # Do not publish corrupted rankings — keep the previous valid snapshot.
-        log.error("publish_daily: validation FAILED for %s — %s", target_date, exc)
-        return None
+        top = [(f, r) for f, r in ranked[:CHART_SIZE]]
+        try:
+            _validate_ranking_rows(top, chart_type=chart_id)
+        except SnapshotValidationError as exc:
+            # Do not publish corrupted rankings — keep the previous valid snapshot.
+            log.error("publish_daily: validation FAILED for %s %s — %s", chart_id, target_date, exc)
+            continue
 
-    now = datetime.now(timezone.utc)
-    prev_ranks = _previous_published_ranks(db, target_date)
-    prev_scores = {
-        fid: score
-        for fid, score in db.query(
-            DailyIndexSnapshot.film_id, DailyIndexSnapshot.score
-        ).filter(DailyIndexSnapshot.snapshot_date < target_date).all()
-    }
-    coverage = _source_coverage(db, [f.id for f, _ in top])
-    sentiment = _sentiment_split(db, [f.id for f, _ in top])
+        now = datetime.now(timezone.utc)
+        prev_ranks = _previous_published_ranks(db, target_date, chart_type=chart_id)
+        prev_scores = {
+            fid: score
+            for fid, score in db.query(
+                DailyIndexSnapshot.film_id, DailyIndexSnapshot.score
+            ).filter(
+                DailyIndexSnapshot.snapshot_date < target_date,
+                DailyIndexSnapshot.chart_type == chart_id,
+            ).all()
+        }
+        coverage = _source_coverage(db, [f.id for f, _ in top])
+        sentiment = _sentiment_split(db, [f.id for f, _ in top])
 
-    try:
-        for film, r in top:
-            prev_rank = prev_ranks.get(film.id)
-            rank_delta = (prev_rank - r.rank) if prev_rank is not None else 0
-            prev_score = prev_scores.get(film.id)
-            db.add(DailyIndexSnapshot(
-                snapshot_date=target_date,
-                film_id=film.id,
-                rank=r.rank,
-                score=r.score,
-                previous_rank=prev_rank,
-                rank_delta=rank_delta,
-                score_delta=(
-                    round(r.score - prev_score, 1)
-                    if prev_score is not None else None
-                ),
-                ca_score=r.ca_score,
-                momentum_score=r.momentum_score,
-                recency_score=r.recency_score,
-                ae_score=r.ae_score,
-                cp_score=r.cp_score,
-                signal_volume=r.sample_size or 0,
-                confidence=r.confidence,
-                source_coverage=coverage.get(film.id, 0),
-                sentiment_positive=(sentiment.get(film.id) or (None, None, None))[0],
-                sentiment_neutral=(sentiment.get(film.id) or (None, None, None))[1],
-                sentiment_negative=(sentiment.get(film.id) or (None, None, None))[2],
-                published_at=now,
-            ))
-        db.flush()
-        _validate_daily_snapshot_rows(db, target_date)
-        db.commit()
-    except SnapshotValidationError as exc:
-        db.rollback()
-        log.error("publish_daily: post-write validation failed — rolled back — %s", exc)
-        return None
-    except Exception as exc:
-        db.rollback()
-        log.error("publish_daily: write failed for %s — %s", target_date, exc)
-        return None
+        try:
+            for film, r in top:
+                prev_rank = prev_ranks.get(film.id)
+                rank_delta = (prev_rank - r.rank) if prev_rank is not None else 0
+                prev_score = prev_scores.get(film.id)
+                db.add(DailyIndexSnapshot(
+                    snapshot_date=target_date,
+                    chart_type=chart_id,
+                    film_id=film.id,
+                    rank=r.rank,
+                    score=r.score,
+                    previous_rank=prev_rank,
+                    rank_delta=rank_delta,
+                    score_delta=(
+                        round(r.score - prev_score, 1)
+                        if prev_score is not None else None
+                    ),
+                    ca_score=r.ca_score,
+                    momentum_score=r.momentum_score,
+                    recency_score=r.recency_score,
+                    ae_score=r.ae_score,
+                    cp_score=r.cp_score,
+                    signal_volume=r.sample_size or 0,
+                    confidence=r.confidence,
+                    source_coverage=coverage.get(film.id, 0),
+                    sentiment_positive=(sentiment.get(film.id) or (None, None, None))[0],
+                    sentiment_neutral=(sentiment.get(film.id) or (None, None, None))[1],
+                    sentiment_negative=(sentiment.get(film.id) or (None, None, None))[2],
+                    published_at=now,
+                ))
+            db.flush()
+            _validate_daily_snapshot_rows(db, target_date, chart_type=chart_id)
+            db.commit()
+        except SnapshotValidationError as exc:
+            db.rollback()
+            log.error("publish_daily: post-write validation failed for %s — rolled back — %s", chart_id, exc)
+            continue
+        except Exception as exc:
+            db.rollback()
+            log.error("publish_daily: write failed for %s %s — %s", chart_id, target_date, exc)
+            continue
 
-    log.info("publish_daily: published %s (%d films)", target_date, len(top))
+        log.info("publish_daily: published %s %s (%d titles)", chart_id, target_date, len(top))
+        published_any = True
 
-    # Debuts are part of the same publication event: a film with no prior
-    # published rank and no debut record is entering The Index for the first
-    # time.  `index_debuts` has a unique constraint per film, so a film can
-    # never debut twice even across concurrent runs.
-    _record_debuts(db, target_date, top)
-    return target_date
+        # Debuts are part of the same publication event: a title with no prior
+        # published rank on THIS chart and no debut record is entering that
+        # chart for the first time.  NEW is always chart-scoped.
+        _record_debuts(db, target_date, top, chart_type=chart_id)
+
+    return target_date if published_any else None
 
 
-def _record_debuts(db: Session, publish_date: date, top: list[tuple[Film, Ranking]]) -> int:
-    """Record first-ever appearances for this publication. Idempotent."""
+def _record_debuts(
+    db: Session,
+    publish_date: date,
+    top: list[tuple[Film, Ranking]],
+    chart_type: str = MOVIE_100,
+) -> int:
+    """Record first-ever appearances on one chart for this publication. Idempotent."""
     already_debuted = {
-        fid for (fid,) in db.query(IndexDebut.film_id).all()
+        fid for (fid,) in db.query(IndexDebut.film_id)
+        .filter(IndexDebut.chart_type == chart_type).all()
     }
-    prev_ranks = _previous_published_ranks(db, publish_date)
+    prev_ranks = _previous_published_ranks(db, publish_date, chart_type=chart_type)
     recorded = 0
     for film, r in top:
         if film.id in already_debuted:
             continue
         if film.id in prev_ranks:
-            continue  # appeared on a prior daily index — not a debut
+            continue  # appeared on a prior publication of this chart — not a debut
         db.add(IndexDebut(
+            chart_type=chart_type,
             film_id=film.id,
             debut_date=publish_date,
             debut_rank=r.rank,
@@ -319,7 +416,7 @@ def _record_debuts(db: Session, publish_date: date, top: list[tuple[Film, Rankin
     if recorded:
         try:
             db.commit()
-            log.info("publish_daily: recorded %d new debuts", recorded)
+            log.info("publish_daily: recorded %d new %s debuts", recorded, chart_type)
         except Exception as exc:
             db.rollback()
             log.warning("publish_daily: debut recording failed — %s", exc)
@@ -335,16 +432,33 @@ def week_bounds(d: date) -> tuple[date, date]:
     return monday, sunday
 
 
+def _p95(values: list[float]) -> float:
+    """Linear-interpolated 95th percentile of `values`."""
+    if not values:
+        return 1e-9
+    s = sorted(values)
+    if len(s) == 1:
+        return s[0]
+    pos = (len(s) - 1) * 0.95
+    lo = math.floor(pos)
+    hi = math.ceil(pos)
+    if lo == hi:
+        return s[lo]
+    return s[lo] + (s[hi] - s[lo]) * (pos - lo)
+
+
 def publish_weekly_index(
     db: Session,
     week_start: date | None = None,
     final_day: date | None = None,
 ) -> date | None:
-    """Publish the official Weekly Index for the week containing `final_day`.
+    """Publish the official Weekly charts for the week containing `final_day`.
 
+    Publishes one weekly snapshot per official chart (Movie 100, TV 100).
     The weekly score is a genuine weekly aggregate — it is NOT Sunday's daily
-    chart renamed.  Per film we aggregate the week's daily signal measurements
-    (daily_scores) plus the daily published Index history inside the window:
+    chart renamed.  Per title we aggregate the week's daily signal
+    measurements (daily_scores) plus the daily published chart history inside
+    the window:
 
       weekly composite = 0.40·avg_daily_volume_norm     (sustained attention)
                        + 0.20·days_present/7            (consistency)
@@ -352,8 +466,9 @@ def publish_weekly_index(
                        + 0.15·avg_sentiment (0-1)       (audience engagement)
                        + 0.10·source_coverage_norm      (cross-platform)
 
-    then normalises the pool to the 0–100 Index Score scale.  Idempotent per
-    week via the unique constraint on (week_start, film_id).
+    then maps the composite onto the universal 0–100 Index Score scale with
+    the same signal-driven p95-anchored exponential used by the daily engine
+    (never rank-derived).  Idempotent per (chart, week).
 
     `week_start` overrides the window (for historical backfill); by default
     the week is derived from `final_day` (default: today).
@@ -365,167 +480,197 @@ def publish_weekly_index(
     else:
         week_end = week_start + timedelta(days=6)
 
-    existing = db.query(WeeklyIndexSnapshot.id).filter(
-        WeeklyIndexSnapshot.week_start == week_start
-    ).first()
-    if existing:
-        log.info("publish_weekly: week of %s already published — skipping", week_start)
-        return None
-
     week_start_dt = datetime(week_start.year, week_start.month, week_start.day)
     week_end_exclusive = datetime.combine(week_end + timedelta(days=1), datetime.min.time())
 
-    # ── per-film daily signal measurements inside the window ─────────────────
-    ds_rows = (
-        db.query(
-            DailyScore.film_id,
-            func.count(DailyScore.day),
-            func.sum(DailyScore.mentions_count),
-            func.avg(DailyScore.sentiment_avg),
+    published_any = False
+    for chart_id, entity_ct in OFFICIAL_CHARTS:
+        # Idempotent per (chart, week) — one chart's publication never blocks
+        # the other's.
+        existing = db.query(WeeklyIndexSnapshot.id).filter(
+            WeeklyIndexSnapshot.week_start == week_start,
+            WeeklyIndexSnapshot.chart_type == chart_id,
+        ).first()
+        if existing:
+            log.info("publish_weekly: %s week of %s already published — skipping", chart_id, week_start)
+            continue
+
+        # ── per-title daily signal measurements inside the window ────────────
+        # Restricted to this chart's entity type: movies never enter the TV
+        # weekly aggregate pool and vice versa.
+        ds_rows = (
+            db.query(
+                DailyScore.film_id,
+                func.count(DailyScore.day),
+                func.sum(DailyScore.mentions_count),
+                func.avg(DailyScore.sentiment_avg),
+            )
+            .join(Film, Film.id == DailyScore.film_id)
+            .filter(
+                DailyScore.day >= week_start,
+                DailyScore.day <= week_end,
+                Film.content_type == entity_ct,
+            )
+            .group_by(DailyScore.film_id)
+            .all()
         )
-        .filter(DailyScore.day >= week_start, DailyScore.day <= week_end)
-        .group_by(DailyScore.film_id)
-        .all()
-    )
-    days_present: dict[int, int] = {}
-    total_mentions: dict[int, int] = {}
-    avg_sentiment: dict[int, float] = {}
-    for fid, days, mentions, savg in ds_rows:
-        days_present[fid] = int(days or 0)
-        total_mentions[fid] = int(mentions or 0)
-        avg_sentiment[fid] = float(savg or 0.0)
+        days_present: dict[int, int] = {}
+        total_mentions: dict[int, int] = {}
+        avg_sentiment: dict[int, float] = {}
+        for fid, days, mentions, savg in ds_rows:
+            days_present[fid] = int(days or 0)
+            total_mentions[fid] = int(mentions or 0)
+            avg_sentiment[fid] = float(savg or 0.0)
 
-    # Real-time backstop: daily_scores lag the rollup worker, so fill the same
-    # aggregates directly from mentions when the rollup has not run.  Catalog-
-    # only sources are excluded — TMDB rows are not weekly signal volume.
-    catalog_ids = _catalog_source_ids(db)
-    m_rows_q = (
-        db.query(
-            Mention.film_id,
-            func.count(func.distinct(func.date(Mention.created_at))),
-            func.count(Mention.id),
-            func.avg(Mention.sentiment_score),
+        # Real-time backstop: daily_scores lag the rollup worker, so fill the
+        # same aggregates directly from mentions when the rollup has not run.
+        # Catalog-only sources are excluded — TMDB rows are not weekly signal
+        # volume.
+        catalog_ids = _catalog_source_ids(db)
+        m_rows_q = (
+            db.query(
+                Mention.film_id,
+                func.count(func.distinct(func.date(Mention.created_at))),
+                func.count(Mention.id),
+                func.avg(Mention.sentiment_score),
+            )
+            .join(Film, Film.id == Mention.film_id)
+            .filter(
+                Mention.created_at >= week_start_dt,
+                Mention.created_at < week_end_exclusive,
+                Film.content_type == entity_ct,
+            )
         )
-        .filter(Mention.created_at >= week_start_dt, Mention.created_at < week_end_exclusive)
-    )
-    if catalog_ids:
-        m_rows_q = m_rows_q.filter(~Mention.source_id.in_(catalog_ids))
-    m_rows = m_rows_q.group_by(Mention.film_id).all()
-    for fid, days, mentions, savg in m_rows:
-        days_present[fid] = max(days_present.get(fid, 0), int(days or 0))
-        total_mentions[fid] = max(total_mentions.get(fid, 0), int(mentions or 0))
-        avg_sentiment[fid] = float(savg or 0.0)
+        if catalog_ids:
+            m_rows_q = m_rows_q.filter(~Mention.source_id.in_(catalog_ids))
+        m_rows = m_rows_q.group_by(Mention.film_id).all()
+        for fid, days, mentions, savg in m_rows:
+            days_present[fid] = max(days_present.get(fid, 0), int(days or 0))
+            total_mentions[fid] = max(total_mentions.get(fid, 0), int(mentions or 0))
+            avg_sentiment[fid] = float(savg or 0.0)
 
-    if not total_mentions:
-        log.warning("publish_weekly: no signal data in week %s..%s", week_start, week_end)
-        return None
+        if not total_mentions:
+            log.warning("publish_weekly: no %s signal data in week %s..%s", chart_id, week_start, week_end)
+            continue
 
-    # ── published daily history inside the window (chart presence) ───────────
-    daily_rows = (
-        db.query(
-            DailyIndexSnapshot.film_id,
-            func.count(DailyIndexSnapshot.id),
-            func.min(DailyIndexSnapshot.rank),
-            func.avg(DailyIndexSnapshot.score),
+        # ── published daily history inside the window (chart presence) ───────
+        daily_rows = (
+            db.query(
+                DailyIndexSnapshot.film_id,
+                func.count(DailyIndexSnapshot.id),
+                func.min(DailyIndexSnapshot.rank),
+            )
+            .filter(
+                DailyIndexSnapshot.snapshot_date >= week_start,
+                DailyIndexSnapshot.snapshot_date <= week_end,
+                DailyIndexSnapshot.chart_type == chart_id,
+            )
+            .group_by(DailyIndexSnapshot.film_id)
+            .all()
         )
-        .filter(
-            DailyIndexSnapshot.snapshot_date >= week_start,
-            DailyIndexSnapshot.snapshot_date <= week_end,
+        chart_days: dict[int, int] = {}
+        peak_rank: dict[int, int] = {}
+        for fid, days, peak in daily_rows:
+            chart_days[fid] = int(days or 0)
+            peak_rank[fid] = int(peak or 999)
+
+        candidate_ids = set(total_mentions.keys()) | set(chart_days.keys())
+        if not candidate_ids:
+            continue
+
+        coverage = _source_coverage(db, list(candidate_ids))
+
+        # ── raw weekly components (higher = stronger week) ───────────────────
+        vol_raw = {fid: float(total_mentions.get(fid, 0)) for fid in candidate_ids}
+        consist_raw = {fid: min(chart_days.get(fid, 0) or days_present.get(fid, 0), 7) / 7.0
+                       for fid in candidate_ids}
+        peak_quality = {
+            fid: 1.0 - min(peak_rank.get(fid, 101), 100) / 100.0 for fid in candidate_ids
+        }
+        sentiment_raw = {fid: (avg_sentiment.get(fid, 0.0) + 1.0) / 2.0 for fid in candidate_ids}
+        coverage_raw = {fid: min(coverage.get(fid, 0), 7) / 7.0 for fid in candidate_ids}
+
+        def _minmax(values: dict[int, float]) -> dict[int, float]:
+            lo = min(values.values(), default=0.0)
+            hi = max(values.values(), default=0.0)
+            if hi <= lo:
+                return {fid: 0.5 for fid in values}
+            return {fid: (v - lo) / (hi - lo) for fid, v in values.items()}
+
+        vol_n = _minmax(vol_raw)
+        cov_n = _minmax(coverage_raw)
+
+        WEIGHTS = dict(vol=0.40, consist=0.20, peak=0.15, sentiment=0.15, coverage=0.10)
+        composite = {
+            fid: (
+                WEIGHTS["vol"] * vol_n[fid]
+                + WEIGHTS["consist"] * consist_raw[fid]
+                + WEIGHTS["peak"] * peak_quality[fid]
+                + WEIGHTS["sentiment"] * sentiment_raw[fid]
+                + WEIGHTS["coverage"] * cov_n[fid]
+            )
+            for fid in candidate_ids
+        }
+        # Signal-driven weekly score — the same universal 0–100 mapping as the
+        # daily engine (p95 anchor, exponential scale), never rank-derived.
+        p95 = _p95([c for c in composite.values() if c > 0])
+        p95 = p95 if p95 > 1e-9 else 1e-9
+        scored = sorted(
+            (
+                (fid, round(100.0 * (1.0 - math.exp(-3.0 * (c / p95))), 1))
+                for fid, c in composite.items()
+            ),
+            key=lambda x: (-x[1], x[0]),
         )
-        .group_by(DailyIndexSnapshot.film_id)
-        .all()
-    )
-    chart_days: dict[int, int] = {}
-    peak_rank: dict[int, int] = {}
-    avg_daily_score: dict[int, float] = {}
-    for fid, days, peak, avg_score in daily_rows:
-        chart_days[fid] = int(days or 0)
-        peak_rank[fid] = int(peak or 999)
-        avg_daily_score[fid] = float(avg_score or 0.0)
+        top = scored[:CHART_SIZE]
+        if not top:
+            continue
 
-    candidate_ids = set(total_mentions.keys()) | set(chart_days.keys())
-    if not candidate_ids:
-        return None
+        # Evidence tiers mirror the daily engine (absolute floor on signal volume)
+        from app.services.confidence import confidence_tier
+        confidences = {fid: confidence_tier(total_mentions.get(fid, 0)) for fid, _ in top}
 
-    coverage = _source_coverage(db, list(candidate_ids))
+        prev_week_ranks: dict[int, int] = {}
+        prev_week = week_start - timedelta(days=7)
+        for fid, rank in db.query(
+            WeeklyIndexSnapshot.film_id, WeeklyIndexSnapshot.rank
+        ).filter(
+            WeeklyIndexSnapshot.week_start == prev_week,
+            WeeklyIndexSnapshot.chart_type == chart_id,
+        ).all():
+            prev_week_ranks[fid] = rank
 
-    # ── raw weekly components (higher = stronger week) ───────────────────────
-    vol_raw = {fid: float(total_mentions.get(fid, 0)) for fid in candidate_ids}
-    consist_raw = {fid: min(chart_days.get(fid, 0) or days_present.get(fid, 0), 7) / 7.0
-                   for fid in candidate_ids}
-    peak_quality = {
-        fid: 1.0 - min(peak_rank.get(fid, 101), 100) / 100.0 for fid in candidate_ids
-    }
-    sentiment_raw = {fid: (avg_sentiment.get(fid, 0.0) + 1.0) / 2.0 for fid in candidate_ids}
-    coverage_raw = {fid: min(coverage.get(fid, 0), 7) / 7.0 for fid in candidate_ids}
+        now = datetime.now(timezone.utc)
+        for rank_i, (fid, score) in enumerate(top, start=1):
+            prev = prev_week_ranks.get(fid)
+            db.add(WeeklyIndexSnapshot(
+                week_start=week_start,
+                week_end=week_end,
+                chart_type=chart_id,
+                film_id=fid,
+                rank=rank_i,
+                score=score,
+                previous_week_rank=prev,
+                rank_delta=(prev - rank_i) if prev is not None else 0,
+                avg_daily_mentions=round(total_mentions.get(fid, 0) / 7.0, 2),
+                total_signal_volume=total_mentions.get(fid, 0),
+                avg_sentiment=avg_sentiment.get(fid),
+                peak_daily_rank=peak_rank.get(fid),
+                source_coverage=coverage.get(fid, 0),
+                confidence=confidences[fid],
+                published_at=now,
+            ))
 
-    def _minmax(values: dict[int, float]) -> dict[int, float]:
-        lo = min(values.values(), default=0.0)
-        hi = max(values.values(), default=0.0)
-        if hi <= lo:
-            return {fid: 0.5 for fid in values}
-        return {fid: (v - lo) / (hi - lo) for fid, v in values.items()}
+        try:
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            log.error("publish_weekly: write failed for %s %s — %s", chart_id, week_start, exc)
+            continue
+        log.info("publish_weekly: published %s week of %s (%d titles)", chart_id, week_start, len(top))
+        published_any = True
 
-    vol_n = _minmax(vol_raw)
-    cov_n = _minmax(coverage_raw)
-
-    WEIGHTS = dict(vol=0.40, consist=0.20, peak=0.15, sentiment=0.15, coverage=0.10)
-    composite = {
-        fid: (
-            WEIGHTS["vol"] * vol_n[fid]
-            + WEIGHTS["consist"] * consist_raw[fid]
-            + WEIGHTS["peak"] * peak_quality[fid]
-            + WEIGHTS["sentiment"] * sentiment_raw[fid]
-            + WEIGHTS["coverage"] * cov_n[fid]
-        )
-        for fid in candidate_ids
-    }
-    max_c = max(composite.values()) or 1.0
-    scored = sorted(
-        ((fid, round(s * 98.5 / max_c, 1)) for fid, s in composite.items()),
-        key=lambda x: (-x[1], x[0]),
-    )
-    top = scored[:CHART_SIZE]
-
-    # Evidence tiers mirror the daily engine (absolute floor on signal volume)
-    from app.services.confidence import confidence_tier
-    confidences = {fid: confidence_tier(total_mentions.get(fid, 0)) for fid, _ in top}
-
-    prev_week_ranks: dict[int, int] = {}
-    prev_week = week_start - timedelta(days=7)
-    for fid, rank in db.query(
-        WeeklyIndexSnapshot.film_id, WeeklyIndexSnapshot.rank
-    ).filter(WeeklyIndexSnapshot.week_start == prev_week).all():
-        prev_week_ranks[fid] = rank
-
-    now = datetime.now(timezone.utc)
-    for rank_i, (fid, score) in enumerate(top, start=1):
-        prev = prev_week_ranks.get(fid)
-        db.add(WeeklyIndexSnapshot(
-            week_start=week_start,
-            week_end=week_end,
-            film_id=fid,
-            rank=rank_i,
-            score=score,
-            previous_week_rank=prev,
-            rank_delta=(prev - rank_i) if prev is not None else 0,
-            avg_daily_mentions=round(total_mentions.get(fid, 0) / 7.0, 2),
-            total_signal_volume=total_mentions.get(fid, 0),
-            avg_sentiment=avg_sentiment.get(fid),
-            peak_daily_rank=peak_rank.get(fid),
-            source_coverage=coverage.get(fid, 0),
-            confidence=confidences[fid],
-            published_at=now,
-        ))
-
-    try:
-        db.commit()
-    except Exception as exc:
-        db.rollback()
-        log.error("publish_weekly: write failed for %s — %s", week_start, exc)
-        return None
-    log.info("publish_weekly: published week of %s (%d films)", week_start, len(top))
-    return week_start
+    return week_start if published_any else None
 
 
 # ── derived products ─────────────────────────────────────────────────────────
@@ -546,46 +691,45 @@ class MoverRow:
     confidence: str | None
 
 
-def biggest_movers(db: Session, limit: int = 10) -> dict[str, list[MoverRow]]:
-    """Biggest gainers/decliners from the two most recent published dailies.
-
-    Movement is RANK-based (never score-based); score delta is reported
-    separately.  Films whose rank did not change are excluded by definition.
+def biggest_movers(
+    db: Session, limit: int = 10, chart_type: str = MOVIE_100
+) -> dict[str, list[MoverRow]]:
+    """Biggest gainers/decliners from the two most recent published dailies of
+    ONE chart.  Movement is RANK-based (never score-based), computed strictly
+    within the chart — never across chart types.  Titles whose rank did not
+    change are excluded by definition; debuts are New Entries, not movers.
     """
     dates = [
         d for (d,) in db.query(DailyIndexSnapshot.snapshot_date)
+        .filter(DailyIndexSnapshot.chart_type == chart_type)
         .distinct().order_by(DailyIndexSnapshot.snapshot_date.desc()).limit(2).all()
     ]
     if not dates:
         return {"gainers": [], "decliners": []}
 
     latest_date = dates[0]
-    prior_date = dates[1] if len(dates) > 1 else None
 
     latest = db.query(DailyIndexSnapshot).filter(
-        DailyIndexSnapshot.snapshot_date == latest_date
+        DailyIndexSnapshot.snapshot_date == latest_date,
+        DailyIndexSnapshot.chart_type == chart_type,
     ).all()
     by_film_latest = {r.film_id: r for r in latest}
 
-    prior: dict[int, DailyIndexSnapshot] = {}
-    if prior_date is not None:
-        for r in db.query(DailyIndexSnapshot).filter(
-            DailyIndexSnapshot.snapshot_date == prior_date
-        ).all():
-            prior[r.film_id] = r
-
-    # Movers are computed against the previous PUBLISHED daily, not just the
-    # immediately-prior snapshot date — using the last rank each film held
-    # keeps movement correct across skipped publication days.
-    # Two-step (max date per film, then fetch those rows): selecting bare
-    # rank/score next to an aggregate would violate MySQL 8's default
+    # Movers are computed against the previous PUBLISHED daily of the same
+    # chart, not just the immediately-prior snapshot date — using the last
+    # rank each title held keeps movement correct across skipped publication
+    # days.  Two-step (max date per film, then fetch those rows): selecting
+    # bare rank/score next to an aggregate would violate MySQL 8's default
     # ONLY_FULL_GROUP_BY mode and 500 in production.
     max_dates = dict(
         db.query(
             DailyIndexSnapshot.film_id,
             func.max(DailyIndexSnapshot.snapshot_date),
         )
-        .filter(DailyIndexSnapshot.snapshot_date < latest_date)
+        .filter(
+            DailyIndexSnapshot.snapshot_date < latest_date,
+            DailyIndexSnapshot.chart_type == chart_type,
+        )
         .group_by(DailyIndexSnapshot.film_id)
         .all()
     )
@@ -600,7 +744,8 @@ def biggest_movers(db: Session, limit: int = 10) -> dict[str, list[MoverRow]]:
             .filter(
                 tuple_(DailyIndexSnapshot.film_id, DailyIndexSnapshot.snapshot_date).in_(
                     list(max_dates.items())
-                )
+                ),
+                DailyIndexSnapshot.chart_type == chart_type,
             )
             .all()
         )
@@ -647,16 +792,25 @@ def biggest_movers(db: Session, limit: int = 10) -> dict[str, list[MoverRow]]:
     return {"gainers": gainers[:limit], "decliners": decliners[:limit]}
 
 
-def new_entries(db: Session, limit: int = 20, days: int | None = None) -> list[IndexDebut]:
-    """Films entering The Index for the first time (their only appearance as new).
+def new_entries(
+    db: Session,
+    limit: int = 20,
+    days: int | None = None,
+    chart_type: str = MOVIE_100,
+) -> list[tuple[IndexDebut, Film]]:
+    """Titles entering ONE chart for the first time (their only appearance as
+    NEW on that chart).
 
-    A film debuts exactly once — `index_debuts` enforces it.  `days` optionally
+    A title debuts exactly once per chart — `index_debuts` (chart_type,
+    film_id) enforces it.  NEW means first entry into the official chart;
+    release date plays no part in the definition.  `days` optionally
     restricts to debuts within the last N days; results are ordered newest
     debut first, then by debut rank.
     """
     q = (
         db.query(IndexDebut, Film)
         .join(Film, Film.id == IndexDebut.film_id)
+        .filter(IndexDebut.chart_type == chart_type)
         .order_by(IndexDebut.debut_date.desc(), IndexDebut.debut_rank.asc())
     )
     if days is not None:

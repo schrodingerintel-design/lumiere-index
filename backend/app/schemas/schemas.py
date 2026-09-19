@@ -40,6 +40,10 @@ class FilmBase(BaseModel):
 class RankedFilm(FilmBase):
     rank: int
     score: float
+    # The official chart this rank belongs to — rank is ALWAYS contextual.
+    # rank 0 + chart_type null ⇒ the title is not currently ranked on any
+    # official chart (clients render "Not currently ranked").
+    chart_type: str | None = None
     prev_rank: int | None = None
     movement: int = 0
     peak_rank: int | None = None
@@ -116,6 +120,9 @@ class IMDbMomentumDiagnosticOut(BaseModel):
 class FilmDetail(RankedFilm):
     mentions_total: int = 0
     sentiment: SentimentBreakdown
+    # Full chart résumé — derived from immutable snapshots, chart-scoped.
+    top10_days: int | None = None
+    longest_streak_at_one: int | None = None
     # Observation funnel — raw volume behind the score, for internal Signal
     # Health consumers. Optional so older clients ignore it cleanly.
     signal_funnel: SignalFunnel | None = None
@@ -283,6 +290,9 @@ class IndexEntryOut(BaseModel):
 class IndexMetaOut(BaseModel):
     """Metadata about the published Index being returned."""
     snapshot_date: date
+    # Which official chart this snapshot is — historical rank is ALWAYS tied
+    # to a chart_id.
+    chart_type: str = "MOVIE_100"
     published_at: datetime | None = None
     entry_count: int = 0
 
@@ -329,6 +339,7 @@ class WeeklyEntryOut(BaseModel):
 class WeeklyMetaOut(BaseModel):
     week_start: date
     week_end: date
+    chart_type: str = "MOVIE_100"
     published_at: datetime | None = None
     entry_count: int = 0
 

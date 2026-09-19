@@ -20,13 +20,23 @@ class DailyScore(Base):
 
 class Ranking(Base):
     __tablename__ = "rankings"
-    __table_args__ = (Index("ix_rankings_snapshot_rank", "snapshot_at", "rank"),)
+    __table_args__ = (
+        Index("ix_rankings_snapshot_rank", "snapshot_at", "rank"),
+        Index("ix_rankings_chart_snapshot_rank", "chart_type", "snapshot_at", "rank"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     snapshot_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # The official chart this row belongs to — rank is ALWAYS contextual to a
+    # chart (MOVIE_100, TV_100; ACTOR_100/DIRECTOR_100 arrive in Phase 3).
+    # Legacy rows predate charts and are treated as MOVIE_100.
+    chart_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="MOVIE_100")
     film_id: Mapped[int] = mapped_column(ForeignKey("films.id", ondelete="CASCADE"), nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
+    # Raw cultural momentum before the 0–100 Index Score mapping — internal
+    # only (admin score inspector); never exposed publicly.
+    composite_raw: Mapped[float | None] = mapped_column(Float, nullable=True)
     prev_rank: Mapped[int | None] = mapped_column(Integer)
     movement: Mapped[int] = mapped_column(Integer, default=0)
     peak_rank: Mapped[int | None] = mapped_column(Integer)

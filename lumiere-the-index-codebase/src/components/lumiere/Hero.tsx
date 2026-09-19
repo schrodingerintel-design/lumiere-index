@@ -303,7 +303,7 @@ export function Hero() {
   );
 }
 
-/** Homepage Top 10 — the chart IS the hero of the page. */
+/** Homepage Movie 100 Top 10 — charts are the primary content (§21). */
 export function TopTen() {
   const { data: films, isLoading, error } = useQuery({
     queryKey: ["films", "top", 100],
@@ -317,17 +317,17 @@ export function TopTen() {
     <section className="px-4 pt-10 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <SectionHeading
-          kicker="The Index"
-          title="The Top 10"
-          copy="The ten titles capturing the most cultural attention today."
+          kicker="The Index · Movie 100"
+          title="Movie 100 — Top 10"
+          copy="The ten films generating the strongest measured cultural momentum today."
           seeAllHref="/top-100"
-          seeAllLabel="Full Top 100"
+          seeAllLabel="Full Movie 100"
           action={
             <ShareCardButton
               variant="chart"
               card={{
-                title: "The Top 10",
-                subtitle: "The ten titles capturing the most cultural attention today.",
+                title: "Movie 100 — Top 10",
+                subtitle: "The films generating the strongest measured cultural momentum today.",
                 films: top10,
               }}
             />
@@ -342,6 +342,57 @@ export function TopTen() {
             </li>
           ) : (
             top10.map((f) => (
+              <li key={f.slug}>
+                <RankRow film={f} />
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/** Homepage TV 100 Top 5 — the television chart, front and center. */
+export function TvTopFive() {
+  const { data: films, isLoading, error } = useQuery({
+    queryKey: ["films", "tv100", 5],
+    queryFn: () => getTopFilms(5, 0, "TV_100"),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const top5 = films ?? [];
+
+  return (
+    <section className="px-4 pt-10 sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <SectionHeading
+          kicker="The Index · TV 100"
+          title="TV 100 — Top 5"
+          copy="The series generating the strongest measured cultural momentum today."
+          seeAllHref="/tv-100"
+          seeAllLabel="Full TV 100"
+          action={
+            <ShareCardButton
+              variant="chart"
+              card={{
+                title: "TV 100 — Top 5",
+                subtitle: "The series generating the strongest measured cultural momentum today.",
+                films: top5,
+                scoreLabel: "TVDex",
+              }}
+            />
+          }
+        />
+        <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/10">
+          {isLoading ? (
+            <TopTenSkeleton />
+          ) : error ? (
+            <li className="py-12 text-center text-sm text-muted-foreground">
+              Something went wrong. Please try again.
+            </li>
+          ) : (
+            top5.map((f) => (
               <li key={f.slug}>
                 <RankRow film={f} />
               </li>
