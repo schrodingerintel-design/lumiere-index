@@ -412,12 +412,16 @@ def schema_status(db: Session = Depends(get_db)):
 
     _probe("call_top_films", lambda: _top(request=_req("/films/top", "limit=3"), limit=3, offset=0, genre=None, chart=None, content_type=None, db=db))
     _probe("call_search_films", lambda: _search(request=_req("/films/search", "q=a"), q="a", limit=5, genre=None, content_type=None, db=db))
-    _probe("call_weekly_index", lambda: _weekly(request=_req("/index/weekly"), chart=None, limit=10, offset=0, db=db))
+    _probe("call_weekly_index", lambda: _weekly(chart=None, limit=10, offset=0, db=db))
+
+    from app.main import LAST_SERVER_ERROR
+    last_error = dict(LAST_SERVER_ERROR) if LAST_SERVER_ERROR else None
 
     return {
         "alembic_version": version_row[0] if version_row else None,
         "tables": tables,
         "probes": probes,
         "orm_probes": orm_probes,
+        "last_server_error": last_error,
         "models_declared": sorted(t.name for t in Base.metadata.sorted_tables),
     }

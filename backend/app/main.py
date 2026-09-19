@@ -105,6 +105,27 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Lumière The Index API", version="0.1.0", lifespan=lifespan)
 
+# Last unhandled server exception, for /meta/schema-status diagnostics.
+# Production containers log to stdout we cannot read from the outside; this
+# makes the real traceback observable without shell access.
+LAST_SERVER_ERROR: dict = {}
+
+
+@app.middleware("http")
+async def capture_server_errors(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        import traceback as _tb
+        LAST_SERVER_ERROR.clear()
+        LAST_SERVER_ERROR.update({
+            "path": str(request.url.path),
+            "type": type(exc).__name__,
+            "detail": str(exc)[:500],
+            "trace": _tb.format_exc()[-2000:],
+        })
+        raise
+
 app.add_middleware(SimpleRateLimiterMiddleware, requests_per_minute=120)
 
 app.add_middleware(
