@@ -338,6 +338,65 @@ def schema_status(db: Session = Depends(get_db)):
     _probe("orm_ranking_full_row", lambda: db.query(Ranking).limit(1).all())
     _probe("orm_film_full_row", lambda: db.query(Film).limit(1).all())
 
+    # Serialization probes — run the endpoints' own row→schema assembly on
+    # real production rows. Validation failures here are the 500s.
+    from app.api.v1.films import (
+        _latest_snapshot as _snap,
+        _ranked_query,
+        _to_ranked,
+        _mentions_map,
+        _days_on_chart_map,
+        _days_at_one_map,
+        _with_mentions,
+        _chart_for_content_type,
+    )
+
+    def _ser_top():
+        snap = _snap(db)
+        rows = _ranked_query(db, snap, chart_type="MOVIE_100").limit(5).all()
+        mentions = _mentions_map(db, [f.id for f, _ in rows])
+        days = _days_on_chart_map(db, [f.id for f, _ in rows], chart_type="MOVIE_100")
+        at_one = _days_at_one_map(db, [f.id for f, _ in rows], chart_type="MOVIE_100")
+        return _with_mentions(rows, mentions, days, at_one)
+
+    def _ser_search():
+        snap = _snap(db)
+        films = db.query(Film).filter(Film.title.ilike("%a%")).limit(5).all()
+        ids = [f.id for f in films]
+        rankings = {
+            r.film_id: r
+            for r in db.query(Ranking).filter(Ranking.film_id.in_(ids), Ranking.snapshot_at == snap).all()
+        }
+
+        def _own(f):
+            r = rankings.get(f.id)
+            if r is None:
+                return None
+            expected = _chart_for_content_type(f.content_type)
+            return r if r.chart_type == expected else None
+
+        ranked = [(f, _own(f)) for f in films if _own(f) is not None]
+        mentions = _mentions_map(db, ids)
+        return _with_mentions(ranked, mentions) if ranked else []
+
+    def _ser_weekly():
+        from app.schemas import WeeklyEntryOut
+        row = db.query(_W, Film).join(Film, _W.film_id == Film.id).limit(1).first()
+        if row is None:
+            return []
+        w, f = row
+        return [WeeklyEntryOut.model_validate({**f.__dict__, **{"__row": w}, **{
+            k: getattr(w, k) for k in (
+                "rank", "score", "previous_week_rank", "rank_delta", "avg_daily_mentions",
+                "total_signal_volume", "avg_sentiment", "peak_daily_rank", "source_coverage",
+                "confidence", "ca_score", "momentum_score", "recency_score", "ae_score", "cp_score",
+            )
+        }})]
+
+    _probe("serialize_films_top", _ser_top)
+    _probe("serialize_search", _ser_search)
+    _probe("serialize_weekly_entry", _ser_weekly)
+
     return {
         "alembic_version": version_row[0] if version_row else None,
         "tables": tables,
