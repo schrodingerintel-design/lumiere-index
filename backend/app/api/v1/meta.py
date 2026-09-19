@@ -318,9 +318,30 @@ def schema_status(db: Session = Depends(get_db)):
         except Exception as exc:
             probes[label] = f"{type(exc).__name__}: {str(exc)[:200]}"
     version_row = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).first()
+
+    # Reproduce the exact ORM queries of the failing endpoints — the exception
+    # text is the diagnosis. Read-only; no row data is returned.
+    orm_probes: dict[str, str] = {}
+    from app.models import WeeklyIndexSnapshot as _W, DailyIndexSnapshot as _D
+
+    def _probe(label: str, fn):
+        try:
+            fn()
+            orm_probes[label] = "ok"
+        except Exception as exc:
+            orm_probes[label] = f"{type(exc).__name__}: {str(exc)[:300]}"
+
+    _probe("orm_film_join_ranking", lambda: db.query(Film, Ranking).join(Ranking, Ranking.film_id == Film.id).limit(1).all())
+    _probe("orm_film_ilike", lambda: db.query(Film).filter(Film.title.ilike("%a%")).limit(1).all())
+    _probe("orm_weekly_join_film", lambda: db.query(_W, Film).join(Film, _W.film_id == Film.id).limit(1).all())
+    _probe("orm_daily_join_film", lambda: db.query(_D, Film).join(Film, _D.film_id == Film.id).limit(1).all())
+    _probe("orm_ranking_full_row", lambda: db.query(Ranking).limit(1).all())
+    _probe("orm_film_full_row", lambda: db.query(Film).limit(1).all())
+
     return {
         "alembic_version": version_row[0] if version_row else None,
         "tables": tables,
         "probes": probes,
+        "orm_probes": orm_probes,
         "models_declared": sorted(t.name for t in Base.metadata.sorted_tables),
     }
