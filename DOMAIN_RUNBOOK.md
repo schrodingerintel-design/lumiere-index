@@ -129,8 +129,31 @@ image still won't accept connections after ~5 minutes, use **Backups →
 restore the latest snapshot** (or the Backups tab's suggested point) — that
 is exactly what the pre-change snapshot in step 1 is for.
 
+**Final diagnosis (2026-09-20, from the MySQL container's own Deploy Logs):**
+two decisive errors settled it:
+1. `[MY-013360] Invalid MySQL server downgrade: Cannot downgrade from 90702
+   to 90400` — the `mysql:9.7.2` attempt upgraded the data dictionary to
+   9.7 before dying. **The datadir can never boot on 9.4 again**; the only
+   forward path on existing data is `mysql:9.7.x`.
+2. `[MY-012634] Error number 28 means 'No space left on device'` — the
+   volume's capacity was effectively exhausted (the 379.85 MB Railway
+   metric is *used* space; MySQL couldn't write even 1 MB of redo log).
+   The 9.7 upgrade artifacts plus unbounded snapshot history filled it —
+   the growth the retention job now prevents.
+
+**Recovery ladder (dashboard, in order):**
+1. **Expand the volume first** (MySQL → Volumes → ≥ 2 GB). Nothing boots on
+   a full volume; this fixes error 28.
+2. **Image → `mysql:9.7.2`** (not 9.4 — see the downgrade gate above).
+   With space available the interrupted 9.7 upgrade completes on boot.
+3. Verify `ready for connections` in Deploy Logs and `/readyz` → `db: ok`.
+4. If boot shows corruption instead: **Backups → restore the pre-churn
+   snapshot** → boot that datadir on `mysql:9.4` (a pre-9.7 snapshot is a
+   9.4 datadir) → verify → only then upgrade to 9.7.2.
+
 **Never move a MySQL image to an older version than the datadir.** Upgrades
-only, with a backup first (Railway: Backups tab).
+only, with a backup first (Railway: Backups tab) — and treat an interrupted
+upgrade as a one-way door: the datadir belongs to the newer version after it.
 
 **Code-side hardening shipped alongside (this repo):**
 - **DB outage circuit breaker** (`app/services/db_health.py`): the first
