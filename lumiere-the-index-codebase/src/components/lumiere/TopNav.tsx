@@ -42,8 +42,8 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
 
           <BrandLink />
 
-          {/* Public-beta chip: obvious but quiet; opens the release notes. */}
-          <BetaBadge className="-ml-3" />
+          {/* Public-beta pill: obvious but quiet; opens the release notes. */}
+          <BetaBadge className="hidden sm:inline-flex" />
 
           <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
             {PRIMARY_LINKS.map((l) => (
