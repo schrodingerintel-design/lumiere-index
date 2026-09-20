@@ -210,6 +210,27 @@ def score_inspector(slug: str, db: Session = Depends(get_db)):
     }
 
 
+@router.get("/admin/maintenance/preview", dependencies=[Depends(_require_admin)])
+def maintenance_preview(db: Session = Depends(get_db)):
+    """What the retention pass would reclaim (no writes)."""
+    from app.services.retention import retention_preview
+
+    return retention_preview(db)
+
+
+@router.post("/admin/maintenance/run", dependencies=[Depends(_require_admin)])
+def maintenance_run(db: Session = Depends(get_db)):
+    """Run the data-retention pass now: collapse stale ranking snapshots and
+    prune aged raw signals. Safe against live traffic (chunked deletes);
+    published chart numbers are preserved bit-exactly."""
+    from app.services.retention import run_retention
+
+    try:
+        return {"ok": True, **run_retention(db)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Retention failed: {exc}")
+
+
 def datetime_now_utc():
     from datetime import datetime, timezone
     return datetime.now(timezone.utc)

@@ -4,13 +4,28 @@ from sqlalchemy.sql import sqltypes
 
 from app.config import settings
 
+
+def _mysql_connect_args(settings) -> dict:
+    """Dialect-appropriate timeouts. SQLite (tests) gets none; PyMySQL gets
+    aggressive connect/read/write timeouts so requests fail fast instead of
+    hanging when the database is unreachable."""
+    url = settings.resolved_database_url
+    if url.startswith("sqlite"):
+        return {}
+    return {"connect_timeout": 5, "read_timeout": 15, "write_timeout": 15}
+
+
 engine = create_engine(
     settings.resolved_database_url,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,
-    pool_timeout=30,
+    # Small single-node MySQL (Railway): a modest pool with fast failure beats
+    # a big pool that queues. Connect/read timeouts stop a dead DB from
+    # holding API workers for minutes (the 20-40s TTFB failure signature).
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=1800,
+    pool_timeout=10,
+    connect_args=_mysql_connect_args(settings),
     future=True,
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)

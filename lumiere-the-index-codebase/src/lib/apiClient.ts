@@ -49,11 +49,21 @@ export const TMDB_IMG = "https://image.tmdb.org/t/p";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Hard cap on a single API call. A slow or downed backend must never hold an
+ *  SSR render for tens of seconds — past this the request fails, the loader's
+ *  prefetch degrades to client-side rendering (skeletons → refetch), and the
+ *  page paints fast regardless of backend health. */
+const API_TIMEOUT_MS = 4000;
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const base = getApiBase();
   const res = await fetch(`${base.replace(/\/+$/, "")}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    signal: AbortSignal.any([
+      AbortSignal.timeout(API_TIMEOUT_MS),
+      ...(init?.signal ? [init.signal] : []),
+    ]),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
