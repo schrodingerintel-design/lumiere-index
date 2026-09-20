@@ -106,6 +106,11 @@ function gradientStyle(film: RankedFilm | null | undefined) {
   return `linear-gradient(155deg, ${from}, ${to})`;
 }
 
+/** Humanize a slug for the not-found page: "blade-runner-2049" → "blade runner 2049". */
+function paramsSlugToTitle(slug: string): string {
+  return slug.replace(/-/g, " ");
+}
+
 // ── Watchlist hook (localStorage) ────────────────────────────────────────────
 function useWatchlist(slug: string) {
   const key = "lumiere_watchlist";
@@ -450,9 +455,33 @@ function FilmDetailView() {
   if (filmError || !film) {
     return (
       <Layout>
-        <div className="px-6 py-20 text-center font-display text-3xl font-medium">
-          {filmError ? `Failed to load film: ${filmError.message}` : "Film not found."}
-        </div>
+        <section className="flex flex-col items-center justify-center px-6 py-24 text-center">
+          <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            The Index · 404
+          </div>
+          <h1 className="mt-4 font-display text-4xl font-medium text-foreground">
+            {filmError ? "This title could not be loaded" : "Not on the Index"}
+          </h1>
+          <p className="mt-3 max-w-md text-sm text-muted-foreground">
+            {filmError
+              ? "Something went wrong reaching the chart engine. It may be back momentarily."
+              : `"${paramsSlugToTitle(slug)}" is not currently in the catalogue. Titles move in and out as the Index re-syncs with live cultural data.`}
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/top-100"
+              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+            >
+              Browse Movie 100
+            </Link>
+            <Link
+              to="/"
+              className="rounded-full border border-foreground/15 px-5 py-2 text-sm font-medium text-foreground transition hover:border-foreground/45"
+            >
+              Go home
+            </Link>
+          </div>
+        </section>
       </Layout>
     );
   }
