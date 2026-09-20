@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getTrendingFilms, type TrendingFilmOut } from "@/lib/apiClient";
@@ -13,7 +14,9 @@ export const Route = createFileRoute("/trending")({
         content:
           "Films generating the most audience conversation right now.",
       },
+      ogUrlMeta("/trending"),
     ],
+    links: [canonicalLink("/trending")],
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({

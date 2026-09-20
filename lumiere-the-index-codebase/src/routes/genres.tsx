@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getGenreFilms, getGenres, type RankedFilm } from "@/lib/apiClient";
@@ -17,7 +18,9 @@ export const Route = createFileRoute("/genres")({
         content:
           "Explore the full catalogue grouped by genre — ranked or not. Genre membership is independent of chart ranking.",
       },
+      ogUrlMeta("/genres"),
     ],
+    links: [canonicalLink("/genres")],
   }),
   component: GenresPage,
   errorComponent: RouteError,

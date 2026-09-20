@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { StaticPage } from "@/components/lumiere/StaticPage";
 import { RouteError } from "@/lib/route-error";
 import { Compass, Eye, TrendingUp } from "lucide-react";
@@ -12,7 +13,9 @@ export const Route = createFileRoute("/about")({
         content:
           "Lumière: The Index is a real-time cultural ranking platform tracking the movies and series capturing global attention.",
       },
+      ogUrlMeta("/about"),
     ],
+    links: [canonicalLink("/about")],
   }),
   component: About,
   errorComponent: RouteError,

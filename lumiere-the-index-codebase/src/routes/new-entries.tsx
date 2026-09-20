@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getIndexNewEntries } from "@/lib/apiClient";
@@ -15,7 +16,9 @@ export const Route = createFileRoute("/new-entries")({
         content:
           "Films entering The Index for the first time — their official debut rank and date.",
       },
+      ogUrlMeta("/new-entries"),
     ],
+    links: [canonicalLink("/new-entries")],
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({

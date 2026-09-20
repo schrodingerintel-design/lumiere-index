@@ -11,6 +11,7 @@ import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { SITE_URL, SITE_NAME, sitePath } from "@/lib/site";
 
 function NotFoundComponent() {
   return (
@@ -89,10 +90,45 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "What's capturing cultural attention in film and television, right now.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "The Index — by Lumière" },
+      { property: "og:site_name", content: SITE_NAME },
+      // Canonical identity: every og:image resolves to the production domain,
+      // never a deployment URL. og:url + canonical are set PER ROUTE (links
+      // are not deduped across routes, so the root must not add them).
+      { property: "og:image", content: sitePath("/og-image.png") },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "The Index — live cultural rankings for film and television" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@lumieretheindex" },
       { name: "twitter:creator", content: "@lumieretheindex" },
+      { name: "twitter:image", content: sitePath("/og-image.png") },
+      // Google Search Console (HTML-tag method): set VITE_GOOGLE_SITE_VERIFICATION
+      // to the token from the Search Console verification record; renders only when set.
+      ...(import.meta.env.VITE_GOOGLE_SITE_VERIFICATION
+        ? [{ name: "google-site-verification", content: import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string }]
+        : []),
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "The Index",
+          alternateName: SITE_NAME,
+          url: SITE_URL,
+          description:
+            "The Index charts cultural momentum across film and television: Movie 100, TV 100, Biggest Movers and New Entries, refreshed every 15 minutes.",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: `${SITE_URL}/?q={search_term_string}`,
+            },
+            "query-input": "required name=search_term_string",
+          },
+        }),
+      },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },

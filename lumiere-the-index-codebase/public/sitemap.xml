@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static sitemap for The Index's hand-authored pages (lumiereindex.com).
+  Dynamic title pages (/films/:slug) are intentionally excluded here —
+  they are served fresh from the live Index; a generated per-title sitemap
+  can be added to the build later without changing this file's contract.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://lumiereindex.com/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://lumiereindex.com/top-100</loc><changefreq>hourly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://lumiereindex.com/tv-100</loc><changefreq>hourly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://lumiereindex.com/rising</loc><changefreq>hourly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lumiereindex.com/new-entries</loc><changefreq>hourly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lumiereindex.com/trending</loc><changefreq>hourly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lumiereindex.com/calendar</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
+  <url><loc>https://lumiereindex.com/genres</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
+  <url><loc>https://lumiereindex.com/methodology</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://lumiereindex.com/about</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://lumiereindex.com/privacy</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://lumiereindex.com/terms</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
+</urlset>

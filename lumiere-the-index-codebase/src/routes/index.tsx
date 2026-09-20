@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { Layout } from "@/components/lumiere/Layout";
 import { RouteError } from "@/lib/route-error";
 import { Hero, TopTen, TvTopFive, PulseRow } from "@/components/lumiere/Hero";
@@ -15,7 +16,9 @@ export const Route = createFileRoute("/")({
         content:
           "The Index charts cultural momentum across film and television: Movie 100, TV 100, Biggest Movers and New Entries, refreshed every 15 minutes.",
       },
+      ogUrlMeta("/"),
     ],
+    links: [canonicalLink("/")],
   }),
   // Prefetch every query the home page renders so SSR serves real data.
   loader: async ({ context }) => {

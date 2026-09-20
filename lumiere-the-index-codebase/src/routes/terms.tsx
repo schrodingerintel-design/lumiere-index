@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { StaticPage } from "@/components/lumiere/StaticPage";
 import { RouteError } from "@/lib/route-error";
 
@@ -10,7 +11,9 @@ export const Route = createFileRoute("/terms")({
         name: "description",
         content: "The terms and conditions governing use of The Index.",
       },
+      ogUrlMeta("/terms"),
     ],
+    links: [canonicalLink("/terms")],
   }),
   component: Terms,
   errorComponent: RouteError,
@@ -104,7 +107,7 @@ function Terms() {
       </Section>
 
       <Section num="8." title="Contact">
-        <p>If you have questions about these Terms, contact us at privacy@theindex.com.</p>
+        <p>If you have questions about these Terms, contact us at privacy@lumiereindex.com.</p>
         <p className="text-xs text-muted-foreground">© The Index — by Lumière. All rights reserved.</p>
       </Section>
     </StaticPage>

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getBiggestMovers } from "@/lib/apiClient";
@@ -15,7 +16,9 @@ export const Route = createFileRoute("/rising")({
         content:
           "The biggest rank changes on The Index — largest daily climbers and decliners.",
       },
+      ogUrlMeta("/rising"),
     ],
+    links: [canonicalLink("/rising")],
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({

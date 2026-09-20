@@ -12,6 +12,7 @@
 
 import type { RankedFilm } from "@/lib/apiClient";
 import { getApiBase } from "@/lib/apiClient";
+import { SITE_URL } from "@/lib/site";
 
 const IVORY = "#F4F1EA";
 const INK = "#080808";
@@ -493,7 +494,11 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
   ctx.stroke();
   ctx.fillStyle = MUTED;
   ctx.font = `24px ${MONO_FONT}`;
-  ctx.fillText("The Index · Live cultural rankings · theindex.app", 80, H - 70);
+  ctx.fillText(
+    `The Index · Live cultural rankings · ${SITE_URL.replace(/^https:\/\//, "")}`,
+    80,
+    H - 70,
+  );
 
   const blob = await new Promise<Blob>((resolve) =>
     canvas.toBlob((b) => resolve(b!), "image/png"),
