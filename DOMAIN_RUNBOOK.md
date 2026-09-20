@@ -116,11 +116,36 @@ InnoDB dictionary (`The table 'columns' is full`) and the server dies at boot.
    `mysqldump` from the recovered 9.4 volume → fresh 9.7.2 volume → import
    (works across any gap and yields a clean, compact datadir).
 
+**Post-mortem correction (2026-09-20, later):** the "volume full" theory was
+**wrong** — Railway's Disk usage metric showed `mysql-volume` flat at ~380 MB,
+nowhere near capacity. The actual failure signature was the API erroring with
+`(2003, "Can't connect to MySQL server on 'mysql.railway.internal' (timed out)")`
+in a loop so loud it hit Railway's 500-logs/sec cap and **dropped 1,722 log
+messages**. That means: the MySQL container was up but mysqld inside it was
+not accepting TCP connections (still finishing crash recovery from the
+damaged 9.4→9→9.7.2 boots, or wedged). The fix sequence stays the same; the
+disk check is just a sanity step, not the likely cause. If a healthy 9.4
+image still won't accept connections after ~5 minutes, use **Backups →
+restore the latest snapshot** (or the Backups tab's suggested point) — that
+is exactly what the pre-change snapshot in step 1 is for.
+
 **Never move a MySQL image to an older version than the datadir.** Upgrades
 only, with a backup first (Railway: Backups tab).
 
 **Code-side hardening shipped alongside (this repo):**
-- Connect/read/write timeouts on the PyMySQL pool — a dead DB now fails in
+- **DB outage circuit breaker** (`app/services/db_health.py`): the first
+  failed connection opens it; every further request gets an instant honest
+  503 (`Retry-After: 30`) instead of hanging ~5s on the TCP timeout each.
+  Auto half-opens after 30s so one request can probe; the moment MySQL
+  answers, the breaker closes and traffic resumes with no redeploy.
+  Health probes (`/health`, `/healthz`, `/readyz`) are exempt — a 503
+  liveness probe would get the healthy container restarted.
+- **Throttled failure logging** (`log_throttled` in logging_config): an
+  outage now logs once a minute per endpoint instead of 500+/sec (which
+  got messages dropped by Railway's cap).
+- **Scheduler outage guard**: ingest/ranking tasks skip quietly while the
+  breaker is open instead of failing with a traceback every 15 min.
+- Connect/read/write timeouts on the PyMySQL pool — a dead DB fails in
   ~5s instead of hanging SSR renders for 20–40s
 - 4s client timeout on all frontend API calls — the site degrades to
   skeletons + client refetch instead of multi-second TTFB

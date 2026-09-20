@@ -68,8 +68,20 @@ def _due(task: str) -> bool:
 def _run_task(name: str) -> None:
     """Execute a task in its own DB session; never propagate exceptions."""
     from app.db import SessionLocal
+    from app.services import db_health
+    from app.utils.logging_config import log_throttled
     from app.workers import tasks
 
+    # While the DB breaker is open, scheduled ingest/rankings work would just
+    # pay the TCP timeout and fail (logging a traceback each). Skip quietly;
+    # the loop retries on cadence and the breaker lets work resume the moment
+    # the DB answers.
+    if db_health.is_open():
+        log_throttled(
+            f"scheduler-skip-{name}", log, logging.INFO,
+            "scheduler: %s skipped — DB circuit open", name, every=300.0,
+        )
+        return
     try:
         fn = getattr(tasks, name)
         with SessionLocal() as db:
@@ -81,7 +93,10 @@ def _run_task(name: str) -> None:
                 fn()
         log.info("scheduler: %s completed", name)
     except Exception as exc:
-        log.warning("scheduler: %s failed — %s", name, exc)
+        log_throttled(
+            f"task-{name}", log, logging.WARNING,
+            "scheduler: %s failed — %s", name, exc, every=60.0,
+        )
         try:
             # If the failure poisoned a shared session, reset it.
             from app.db import engine

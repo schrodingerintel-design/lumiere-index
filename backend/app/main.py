@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres, index
@@ -126,6 +127,31 @@ async def capture_server_errors(request, call_next):
         })
         raise
 
+# ── DB outage fast-fail ──────────────────────────────────────────────────
+# While the breaker (app/services/db_health.py) is open, answer 503
+# immediately instead of walking the 5s TCP timeout ladder per request.
+# Reads still tell the truth about why; the frontend's ChartsUnavailable
+# state renders the honest message with a Retry button.
+@app.middleware("http")
+async def db_outage_fast_fail(request, call_next):
+    from app.services import db_health
+
+    path = request.url.path
+    # Never block health probes: /healthz is Railway's liveness check — a 503
+    # there would get the (healthy) API container restarted. /readyz does its
+    # own DB check and reports the detail itself.
+    if path in ("/health", "/healthz", "/readyz") or path.startswith("/api/v1/admin"):
+        return await call_next(request)
+
+    if db_health.is_open():
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "30"},
+            content={"detail": "Database temporarily unavailable — retrying in the background"},
+        )
+    return await call_next(request)
+
+
 app.add_middleware(SimpleRateLimiterMiddleware, requests_per_minute=120)
 
 app.add_middleware(
@@ -200,7 +226,10 @@ def readyz(response: Response):
     from sqlalchemy import select, func
     from app.db import SessionLocal
     from app.models import Ranking
+    from app.services import db_health
     from app.utils.cache import get_redis
+
+    from app.utils.logging_config import log_throttled
 
     db_status = "unreachable"
     snapshot_ready = False
@@ -209,8 +238,15 @@ def readyz(response: Response):
             snap = db.scalar(select(func.max(Ranking.snapshot_at)))
             db_status = "ok"
             snapshot_ready = snap is not None
+            db_health.record_success()
     except Exception as exc:
-        log.warning("readyz: DB check failed — %s", exc)
+        db_health.record_failure(f"readyz: {type(exc).__name__}")
+        # Health probes hit this every few seconds — one line a minute,
+        # not 500/sec (Railway dropped 1,722 messages during the outage).
+        log_throttled(
+            "readyz-db", log, logging.WARNING,
+            "readyz: DB check failed — %s", exc, every=60.0,
+        )
 
     redis = get_redis()
     redis_status = "ok" if redis else "unavailable (in-process cache)"

@@ -1,8 +1,13 @@
+import logging
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.sql import sqltypes
 
 from app.config import settings
+from app.services import db_health
+
+log = logging.getLogger(__name__)
 
 
 def _mysql_connect_args(settings) -> dict:
@@ -29,6 +34,37 @@ engine = create_engine(
     future=True,
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+
+# ── Outage circuit breaker ──────────────────────────────────────────────────
+# Engine-level listeners feed the breaker (app/services/db_health.py): a
+# connection-level exception opens it, a successful connection or checkout
+# closes it. While it is open, the API middleware answers 503 instantly
+# instead of walking the TCP timeout ladder per request.
+@event.listens_for(engine, "checkout")
+def _breaker_on_checkout(dbapi_conn, record, cursor):
+    """A connection was handed out successfully — the DB is answering."""
+    db_health.record_success()
+
+
+@event.listens_for(engine, "engine_connect")
+def _breaker_on_connect(conn, record):
+    """A fresh connection was established successfully."""
+    db_health.record_success()
+
+
+@event.listens_for(engine, "handle_error")
+def _breaker_on_error(context):
+    """Open the breaker on connection-level failures (not SQL-level ones)."""
+    from sqlalchemy.exc import InterfaceError, OperationalError
+
+    exc = context.original_exception
+    # OperationalError covers connect timeouts / refused / dropped
+    # connections (the outage signatures); InterfaceError covers a
+    # connection lost mid-use. SQL-level mistakes (ProgrammingError etc.)
+    # are app bugs, not outages, and must not trip the breaker.
+    if isinstance(exc, (OperationalError, InterfaceError)):
+        db_health.record_failure(f"{type(exc).__name__}: {str(exc)[:200]}")
 
 
 class Base(DeclarativeBase):
