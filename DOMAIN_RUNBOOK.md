@@ -97,12 +97,27 @@ path**: opening a 9.4 data directory with the 9.0 binaries forces system-table
 "upgrades" (`ALTER TABLE user ... ssl_type`, redo-log resize) that exhaust the
 InnoDB dictionary (`The table 'columns' is full`) and the server dies at boot.
 
-**Fix (dashboard, one step):** MySQL service → Settings → Image → set
-`mysql:9.4` → Restart. The data volume is untouched; the server comes back
-with all data.
+**Fix (dashboard, in order):**
 
-**Never move a MySQL image to an older minor version.** Upgrade path only:
-9.4 → 9.6 etc., with a backup first (Railway: Backups tab).
+1. **Backups tab → snapshot the volume first.** The failed `mysql:9` boots
+   started modifying system tables (`ALTER TABLE user …`) — the datadir may
+   be fragile, so have a restore point before touching the image again.
+2. **Check volume disk usage (Metrics).** The log's `The table 'columns' is
+   full` (error 1114) typically means the InnoDB system tablespace or the
+   volume itself is full — months of unbounded snapshot growth can fill a
+   small Railway volume. If it's near capacity, expand the volume (volumes
+   grow, they don't shrink) before any version change.
+3. **Recover on `mysql:9.4`** (the version the datadir was built with —
+   most likely clean boot) → Restart → verify `/readyz` reports `db: ok`.
+4. **Then optionally move forward to `mysql:9.7.2`** (current release as of
+   2026-09): same Settings → Image change. Upgrading is the supported
+   direction and MySQL auto-upgrades system tables on first boot — watch
+   the Deploy logs. If the version jump is refused, the bulletproof path is
+   `mysqldump` from the recovered 9.4 volume → fresh 9.7.2 volume → import
+   (works across any gap and yields a clean, compact datadir).
+
+**Never move a MySQL image to an older version than the datadir.** Upgrades
+only, with a backup first (Railway: Backups tab).
 
 **Code-side hardening shipped alongside (this repo):**
 - Connect/read/write timeouts on the PyMySQL pool — a dead DB now fails in
