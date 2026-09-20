@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Menu, Search } from "lucide-react";
 import { Brand, BrandLink } from "@/components/lumiere/Brand";
+import { BetaBadge } from "@/components/lumiere/BetaBadge";
 
 /**
  * Primary navigation — the product surface. Secondary destinations
@@ -40,6 +41,9 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
           </button>
 
           <BrandLink />
+
+          {/* Public-beta chip: obvious but quiet; opens the release notes. */}
+          <BetaBadge className="-ml-3" />
 
           <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
             {PRIMARY_LINKS.map((l) => (
@@ -90,7 +94,10 @@ export function MobileMenu({
       <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
       <div className="animate-fade-up absolute inset-x-0 top-0 border-b border-border bg-ink shadow-2xl shadow-black/60">
         <div className="flex h-14 items-center justify-between px-4">
-          <Brand />
+          <div className="flex items-center gap-2">
+            <Brand />
+            <BetaBadge />
+          </div>
           <button
             onClick={onClose}
             aria-label="Close navigation menu"

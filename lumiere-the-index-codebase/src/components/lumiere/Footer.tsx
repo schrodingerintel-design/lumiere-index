@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { BrandLink } from "@/components/lumiere/Brand";
+import { BetaBadge } from "@/components/lumiere/BetaBadge";
 import { XIcon, Music2 } from "lucide-react";
 
 const COMPANY_LINKS = [
@@ -25,7 +26,10 @@ export function Footer() {
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
-            <BrandLink />
+            <div className="flex items-center gap-2">
+              <BrandLink />
+              <BetaBadge />
+            </div>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
               The cultural index for film and television — published daily.
             </p>

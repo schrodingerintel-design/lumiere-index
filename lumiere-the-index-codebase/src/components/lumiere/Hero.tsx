@@ -58,13 +58,41 @@ function MovementInline({ film }: { film: RankedFilm }) {
   return <span className="font-mono text-xs text-muted-foreground">—</span>;
 }
 
+/** Honest degraded state when the live charts can't be reached (backend down,
+ *  network failure). An eternal skeleton reads as a broken site; this says
+ *  what's happening and recovers the moment the chart engine is back. */
+export function ChartsUnavailable({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="border border-foreground/10 bg-surface px-6 py-14 text-center">
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        The Index · Live
+      </div>
+      <h2 className="mt-3 font-display text-2xl">Charts reconnecting</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+        Live rankings are temporarily unavailable. The Index refreshes every 15
+        minutes — this page recovers automatically once the chart engine is
+        back.
+      </p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-6 border border-foreground/25 px-5 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition-colors hover:border-foreground/50 hover:bg-foreground/5"
+        >
+          Retry now
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function Hero() {
   // Prefetch the supporting queries so the rhythm below the masthead is instant.
   useQuery({ queryKey: ["index", "movers"], queryFn: () => getBiggestMovers(), staleTime: 5 * 60 * 1000 });
   useQuery({ queryKey: ["index", "new-entries"], queryFn: () => getIndexNewEntries(), staleTime: 5 * 60 * 1000 });
   useQuery({ queryKey: ["trending", "films"], queryFn: () => getTrendingFilms(6), staleTime: 5 * 60 * 1000 });
 
-  const { data: films, isLoading } = useQuery({
+  const { data: films, isLoading, error, refetch } = useQuery({
     queryKey: ["films", "top", 100],
     queryFn: () => getTopFilms(100),
     staleTime: 5 * 60 * 1000,
@@ -83,6 +111,17 @@ export function Hero() {
   }, [topFive.length]);
 
   if (isLoading || !films) {
+    // A failed fetch must never masquerade as "loading" forever — say so and
+    // offer a retry instead of an infinite skeleton.
+    if (error) {
+      return (
+        <section className="px-4 pt-10 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <ChartsUnavailable onRetry={() => void refetch()} />
+          </div>
+        </section>
+      );
+    }
     return (
       <section className="px-4 pt-10 sm:px-6">
         <div className="mx-auto max-w-6xl">
@@ -305,7 +344,7 @@ export function Hero() {
 
 /** Homepage Movie 100 Top 10 — charts are the primary content (§21). */
 export function TopTen() {
-  const { data: films, isLoading, error } = useQuery({
+  const { data: films, isLoading, error, refetch } = useQuery({
     queryKey: ["films", "top", 100],
     queryFn: () => getTopFilms(100),
     staleTime: 5 * 60 * 1000,
@@ -337,8 +376,8 @@ export function TopTen() {
           {isLoading ? (
             <TopTenSkeleton />
           ) : error ? (
-            <li className="py-12 text-center text-sm text-muted-foreground">
-              Something went wrong. Please try again.
+            <li className="py-6">
+              <ChartsUnavailable onRetry={() => void refetch()} />
             </li>
           ) : (
             top10.map((f) => (
@@ -355,7 +394,7 @@ export function TopTen() {
 
 /** Homepage TV 100 Top 5 — the television chart, front and center. */
 export function TvTopFive() {
-  const { data: films, isLoading, error } = useQuery({
+  const { data: films, isLoading, error, refetch } = useQuery({
     queryKey: ["films", "tv100", 5],
     queryFn: () => getTopFilms(5, 0, "TV_100"),
     staleTime: 5 * 60 * 1000,
@@ -388,8 +427,8 @@ export function TvTopFive() {
           {isLoading ? (
             <TopTenSkeleton />
           ) : error ? (
-            <li className="py-12 text-center text-sm text-muted-foreground">
-              Something went wrong. Please try again.
+            <li className="py-6">
+              <ChartsUnavailable onRetry={() => void refetch()} />
             </li>
           ) : (
             top5.map((f) => (
@@ -486,19 +525,19 @@ function TrendingRow({ film }: { film: TrendingFilmOut }) {
 
 /** Homepage rhythm — What's moving → What's new → What's being discussed. */
 export function PulseRow() {
-  const { data: movers, isLoading: moversLoading } = useQuery({
+  const { data: movers, isLoading: moversLoading, error: moversError } = useQuery({
     queryKey: ["index", "movers"],
     queryFn: () => getBiggestMovers(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: newEntries, isLoading: entriesLoading } = useQuery({
+  const { data: newEntries, isLoading: entriesLoading, error: entriesError } = useQuery({
     queryKey: ["index", "new-entries"],
     queryFn: () => getIndexNewEntries(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: trendingFilms, isLoading: trendingLoading } = useQuery({
+  const { data: trendingFilms, isLoading: trendingLoading, error: trendingError } = useQuery({
     queryKey: ["trending", "films"],
     queryFn: () => getTrendingFilms(6),
     staleTime: 5 * 60 * 1000,
@@ -537,7 +576,9 @@ export function PulseRow() {
             </ul>
           ) : (
             <p className="py-3 text-sm text-muted-foreground">
-              No movement in the latest Index yet.
+              {moversError
+                ? "Live pulse is reconnecting…"
+                : "No movement in the latest Index yet."}
             </p>
           )}
         </div>
@@ -565,7 +606,9 @@ export function PulseRow() {
               ))}
             </ul>
           ) : (
-            <p className="py-3 text-sm text-muted-foreground">No new entries this cycle.</p>
+            <p className="py-3 text-sm text-muted-foreground">
+              {entriesError ? "Live pulse is reconnecting…" : "No new entries this cycle."}
+            </p>
           )}
         </div>
 
@@ -593,7 +636,7 @@ export function PulseRow() {
             </ul>
           ) : (
             <p className="py-3 text-sm text-muted-foreground">
-              Nothing is trending yet.
+              {trendingError ? "Live pulse is reconnecting…" : "Nothing is trending yet."}
             </p>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { StaticPage } from "@/components/lumiere/StaticPage";
+import { BETA_RELEASES } from "@/lib/beta";
 import { RouteError } from "@/lib/route-error";
 import { Compass, Eye, TrendingUp } from "lucide-react";
 
@@ -108,6 +109,33 @@ function About() {
           Lumière is not just a chart. It is a way to understand culture as it happens — built for
           the future of entertainment.
         </p>
+      </div>
+
+      <div>
+        <h2 className="font-serif text-2xl text-foreground">Beta changelog</h2>
+        <p className="mt-3">
+          The Index is in public beta — new signals, charts and fixes ship
+          continuously. Every version is announced in the β chip beside the logo
+          and summarized here, newest first.
+        </p>
+        <div className="mt-5 space-y-6">
+          {BETA_RELEASES.map((release) => (
+            <div key={release.version} className="border-l-2 border-primary/30 pl-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Beta v{release.version} · {release.date}
+              </p>
+              <h3 className="mt-1 text-[15px] font-semibold text-foreground">{release.headline}</h3>
+              <ul className="mt-2 space-y-1.5">
+                {release.changes.map((change, i) => (
+                  <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
+                    <span aria-hidden className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />
+                    <span>{change}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="border border-foreground/10 bg-surface p-6">
