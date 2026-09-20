@@ -36,6 +36,10 @@ _INTERVALS = {
     "discover_candidates": 600,
     "recompute_rankings": 900,
     "rollup_daily": 3600,
+    # Data retention: collapse stale ranking snapshots + prune raw signals so
+    # the volume database stays small on a single-node MySQL instance.
+    # Runs once a day at ~03:00 UTC; the task itself is idempotent.
+    "run_retention": 24 * 3600,
     # Official publication cadence — idempotent per date/week, so checking
     # hourly is the safe way to guarantee a same-day publication without
     # duplicates (the publish job itself is a no-op once published).
@@ -100,6 +104,7 @@ async def _loop() -> None:
         "ingest_youtube": 180,
         "ingest_tiktok": 210,
         "rollup_daily": 240,
+        "run_retention": 3 * 3600,  # first pass 3h after boot
         "publish_daily_index": 300,
         "publish_weekly_index": 330,
     }

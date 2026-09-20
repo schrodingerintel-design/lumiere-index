@@ -89,7 +89,34 @@ The canvas-rendered cards now footer `lumiereindex.com` instead of
 is opened from to `https://lumiereindex.com`, so links shared from preview
 deployments still land on the canonical domain.
 
-## 9. Legal pages
+## 9. MySQL crash (2026-09-20) — cause and fix
+
+The Railway MySQL service crash-looped after the image was changed from
+`mysql:9.4` (ran fine for 29 days) to `mysql:9`. MySQL has **no downgrade
+path**: opening a 9.4 data directory with the 9.0 binaries forces system-table
+"upgrades" (`ALTER TABLE user ... ssl_type`, redo-log resize) that exhaust the
+InnoDB dictionary (`The table 'columns' is full`) and the server dies at boot.
+
+**Fix (dashboard, one step):** MySQL service → Settings → Image → set
+`mysql:9.4` → Restart. The data volume is untouched; the server comes back
+with all data.
+
+**Never move a MySQL image to an older minor version.** Upgrade path only:
+9.4 → 9.6 etc., with a backup first (Railway: Backups tab).
+
+**Code-side hardening shipped alongside (this repo):**
+- Connect/read/write timeouts on the PyMySQL pool — a dead DB now fails in
+  ~5s instead of hanging SSR renders for 20–40s
+- 4s client timeout on all frontend API calls — the site degrades to
+  skeletons + client refetch instead of multi-second TTFB
+- Daily data-retention job (`run_retention`): collapses stale ranking
+  snapshots to one row per (chart, title, day) + each title's exact first
+  appearance + every distinct intraday rank, prunes raw mentions/metrics
+  past 30 days and stale pending mentions — published chart numbers are
+  preserved bit-exactly (see `tests/test_retention.py`)
+- Manual trigger: `POST /api/v1/admin/maintenance/run` (X-Admin-Key)
+
+## 10. Legal pages
 
 Privacy Policy and Terms now identify the service as **Lumière — The Index**
 at `lumiereindex.com` with `privacy@lumiereindex.com` contact addresses. The

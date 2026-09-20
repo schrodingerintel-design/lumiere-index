@@ -135,6 +135,16 @@ def rollup_daily() -> None:
         _rollup(db)
 
 
+def run_retention() -> dict:
+    """Data-retention pass: collapse stale ranking snapshots, prune raw
+    signals. Volume-safe — see app/services/retention.py for the invariants
+    (published numbers are bit-exact under the collapse)."""
+    from app.services.retention import run_retention as _run
+
+    with SessionLocal() as db:
+        return _run(db)
+
+
 # ── Official Index publication jobs ─────────────────────────────────────────
 # The public chart is published once per day / once per week even though signal
 # ingestion and the continuous ranking computation keep their own cadences.

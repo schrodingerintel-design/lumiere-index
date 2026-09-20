@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     )
 
     reddit_user_agent: str = "lumiere-index/0.1"
+
+    # -- Data retention -------------------------------------------------------
+    # Calendar days of collapsed ranking-snapshot history to keep. The collapse
+    # (app/services/retention.py) preserves every published number bit-exactly:
+    # one row per (chart, film, day) + each title's exact first appearance.
+    ranking_history_days: int = 400
     newsapi_key: str = ""
     youtube_api_key: str = Field(
         default="",
