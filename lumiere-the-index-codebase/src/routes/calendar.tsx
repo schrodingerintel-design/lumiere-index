@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import {
@@ -24,7 +25,9 @@ export const Route = createFileRoute("/calendar")({
         content:
           "Movies in theaters and coming soon — films tracked on the Index, plus the full TMDB release calendar.",
       },
+      ogUrlMeta("/calendar"),
     ],
+    links: [canonicalLink("/calendar")],
   }),
   component: CalendarPage,
   errorComponent: RouteError,

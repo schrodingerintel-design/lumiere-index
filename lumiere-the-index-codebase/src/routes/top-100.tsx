@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getTopFilms, type RankedFilm } from "@/lib/apiClient";
@@ -22,7 +23,9 @@ export const Route = createFileRoute("/top-100")({
         content:
           "The official Movie 100 — the 100 films currently generating the strongest measured cultural momentum.",
       },
+      ogUrlMeta("/top-100"),
     ],
+    links: [canonicalLink("/top-100")],
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({

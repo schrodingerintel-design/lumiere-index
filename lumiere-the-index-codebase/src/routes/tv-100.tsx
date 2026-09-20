@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getTopFilms, getMetaRefresh, type RankedFilm } from "@/lib/apiClient";
@@ -37,7 +38,9 @@ export const Route = createFileRoute("/tv-100")({
         content:
           "The 100 television series generating the strongest measured cultural momentum right now, re-ranked every 15 minutes.",
       },
+      ogUrlMeta("/tv-100"),
     ],
+    links: [canonicalLink("/tv-100")],
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({

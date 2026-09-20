@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { StaticPage } from "@/components/lumiere/StaticPage";
 import { RouteError } from "@/lib/route-error";
 import { Lock, ShieldCheck } from "lucide-react";
@@ -12,7 +13,9 @@ export const Route = createFileRoute("/methodology")({
         content:
           "How The Index measures cultural momentum from audience interest, social conversation, media presence, and availability.",
       },
+      ogUrlMeta("/methodology"),
     ],
+    links: [canonicalLink("/methodology")],
   }),
   component: Methodology,
   errorComponent: RouteError,

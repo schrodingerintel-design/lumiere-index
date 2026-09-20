@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Check, Share2 } from "lucide-react";
+import { canonicalShareUrl } from "@/lib/site";
 
 /**
  * ShareButton — one consistent share affordance across The Index.
  *
  * Uses the Web Share API when available (mobile / supported browsers); falls
  * back to copying the link and confirming inline. Never throws — a rejected
- * share simply leaves the button unchanged.
+ * share simply leaves the button unchanged. Shared URLs are canonical: they
+ * always point at lumiereindex.com, even when the page is opened from a
+ * deployment domain.
  */
 export function sharePage(opts: { title: string; text: string }): Promise<"shared" | "copied" | "failed"> {
-  const url = typeof window !== "undefined" ? window.location.href : "";
+  const url = canonicalShareUrl(typeof window !== "undefined" ? window.location.href : "");
   if (typeof navigator !== "undefined" && navigator.share) {
     return navigator.share({ title: opts.title, text: opts.text, url }).then(
       () => "shared",

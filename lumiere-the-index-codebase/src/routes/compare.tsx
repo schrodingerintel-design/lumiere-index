@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import {
@@ -33,7 +34,9 @@ export const Route = createFileRoute("/compare")({
         content:
           "Head-to-head comparison of two films across Index Scores, sentiment, and box office.",
       },
+      ogUrlMeta("/compare"),
     ],
+    links: [canonicalLink("/compare")],
   }),
   component: ComparePage,
   errorComponent: RouteError,

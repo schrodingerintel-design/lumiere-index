@@ -1,0 +1,7 @@
+# The Index — lumiereindex.com
+# Canonical host: https://lumiereindex.com (www redirects to apex).
+
+User-agent: *
+Allow: /
+
+Sitemap: https://lumiereindex.com/sitemap.xml

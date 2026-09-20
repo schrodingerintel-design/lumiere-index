@@ -136,6 +136,7 @@ app.add_middleware(
     allow_origin_regex=(
         r"https://lumiere-index.*\.vercel\.app"
         r"|https://lumiere-index-production\.up\.railway\.app"
+        r"|https://(www\.)?lumiereindex\.com"   # canonical production frontend
         r"|http://localhost(:\d+)?"
         r"|https://.*"   # any https frontend host — the API is public and keyless
     ),

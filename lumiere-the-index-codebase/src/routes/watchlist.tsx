@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
 import { getNewReleaseFilms, getTopFilms, type RankedFilm } from "@/lib/apiClient";
@@ -13,7 +14,9 @@ export const Route = createFileRoute("/watchlist")({
     meta: [
       { title: "My Watchlist — The Index" },
       { name: "description", content: "Titles you're tracking across the Index." },
+      ogUrlMeta("/watchlist"),
     ],
+    links: [canonicalLink("/watchlist")],
   }),
   component: WatchlistPage,
   errorComponent: RouteError,

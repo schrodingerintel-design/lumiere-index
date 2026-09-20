@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta, sitePath } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart,
@@ -75,6 +76,7 @@ export const Route = createFileRoute("/films/$slug")({
         content: `Live cultural index score and audience sentiment for film ${params?.slug}.`,
       },
       { property: "og:type", content: "video.movie" },
+      { property: "og:url", content: sitePath(`/films/${params?.slug ?? ""}`) },
       { name: "twitter:card", content: "summary_large_image" },
       {
         name: "twitter:title",
@@ -85,6 +87,7 @@ export const Route = createFileRoute("/films/$slug")({
         content: `Live cultural index score and audience sentiment for film ${params?.slug}.`,
       },
     ],
+    links: [canonicalLink(`/films/${params?.slug ?? ""}`)],
   }),
   loader: async ({ context, params }) => {
     // SSR the film detail so shared/direct links render content on first paint.

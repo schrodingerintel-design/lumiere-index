@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { StaticPage } from "@/components/lumiere/StaticPage";
 import { RouteError } from "@/lib/route-error";
 
@@ -11,7 +12,9 @@ export const Route = createFileRoute("/privacy")({
         content:
           "How The Index collects, uses, protects, and processes information when you use the Index.",
       },
+      ogUrlMeta("/privacy"),
     ],
+    links: [canonicalLink("/privacy")],
   }),
   component: Privacy,
   errorComponent: RouteError,
@@ -210,11 +213,11 @@ function Privacy() {
       <Section num="13." title="Contact Us">
         <p>If you have questions regarding this Privacy Policy, contact:</p>
         <p className="font-mono text-sm">
-          The Index
+          Lumière — The Index
           <br />
-          Email: privacy@theindex.com
+          Email: privacy@lumiereindex.com
           <br />
-          Website: theindex.com
+          Website: lumiereindex.com
         </p>
         <p className="text-xs text-muted-foreground">© The Index — by Lumière. All rights reserved.</p>
       </Section>
