@@ -1,13 +1,19 @@
 /**
- * shareCard.ts — renders downloadable share cards on an offscreen canvas.
+ * shareCard.ts — renders shareable cards on an offscreen canvas.
  *
  * Two card types:
- *  - "film":  one title — poster, rank pill, Index Score, brand lockup
+ *  - "film":  one title — full-bleed poster backdrop, giant rank, dominant
+ *             Index Score, brand lockup
  *  - "chart": a ranked list — top rows with poster thumbs, brand lockup
  *
- * Everything is drawn locally (poster fetched via CORS-enabled TMDB CDN),
- * so the output is a clean PNG the Web Share API can attach as a file.
- * Fonts fall back gracefully if webfonts are unavailable in the canvas.
+ * Design language (matching the site): ink ground, ivory display type,
+ * single red accent, hairline frame. The poster IS the composition —
+ * cover-filling the card under a cinematic scrim — so the card reads as
+ * a movie still with the Index's data stamped on top.
+ *
+ * Everything is drawn locally (poster fetched via the CORS-safe image
+ * proxy, CDN fallback), so the output is a clean PNG the Web Share API
+ * can attach as a file and the user can download directly.
  */
 
 import type { RankedFilm } from "@/lib/apiClient";
@@ -16,10 +22,9 @@ import { SITE_URL } from "@/lib/site";
 
 const IVORY = "#F4F1EA";
 const INK = "#080808";
-const SURFACE = "#111111";
 const RED = "#E52B2B";
 const MUTED = "#A6A29B";
-const HAIRLINE = "rgba(244, 241, 234, 0.12)";
+const HAIRLINE = "rgba(244, 241, 234, 0.16)";
 
 const DISPLAY_FONT = '"Fraunces", Georgia, "Times New Roman", serif';
 const SANS_FONT = '"Inter", system-ui, -apple-system, sans-serif';
@@ -78,12 +83,7 @@ function posterSrc(
   size: "w185" | "w500",
 ): string | null {
   if (!posterUrl) return null;
-  let name: string;
-  if (/^https?:\/\//.test(posterUrl)) {
-    name = posterUrl.split("?")[0].split("/").pop() ?? "";
-  } else {
-    name = posterUrl.split("?")[0].split("/").pop() ?? "";
-  }
+  const name = posterUrl.split("?")[0].split("/").pop() ?? "";
   if (!/^[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/.test(name)) return null;
   return `${getApiBase().replace(/\/+$/, "")}/api/v1/tmdb/image/${size}/${name}`;
 }
@@ -248,13 +248,61 @@ function fitFont(
   }
 }
 
+/** Human label for the chart a rank belongs to ("MOVIE 100" / "TV 100"). */
+function chartLabel(film: RankedFilm): string {
+  if (film.chart_type === "TV_100") return "TV 100";
+  if (film.chart_type === "MOVIE_100") return "MOVIE 100";
+  return "THE INDEX";
+}
+
+/** Wait for the webfonts the card uses so canvas text renders in brand
+ *  type even on the first render after a cold load. Never rejects. */
+async function ensureFonts(): Promise<void> {
+  try {
+    await document.fonts.ready;
+  } catch {
+    /* font availability is best-effort; system fallbacks are fine */
+  }
+}
+
+function hairlineFrame(ctx: CanvasRenderingContext2D, W: number, H: number, inset = 28) {
+  ctx.strokeStyle = HAIRLINE;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(inset, inset, W - inset * 2, H - inset * 2);
+}
+
+function liveBadge(ctx: CanvasRenderingContext2D, W: number, y: number) {
+  const date = new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const text = `LIVE · ${date.toUpperCase()}`;
+  ctx.font = `22px ${MONO_FONT}`;
+  const w = ctx.measureText(text).width;
+  // Red pulse dot + right-aligned live/date stamp.
+  ctx.fillStyle = RED;
+  ctx.beginPath();
+  ctx.arc(W - 88 - w, y - 7, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = MUTED;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(text, W - 80, y);
+}
+
 export interface ShareCardResult {
   blob: Blob;
   filename: string;
 }
 
-/** Render the one-title card. 1080×1350 (4:5) — ideal for social feeds. */
+/** Render the one-title card. 1080×1350 (4:5) — ideal for social feeds.
+ *
+ *  Immersive composition: the poster cover-fills the entire card as the
+ *  backdrop under a cinematic scrim; a floating poster card, the giant
+ *  chart rank and the dominant Index Score sit on top; title, meta and
+ *  the canonical domain anchor the bottom. */
 export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult> {
+  await ensureFonts();
   const W = 1080;
   const H = 1350;
   const canvas = document.createElement("canvas");
@@ -262,110 +310,158 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
-  // Background.
-  ctx.fillStyle = INK;
-  ctx.fillRect(0, 0, W, H);
-
-  // Poster panel, left-aligned with generous margin.
-  const posterW = 480;
-  const posterH = 720;
-  const posterX = 80;
-  const posterY = 210;
-
   const poster = await loadPoster(film.poster_url, "w500");
 
+  // ── 1. Full-bleed backdrop: the poster IS the background ──────────────────
   if (poster) {
-    ctx.save();
-    roundRect(ctx, posterX, posterY, posterW, posterH, 24);
-    ctx.clip();
-    drawPosterFallback(ctx, film, posterX, posterY, posterW, posterH);
-    drawCover(ctx, poster, posterX, posterY, posterW, posterH);
-    ctx.restore();
+    drawCover(ctx, poster, 0, 0, W, H);
   } else {
-    ctx.save();
-    roundRect(ctx, posterX, posterY, posterW, posterH, 24);
-    ctx.clip();
-    drawPosterFallback(ctx, film, posterX, posterY, posterW, posterH);
-    ctx.restore();
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, film.gradient_from || "#26221f");
+    bg.addColorStop(1, INK);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
   }
+
+  // ── 2. Cinematic scrim — darken for legibility, heavier at the bottom ────
+  ctx.fillStyle = "rgba(8, 8, 8, 0.52)";
+  ctx.fillRect(0, 0, W, H);
+  const scrim = ctx.createLinearGradient(0, H * 0.28, 0, H);
+  scrim.addColorStop(0, "rgba(8, 8, 8, 0)");
+  scrim.addColorStop(0.55, "rgba(8, 8, 8, 0.66)");
+  scrim.addColorStop(1, "rgba(8, 8, 8, 0.96)");
+  ctx.fillStyle = scrim;
+  ctx.fillRect(0, 0, W, H);
+
+  hairlineFrame(ctx, W, H);
+
+  // ── 3. Header: brand lockup + live stamp ──────────────────────────────────
+  drawBrandLockup(ctx, 72, 60, 56);
+  liveBadge(ctx, W, 100);
+
+  // ── 4. Floating poster card (left) with a soft shadow ────────────────────
+  const pX = 96;
+  const pY = 300;
+  const pW = 396;
+  const pH = 594; // 2:3
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.65)";
+  ctx.shadowBlur = 44;
+  ctx.shadowOffsetY = 18;
+  ctx.fillStyle = INK;
+  roundRect(ctx, pX, pY, pW, pH, 18);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  roundRect(ctx, pX, pY, pW, pH, 18);
+  ctx.clip();
+  drawPosterFallback(ctx, film, pX, pY, pW, pH);
+  if (poster) drawCover(ctx, poster, pX, pY, pW, pH);
+  ctx.restore();
   ctx.strokeStyle = HAIRLINE;
   ctx.lineWidth = 2;
-  roundRect(ctx, posterX, posterY, posterW, posterH, 24);
+  roundRect(ctx, pX, pY, pW, pH, 18);
   ctx.stroke();
 
-  // Right column: rank pill, score, tenure.
-  const colX = posterX + posterW + 60;
-  const colW = W - colX - 80;
+  // ── 5. Right column: giant rank + chart identity + tenure ─────────────────
+  const colX = pX + pW + 72;
+  const colW = W - 96 - colX;
 
-  // Rank pill.
-  const pillText = `#${film.rank}`;
-  const pillFont = fitFont(ctx, pillText, colW, 84, 700, DISPLAY_FONT);
-  ctx.font = `700 ${pillFont}px ${DISPLAY_FONT}`;
-  const pillW = ctx.measureText(pillText).width + 48;
-  const pillH = 88;
-  ctx.fillStyle = RED;
-  roundRect(ctx, colX, posterY + 8, pillW, pillH, 10);
-  ctx.fill();
+  const rankText = `#${film.rank}`;
+  const rankFont = fitFont(ctx, rankText, colW, 168, 700, DISPLAY_FONT);
   ctx.fillStyle = IVORY;
-  ctx.textBaseline = "middle";
-  ctx.fillText(pillText, colX + 24, posterY + 8 + pillH / 2 + 4);
-
-  // Index Score — the headline number.
+  ctx.font = `700 ${rankFont}px ${DISPLAY_FONT}`;
   ctx.textBaseline = "alphabetic";
+  ctx.fillText(rankText, colX - 4, pY + 150);
+
+  // Red accent bar under the rank.
+  ctx.fillStyle = RED;
+  ctx.fillRect(colX, pY + 186, 116, 7);
+
   ctx.fillStyle = MUTED;
-  ctx.font = `500 22px ${SANS_FONT}`;
-  const scoreY = posterY + 8 + pillH + 150;
-  ctx.fillText("INDEX SCORE", colX, scoreY - 120);
-  ctx.fillStyle = IVORY;
-  const scoreText = film.score?.toFixed(1) ?? "—";
-  const scoreFont = fitFont(ctx, scoreText, colW, 200, 600, DISPLAY_FONT);
-  ctx.font = `600 ${scoreFont}px ${DISPLAY_FONT}`;
-  ctx.fillText(scoreText, colX - 6, scoreY + 40);
+  ctx.font = `500 24px ${MONO_FONT}`;
+  ctx.fillText(`ON THE ${chartLabel(film)}`, colX, pY + 246);
+
+  // Movement line (+3 / −2 / DEBUT) — quiet, factual.
+  const mv = film.movement ?? 0;
+  if (mv > 0) {
+    ctx.fillStyle = RED;
+    ctx.font = `600 30px ${MONO_FONT}`;
+    ctx.fillText(`▲ +${mv}`, colX, pY + 306);
+  } else if (mv < 0) {
+    ctx.fillStyle = MUTED;
+    ctx.font = `600 30px ${MONO_FONT}`;
+    ctx.fillText(`▼ ${mv}`, colX, pY + 306);
+  } else {
+    ctx.fillStyle = MUTED;
+    ctx.font = `500 24px ${MONO_FONT}`;
+    ctx.fillText("· HOLDING STEADY", colX, pY + 306);
+  }
 
   // Tenure lines.
   ctx.fillStyle = MUTED;
-  ctx.font = `24px ${MONO_FONT}`;
-  const rawDirector =
-    film.director && film.director !== "Unknown" ? film.director : null;
-  // "Director TBA" / "Creator TBA" are catalog placeholders, not names.
-  const directorName =
-    rawDirector && !/ TBA$/.test(rawDirector) ? rawDirector : null;
-  const metaLines = [
-    film.days_on_chart ? `${film.days_on_chart} days on chart` : null,
+  ctx.font = `26px ${MONO_FONT}`;
+  const rawDirector = film.director && film.director !== "Unknown" ? film.director : null;
+  const directorName = rawDirector && !/ TBA$/.test(rawDirector) ? rawDirector : null;
+  const tenure = [
+    film.days_on_chart ? `${film.days_on_chart} days on the chart` : null,
     film.days_at_one ? `${film.days_at_one} day${film.days_at_one === 1 ? "" : "s"} at #1` : null,
     directorName,
-    film.year ? String(film.year) : null,
   ].filter(Boolean) as string[];
-  metaLines.forEach((line, i) => {
-    ctx.fillText(line, colX, scoreY + 110 + i * 46);
+  tenure.forEach((line, i) => {
+    ctx.fillText(line, colX, pY + 380 + i * 48);
   });
 
-  // Title — bottom left, big.
-  ctx.fillStyle = IVORY;
-  const titleFont = fitFont(ctx, film.title, W - 160, 96, 600, DISPLAY_FONT);
-  ctx.font = `600 ${titleFont}px ${DISPLAY_FONT}`;
-  const titleLines = wrapText(ctx, film.title, W - 160).slice(0, 2);
-  let ty = H - 260 - (titleLines.length - 1) * (titleFont * 1.05);
-  for (const line of titleLines) {
-    ctx.fillText(line, 80, ty);
-    ty += titleFont * 1.05;
-  }
+  // ── 6. Bottom band: dominant Index Score vs. title block ─────────────────
+  const bandY = 962;
+  ctx.strokeStyle = HAIRLINE;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(96, bandY);
+  ctx.lineTo(W - 96, bandY);
+  ctx.stroke();
 
-  // Metadata under the title.
+  // Score — the headline number, visually dominant.
+  ctx.fillStyle = MUTED;
+  ctx.font = `500 26px ${MONO_FONT}`;
+  ctx.fillText("I N D E X   S C O R E", 96, bandY + 66);
+  const scoreText = film.score?.toFixed(1) ?? "—";
+  const scoreFont = fitFont(ctx, scoreText, 520, 210, 600, DISPLAY_FONT);
+  ctx.fillStyle = IVORY;
+  ctx.font = `600 ${scoreFont}px ${DISPLAY_FONT}`;
+  ctx.fillText(scoreText, 90, bandY + 254);
+  ctx.fillStyle = RED;
+  ctx.fillRect(96, bandY + 288, 64, 5);
+
+  // Title block — right-aligned opposite the score.
+  const titleMaxW = 470;
+  const titleFont = fitFont(ctx, film.title, titleMaxW, 62, 600, DISPLAY_FONT);
+  ctx.fillStyle = IVORY;
+  ctx.font = `600 ${titleFont}px ${DISPLAY_FONT}`;
+  const titleLines = wrapText(ctx, film.title, titleMaxW).slice(0, 2);
+  let ty = bandY + 96 - (titleLines.length - 1) * (titleFont * 1.08);
+  for (const line of titleLines) {
+    ctx.fillText(line, W - 96 - ctx.measureText(line).width, ty);
+    ty += titleFont * 1.08;
+  }
   ctx.fillStyle = MUTED;
   ctx.font = `26px ${SANS_FONT}`;
   const underTitle = [film.year ? String(film.year) : null, film.genre_tag]
     .filter(Boolean)
     .join("  ·  ");
-  ctx.fillText(underTitle, 80, H - 180);
+  if (underTitle) {
+    ctx.fillText(underTitle, W - 96 - ctx.measureText(underTitle).width, ty + 14);
+  }
 
-  // Brand lockup, top.
-  drawBrandLockup(ctx, 80, 64, 64);
-
-  // Footer note.
+  // ── 7. Footer ─────────────────────────────────────────────────────────────
+  ctx.fillStyle = IVORY;
+  ctx.font = `500 24px ${MONO_FONT}`;
+  ctx.fillText(SITE_URL.replace(/^https:\/\//, ""), 96, H - 66);
   ctx.fillStyle = MUTED;
   ctx.font = `22px ${MONO_FONT}`;
-  ctx.fillText("The Index · Live cultural rankings · 0% critic weight", 80, H - 70);
+  const right = "REFRESHED EVERY 15 MIN";
+  ctx.fillText(right, W - 96 - ctx.measureText(right).width, H - 66);
 
   const blob = await new Promise<Blob>((resolve) =>
     canvas.toBlob((b) => resolve(b!), "image/png"),
@@ -379,12 +475,15 @@ export interface ChartCardOptions {
   films: RankedFilm[];    // rows (max 5 shown)
   /** Display rank override — chart pages renumber (TV chart shows 1–50). */
   rankOf?: (film: RankedFilm, index: number) => number;
-  /** Per-chart score label — TV charts read "TVDEX". Defaults to "INDEX". */
+  /** Per-chart score label — TV charts read "TVDex". Defaults to "INDEX". */
   scoreLabel?: string;
 }
 
-/** Render the ranked-list card. 1080×1350 (4:5). Up to 5 rows. */
+/** Render the ranked-list card. 1080×1350 (4:5). Up to 5 rows.
+ *  Same immersive language as the film card: subtle red wash over ink,
+ *  hairline frame, live stamp, poster thumbs, dominant scores. */
 export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCardResult> {
+  await ensureFonts();
   const W = 1080;
   const H = 1350;
   const canvas = document.createElement("canvas");
@@ -392,29 +491,37 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
+  // Ground: ink with a faint red wash bleeding from the top.
   ctx.fillStyle = INK;
   ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, -120, 60, W / 2, -120, 900);
+  glow.addColorStop(0, "rgba(229, 43, 43, 0.16)");
+  glow.addColorStop(1, "rgba(229, 43, 43, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
 
-  drawBrandLockup(ctx, 80, 64, 64);
+  hairlineFrame(ctx, W, H);
+  drawBrandLockup(ctx, 72, 60, 56);
+  liveBadge(ctx, W, 100);
 
-  // Heading.
+  // Kicker + heading + subtitle.
   ctx.fillStyle = RED;
-  ctx.font = `500 24px ${SANS_FONT}`;
-  ctx.fillText("THE INDEX · LIVE", 80, 230);
+  ctx.font = `500 24px ${MONO_FONT}`;
+  ctx.fillText("THE INDEX · LIVE CULTURAL RANKINGS", 96, 236);
 
   ctx.fillStyle = IVORY;
-  const hFont = fitFont(ctx, opts.title, W - 160, 84, 600, DISPLAY_FONT);
+  const hFont = fitFont(ctx, opts.title, W - 192, 88, 600, DISPLAY_FONT);
   ctx.font = `600 ${hFont}px ${DISPLAY_FONT}`;
-  ctx.fillText(opts.title, 80, 320);
+  ctx.fillText(opts.title, 96, 326);
 
   ctx.fillStyle = MUTED;
-  ctx.font = `26px ${SANS_FONT}`;
-  ctx.fillText(opts.subtitle, 80, 372);
+  ctx.font = `27px ${SANS_FONT}`;
+  ctx.fillText(opts.subtitle, 96, 380);
 
   // Rows.
   const rows = opts.films.slice(0, 5);
-  const rowH = 150;
-  const listTop = 470;
+  const rowH = 152;
+  const listTop = 468;
 
   // Fetch all row posters in parallel up front — sequential awaits made the
   // card render take one network round-trip per row.
@@ -433,77 +540,110 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
       ctx.strokeStyle = HAIRLINE;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(80, y - 14);
-      ctx.lineTo(W - 80, y - 14);
+      ctx.moveTo(96, y - 12);
+      ctx.lineTo(W - 96, y - 12);
       ctx.stroke();
     }
 
-    // Rank number.
+    // Rank number — the leader reads red.
     ctx.fillStyle = i === 0 ? RED : IVORY;
-    ctx.font = `600 ${i === 0 ? 64 : 48}px ${DISPLAY_FONT}`;
+    ctx.font = `600 ${i === 0 ? 68 : 52}px ${DISPLAY_FONT}`;
     ctx.textBaseline = "middle";
-    ctx.fillText(String(rank), 80, y + rowH / 2 - 26);
+    const rankStr = String(rank);
+    ctx.fillText(rankStr, 96, y + rowH / 2 - 22);
 
-    // Poster thumb — gradient always under, image over it.
-    const thumbSize = rowH - 46;
+    // Movement tag under the rank (quiet, factual).
+    const mv = f.movement ?? 0;
+    ctx.textBaseline = "alphabetic";
+    ctx.font = `500 19px ${MONO_FONT}`;
+    if (mv > 0) {
+      ctx.fillStyle = RED;
+      ctx.fillText(`+${mv}`, 96, y + rowH / 2 + 22);
+    } else if (mv < 0) {
+      ctx.fillStyle = MUTED;
+      ctx.fillText(`${mv}`, 96, y + rowH / 2 + 22);
+    }
+
+    // Poster thumb — gradient always under, image over it, soft shadow.
+    const thumbH = rowH - 42;
+    const thumbW = thumbH * 0.68;
     const thumbY = y + 8;
-    const thumbW = thumbSize * 0.68;
     ctx.save();
-    roundRect(ctx, 220, thumbY, thumbW, thumbSize, 8);
-    ctx.clip();
-    drawPosterFallback(ctx, f, 220, thumbY, thumbW, thumbSize);
-    if (poster) drawCover(ctx, poster, 220, thumbY, thumbW, thumbSize);
+    ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 8;
+    ctx.fillStyle = INK;
+    roundRect(ctx, 236, thumbY, thumbW, thumbH, 10);
+    ctx.fill();
     ctx.restore();
 
+    ctx.save();
+    roundRect(ctx, 236, thumbY, thumbW, thumbH, 10);
+    ctx.clip();
+    drawPosterFallback(ctx, f, 236, thumbY, thumbW, thumbH);
+    if (poster) drawCover(ctx, poster, 236, thumbY, thumbW, thumbH);
+    ctx.restore();
+    ctx.strokeStyle = HAIRLINE;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, 236, thumbY, thumbW, thumbH, 10);
+    ctx.stroke();
+
     // Title + meta.
-    const textX = 220 + thumbSize * 0.68 + 28;
-    const textW = W - textX - 240;
+    const textX = 236 + thumbW + 30;
+    const textW = W - textX - 250;
     ctx.fillStyle = IVORY;
     ctx.textBaseline = "alphabetic";
-    const tFont = fitFont(ctx, f.title, textW, 38, 600, SANS_FONT);
+    const tFont = fitFont(ctx, f.title, textW, 40, 600, SANS_FONT);
     ctx.font = `600 ${tFont}px ${SANS_FONT}`;
-    ctx.fillText(f.title, textX, y + 58);
+    ctx.fillText(f.title, textX, y + 62);
 
     ctx.fillStyle = MUTED;
     ctx.font = `22px ${MONO_FONT}`;
     const meta = [
       f.days_on_chart ? `${f.days_on_chart}d on chart` : null,
-      f.score?.toFixed(1) ? `Score ${f.score.toFixed(1)}` : null,
+      directorLabel(f),
     ]
       .filter(Boolean)
       .join("  ·  ");
-    ctx.fillText(meta, textX, y + 96);
+    ctx.fillText(meta, textX, y + 100);
 
-    // Score right-aligned.
+    // Score right-aligned with its label.
     ctx.fillStyle = IVORY;
-    ctx.font = `600 40px ${DISPLAY_FONT}`;
+    ctx.font = `600 44px ${DISPLAY_FONT}`;
     const scoreText = f.score?.toFixed(1) ?? "—";
-    ctx.fillText(scoreText, W - 80 - ctx.measureText(scoreText).width, y + rowH / 2 - 10);
+    ctx.fillText(scoreText, W - 96 - ctx.measureText(scoreText).width, y + rowH / 2 - 8);
     ctx.fillStyle = MUTED;
     ctx.font = `16px ${MONO_FONT}`;
     const idxLabel = (opts.scoreLabel ?? "INDEX").toUpperCase();
-    ctx.fillText(idxLabel, W - 80 - ctx.measureText(idxLabel).width, y + rowH / 2 + 18);
+    ctx.fillText(idxLabel, W - 96 - ctx.measureText(idxLabel).width, y + rowH / 2 + 20);
   }
 
   // Footer.
   ctx.strokeStyle = HAIRLINE;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(80, H - 130);
-  ctx.lineTo(W - 80, H - 130);
+  ctx.moveTo(96, H - 128);
+  ctx.lineTo(W - 96, H - 128);
   ctx.stroke();
+  ctx.fillStyle = IVORY;
+  ctx.font = `500 24px ${MONO_FONT}`;
+  ctx.fillText(SITE_URL.replace(/^https:\/\//, ""), 96, H - 70);
   ctx.fillStyle = MUTED;
-  ctx.font = `24px ${MONO_FONT}`;
-  ctx.fillText(
-    `The Index · Live cultural rankings · ${SITE_URL.replace(/^https:\/\//, "")}`,
-    80,
-    H - 70,
-  );
+  ctx.font = `22px ${MONO_FONT}`;
+  const right = "0% CRITIC WEIGHT";
+  ctx.fillText(right, W - 96 - ctx.measureText(right).width, H - 70);
 
   const blob = await new Promise<Blob>((resolve) =>
     canvas.toBlob((b) => resolve(b!), "image/png"),
   );
   return { blob, filename: `the-index-${opts.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png` };
+}
+
+/** Catalog placeholders are not names. */
+function directorLabel(f: RankedFilm): string | null {
+  const d = f.director;
+  if (!d || d === "Unknown" || / TBA$/.test(d)) return null;
+  return d;
 }
 
 /** Save the rendered card as a PNG download — deterministic, no OS share
@@ -519,6 +659,43 @@ export async function downloadCard(card: ShareCardResult): Promise<"downloaded" 
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     return "downloaded";
+  } catch {
+    return "failed";
+  }
+}
+
+/** Web Share with the actual image file attached. Falls back to copying
+ *  the link when the platform can't share files (desktop browsers). */
+export async function shareCard(
+  card: ShareCardResult,
+  payload: { title: string; text: string; url: string },
+): Promise<"shared" | "link-copied" | "failed"> {
+  try {
+    const file = new File([card.blob], card.filename, { type: "image/png" });
+    const canShareFiles =
+      typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+    if (canShareFiles) {
+      await navigator.share({ files: [file], title: payload.title, text: payload.text });
+      return "shared";
+    }
+    if (typeof navigator.share === "function") {
+      // No file support — share the link itself through the sheet.
+      await navigator.share({ title: payload.title, text: payload.text, url: payload.url });
+      return "shared";
+    }
+    await navigator.clipboard.writeText(payload.url);
+    return "link-copied";
+  } catch {
+    return "failed";
+  }
+}
+
+/** Copy the image itself to the clipboard (where supported). */
+export async function copyCardImage(card: ShareCardResult): Promise<"copied" | "failed"> {
+  try {
+    if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) return "failed";
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": card.blob })]);
+    return "copied";
   } catch {
     return "failed";
   }
