@@ -90,7 +90,7 @@ def ingest_trends() -> int:
 @celery.task
 def ingest_letterboxd() -> int:
     with SessionLocal() as db:
-        return _ingest(db, "letterboxd", lambda: fetch_letterboxd(_film_tuples(db)))
+        return _ingest(db, "letterboxd", lambda: fetch_letterboxd(_film_tuples(db), db=db))
 
 
 @celery.task

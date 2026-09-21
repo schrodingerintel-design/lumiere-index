@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -52,17 +52,36 @@ def _canonical_slug(title: str, year: Optional[int]) -> list[str]:
     return candidates
 
 
-def fetch_letterboxd(film_tuples: list[tuple[int, str, int | None]]) -> list[RawMention]:
-    """Fetch recent Letterboxd reviews for tracked films via public RSS feeds."""
+def fetch_letterboxd(
+    film_tuples: list[tuple[int, str, int | None]],
+    db: Any | None = None,
+) -> list[RawMention]:
+    """Fetch recent Letterboxd reviews for tracked films via public RSS feeds.
+
+    Every per-film outcome is counted and (when ``db`` is given) reported on
+    the source's health row: feed OK, feed missing (404 — slug mismatch, the
+    common case), and fetch errors (network/5xx). Previously all of this was
+    swallowed with bare ``continue`` and the source always looked healthy
+    while collecting zero data — a silent failure.
+
+    When a run walks films and EVERY feed is missing or errors, that state is
+    recorded as the source's last_error so Signal Health says "reached
+    upstream, got nothing" instead of a green no-op.
+    """
     if not settings.enable_letterboxd_adapter:
         log.debug("letterboxd.adapter.disabled")
         return []
 
     out: list[RawMention] = []
     max_items = settings.source_max_items_per_run
+    films_walked = 0
+    feeds_found = 0
+    feeds_missing = 0   # 404/410 — slug never matched a Letterboxd page
+    fetch_errors = 0    # network errors, 5xx, non-RSS payloads
 
     for tup in film_tuples[:max_items]:
         _, title, year = tup[:3]
+        films_walked += 1
         rss_content = None
 
         # Try canonical slug variants
@@ -74,12 +93,15 @@ def fetch_letterboxd(film_tuples: list[tuple[int, str, int | None]]) -> list[Raw
                     break
             except Exception as e:
                 log.warning("letterboxd.fetch.failed", film_slug=slug, error=str(e))
+                fetch_errors += 1
                 continue
         else:
             film_slug = slugify(title)
 
         if not rss_content:
+            feeds_missing += 1
             continue
+        feeds_found += 1
 
         try:
             root = ET.fromstring(rss_content)
@@ -129,7 +151,36 @@ def fetch_letterboxd(film_tuples: list[tuple[int, str, int | None]]) -> list[Raw
                 )
         except Exception as e:
             log.warning("letterboxd.parse.failed", film_slug=film_slug, error=str(e))
+            fetch_errors += 1
             continue
+
+    # ── report the run honestly (no more silent zeros) ────────────────────
+    if db is not None and films_walked > 0:
+        try:
+            from app.ingest.pipeline import record_ingest, record_ingest_stats
+            if feeds_found == 0:
+                # Reached upstream and came back empty for every film tried.
+                # Almost always means slug resolution never matches — a real
+                # integration problem that must be visible, not silent.
+                record_ingest(
+                    db, "letterboxd",
+                    error=(
+                        f"no feeds resolved: {feeds_missing}/{films_walked} films had no "
+                        f"Letterboxd RSS page (slug mismatch), {fetch_errors} fetch errors"
+                    ),
+                )
+            else:
+                record_ingest(db, "letterboxd")
+            record_ingest_stats(
+                db, "letterboxd",
+                requested=films_walked,
+                received=feeds_found,
+                processed=feeds_found,
+                rejected=films_walked - feeds_found,
+                api_errors=fetch_errors,
+            )
+        except Exception:  # health reporting must never break ingestion
+            pass
 
     return out
 
@@ -143,7 +194,9 @@ class LetterboxdAdapter(SourceAdapter):
         from app.models import Film
         with SessionLocal() as db:
             films = db.query(Film.id, Film.title, Film.year).all()
-            return fetch_letterboxd([(f.id, f.title, f.year) for f in films])
+            return fetch_letterboxd(
+                [(f.id, f.title, f.year) for f in films], db=db,
+            )
 
     def health(self) -> SourceHealth:
         if not settings.enable_letterboxd_adapter:

@@ -36,7 +36,7 @@ import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import case, func, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -524,13 +524,24 @@ def publish_weekly_index(
     avg_sentiment: dict[int, float] = {}
     mention_days: dict[int, set[date]] = {}
 
-    # Rolled-up daily scores (primary source)
+    # Rolled-up daily scores (primary source). Volume reads observations_sum
+    # (raw measured volume — Trends interest units, views) falling back to
+    # mentions_count for legacy rows written before the column existed.
     ds_rows = (
         db.query(
             DailyScore.film_id,
             func.count(DailyScore.day),
             func.sum(DailyScore.mentions_count),
             func.avg(DailyScore.sentiment_avg),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (DailyScore.observations_sum.isnot(None), DailyScore.observations_sum),
+                        else_=DailyScore.mentions_count,
+                    )
+                ),
+                0,
+            ),
         )
         .filter(
             DailyScore.day >= week_start,
@@ -539,9 +550,9 @@ def publish_weekly_index(
         .group_by(DailyScore.film_id)
         .all()
     )
-    for fid, days, mentions, savg in ds_rows:
+    for fid, days, mentions, savg, volume in ds_rows:
         days_present[fid] = int(days or 0)
-        total_mentions[fid] = int(mentions or 0)
+        total_mentions[fid] = int(volume or 0) or int(mentions or 0)
         avg_sentiment[fid] = float(savg or 0.0)
 
     # Real-time backstop: daily_scores lag the rollup worker, so take the max
@@ -553,6 +564,7 @@ def publish_weekly_index(
             func.count(func.distinct(func.date(Mention.created_at))),
             func.count(Mention.id),
             func.avg(Mention.sentiment_score),
+            func.coalesce(func.sum(Mention.observations), 0),
         )
         .filter(
             Mention.created_at >= week_start_dt,
@@ -579,9 +591,12 @@ def publish_weekly_index(
     for fid, day_val in m_days_q.all():
         d = day_val if isinstance(day_val, date) else date.fromisoformat(str(day_val))
         mention_days.setdefault(fid, set()).add(d)
-    for fid, days, mentions, savg in m_rows_q.all():
+    for fid, days, mentions, savg, obs in m_rows_q.all():
         days_present[fid] = max(days_present.get(fid, 0), int(days or 0))
-        total_mentions[fid] = max(total_mentions.get(fid, 0), int(mentions or 0))
+        # Real-time volume: observation sum, falling back to rows when every
+        # record is a legacy per-item row (observations=0).
+        volume = int(obs or 0) or int(mentions or 0)
+        total_mentions[fid] = max(total_mentions.get(fid, 0), volume)
         avg_sentiment[fid] = float(savg or 0.0)
 
 
