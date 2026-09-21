@@ -67,20 +67,37 @@ def record_ingest_stats(
     rejected: int = 0,
     api_errors: int = 0,
     rate_limit_errors: int = 0,
+    merge: bool = False,
 ) -> None:
     """Record per-run ingest counters on the source row (Data/Signal Health).
 
     Counters are absolute for the run (the adapter reports what it fetched), so
     the health view can distinguish "upstream returned nothing" from "pipeline
     dropped everything".
+
+    With ``merge=True`` the given values are ADDED to the row's existing
+    counters instead of replacing them. The ingest flow for adapters that
+    self-report fetch-level stats (e.g. Letterboxd: films walked, feeds
+    resolved) is: adapter writes fetch stats → ingest_batch adds pipeline
+    stats on top. A bare overwrite would clobber the fetch counters with
+    zeros whenever the fetch produced no RawMentions, hiding a broken
+    collector behind a green "0 requested, 0 received".
     """
     src = _ensure_source(db, source_key)
-    src.records_requested = max(requested, 0)
-    src.records_received = max(received, 0)
-    src.records_processed = max(processed, 0)
-    src.records_rejected = max(rejected, 0)
-    src.api_errors = max(api_errors, 0)
-    src.rate_limit_errors = max(rate_limit_errors, 0)
+    if merge:
+        src.records_requested = max(src.records_requested, 0) + max(requested, 0)
+        src.records_received = max(src.records_received, 0) + max(received, 0)
+        src.records_processed = max(src.records_processed, 0) + max(processed, 0)
+        src.records_rejected = max(src.records_rejected, 0) + max(rejected, 0)
+        src.api_errors = max(src.api_errors, 0) + max(api_errors, 0)
+        src.rate_limit_errors = max(src.rate_limit_errors, 0) + max(rate_limit_errors, 0)
+    else:
+        src.records_requested = max(requested, 0)
+        src.records_received = max(received, 0)
+        src.records_processed = max(processed, 0)
+        src.records_rejected = max(rejected, 0)
+        src.api_errors = max(api_errors, 0)
+        src.rate_limit_errors = max(rate_limit_errors, 0)
     db.commit()
 
 
@@ -151,7 +168,9 @@ def ingest_batch(db: Session, source_key: str, raws: list[RawMention]) -> int:
 
     rejected += errors
     # Surface the raw API outcome so the health view can distinguish upstream
-    # silence from pipeline rejection.
+    # silence from pipeline rejection. Merge so adapters that already wrote
+    # fetch-level counters keep them (an empty fetch must NOT rewrite those
+    # counters to zeros — that is how a broken collector looked healthy).
     record_ingest(db, source_key, error=f"{errors} items failed" if errors else None)
     record_ingest_stats(
         db,
@@ -162,6 +181,7 @@ def ingest_batch(db: Session, source_key: str, raws: list[RawMention]) -> int:
         rejected=rejected,
         api_errors=errors,
         rate_limit_errors=0,
+        merge=True,
     )
     return inserted
 
@@ -227,5 +247,6 @@ def ingest_metric_batch(db: Session, source_key: str, metrics: list[RawMetricSna
         rejected=rejected,
         api_errors=errors,
         rate_limit_errors=0,
+        merge=True,
     )
     return inserted
