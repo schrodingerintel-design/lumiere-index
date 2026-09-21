@@ -306,11 +306,14 @@ def prune_raw_signals(db: Session) -> dict:
 # ── one-time unit migration ─────────────────────────────────────────────────
 # Trends observations were stored as WEEKLY interest totals (sum of seven
 # 0–100 values); the score unit is a DAILY rate. Rows written before the
-# adapter fix carry a 7×-inflated value. This idempotent normalizer divides
-# any such row down; it self-disables once no inflated rows remain (the
-# UPDATE matches zero rows) and is wired into run_retention so production
-# heals itself on the first nightly pass after deploy.
-TRENDS_UNIT_FIX_KEY = "trends_obs_weekly_to_daily_2026_09"
+# daily-rate adapter shipped (2026-09-21 13:00 UTC) carry the 7×-inflated
+# value. The created_at cutoff makes this normalizer self-limiting: rows
+# written after the cutover are already daily-rate and are never touched
+# (an unguarded version double-divided them once, immediately healed by the
+# next hourly upsert — the cutoff prevents that class of damage entirely).
+# Once legacy rows age past the 30-day mention retention window the UPDATE
+# matches zero rows and the pass becomes a no-op.
+TRENDS_DAILY_RATE_CUTOVER_UTC = "2026-09-21 13:00:00"
 
 
 def normalize_trends_observation_units(db: Session) -> dict:
@@ -323,9 +326,10 @@ def normalize_trends_observation_units(db: Session) -> dict:
         result = db.execute(
             _text(
                 "UPDATE mentions SET observations = FLOOR(observations / 7) "
-                "WHERE source_id = :sid AND observations >= 7"
+                "WHERE source_id = :sid AND observations >= 7 "
+                "AND created_at < :cutoff"
             ),
-            {"sid": src.id},
+            {"sid": src.id, "cutoff": TRENDS_DAILY_RATE_CUTOVER_UTC},
         )
         db.commit()
         return {"trends_unit_fix": result.rowcount or 0}

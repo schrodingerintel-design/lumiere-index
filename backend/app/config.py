@@ -241,11 +241,12 @@ class Settings(BaseSettings):
     # attention_raw is persisted on every ranking row, so past scores remain
     # exactly re-derivable under any anchor.  Rank never feeds the score.
     # Attention level mapping to Index Score 100, in OBSERVATIONS/DAY units.
-    # With Trends now reporting average daily search interest (0–100), 70/100
-    # sustained daily search demand = exceptional national attention → 100.
-    # Beta chart lands ~10–80; a genuine blockbuster week pushes #1 into the
-    # 90s. Env-tunable as coverage grows (SCORE_ATTENTION_REF).
-    score_attention_ref: float = 70.0
+    # Trends reports chunk-relative daily interest (0–100 within each queried
+    # group of five titles), so chart titles legitimately read high — the
+    # anchor sits at the absolute ceiling (sustained 100/100 national search
+    # demand all week = a true cultural event → 100). A normal chart lands
+    # ~50–90, quiet titles ~15–30. Env-tunable (SCORE_ATTENTION_REF).
+    score_attention_ref: float = 100.0
     # YouTube view velocity → mention-equivalents divisor. A trailer pulling
     # 250k new views/day contributes the same absolute attention as ~100
     # mentions/day (2500 views ≈ one measured mention of attention).
