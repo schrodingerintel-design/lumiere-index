@@ -28,18 +28,24 @@ def rollup_daily(db: Session, days: int = 30) -> None:
         func.sum(func.if_(Mention.sentiment_label == "positive", 1, 0)).label("pos"),
         func.sum(func.if_(Mention.sentiment_label == "neutral", 1, 0)).label("neu"),
         func.sum(func.if_(Mention.sentiment_label == "negative", 1, 0)).label("neg"),
+        func.coalesce(func.sum(Mention.observations), 0).label("obs"),
     ).filter(func.date(Mention.created_at) >= cutoff)
     if catalog_source_ids:
         mentions_q = mentions_q.filter(~Mention.source_id.in_(catalog_source_ids))
     rows = mentions_q.group_by(Mention.film_id, "day").all()
-    for fid, day, cnt, savg, pos, neu, neg in rows:
+    for fid, day, cnt, savg, pos, neu, neg, obs in rows:
         p_val = float(pos or 0)
         n_val = float(neu or 0)
         neg_val = float(neg or 0)
         total = max(p_val + n_val + neg_val, 1.0)
+        cnt_int = int(cnt)
+        # Observation volume falls back to the row count when every record
+        # carries the default 0 (per-item sources pre-dating the column).
+        obs_int = int(obs or 0) or cnt_int
         db.add(DailyScore(
-            film_id=fid, day=day, mentions_count=int(cnt),
-            weighted_score=float(cnt) * (1 + 0.25 * float(savg or 0)),
+            film_id=fid, day=day, mentions_count=cnt_int,
+            observations_sum=obs_int,
+            weighted_score=float(cnt_int) * (1 + 0.25 * float(savg or 0)),
             sentiment_avg=float(savg or 0),
             pos_pct=100.0 * p_val / total,
             neu_pct=100.0 * n_val / total,

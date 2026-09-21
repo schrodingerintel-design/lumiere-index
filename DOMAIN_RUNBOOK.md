@@ -48,6 +48,24 @@ The Index currently has **no accounts** — the watchlist is local-only
 URLs to update. When auth is added, register
 `https://lumiereindex.com/api/auth/callback/*` with the provider at that time.
 
+## 5. Signal source keys — Railway backend variables
+
+Signal Health (`/meta/sources`) shows which collectors are live. As of the
+observation-volume score fix, three sources need API keys set as **Railway
+backend service Variables** (the sandbox `.env` files do not deploy):
+
+| Variable | Where to get it | Effect when set |
+|---|---|---|
+| `NEWSAPI_KEY` | newsapi.org (free dev tier) | News collector starts producing mentions (runs every 15 min) |
+| `YOUTUBE_API_KEY` | Google Cloud console → YouTube Data API v3 | Trailer view-velocity folds into attention + engagement (runs every 30 min) |
+| `REDDIT_OAUTH_*` | reddit.com/prefs/apps | Optional; Reddit is policy-disabled until an OAuth app is registered |
+
+After adding variables, redeploy the backend service and confirm on
+`/api/v1/meta/sources` that `key_configured` flips to `true` and counters
+start moving. Letterboxd now reports honest per-run health there too (films
+walked vs feeds resolved), so a silently-broken collector is visible instead
+of a green zero.
+
 ## 5. Google Search Console — domain property from day one
 
 1. Create a **Domain property** (`lumiereindex.com` — covers http/https/www).

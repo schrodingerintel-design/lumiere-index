@@ -302,9 +302,10 @@ def test_ranking_scoring_graceful_degradation_without_youtube(test_db):
     test_db.add_all([f1, f2])
     test_db.commit()
 
-    # Add daily scores
-    d1 = DailyScore(film_id=1, day=date.today(), mentions_count=10, sentiment_avg=0.5)
-    d2 = DailyScore(film_id=2, day=date.today(), mentions_count=8, sentiment_avg=0.4)
+    # Add daily scores (observations_sum tracks mentions_count for per-item
+    # sources; NULL would also be valid legacy input)
+    d1 = DailyScore(film_id=1, day=date.today(), mentions_count=10, observations_sum=10, sentiment_avg=0.5)
+    d2 = DailyScore(film_id=2, day=date.today(), mentions_count=8, observations_sum=8, sentiment_avg=0.4)
     test_db.add_all([d1, d2])
     test_db.commit()
 

@@ -11,6 +11,13 @@ class DailyScore(Base):
     film_id: Mapped[int] = mapped_column(ForeignKey("films.id", ondelete="CASCADE"), primary_key=True)
     day: Mapped[date] = mapped_column(Date, primary_key=True)
     mentions_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Raw observation volume for the day (SUM of Mention.observations — Trends
+    # interest units, YouTube views, pageviews…). Distinct from mentions_count
+    # (row count): aggregate sources contribute ONE row carrying many
+    # observations, and attention intensity must read volume, not rows.
+    # NULL → legacy row written before this column existed; consumers fall
+    # back to mentions_count for those days.
+    observations_sum: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     weighted_score: Mapped[float] = mapped_column(Float, default=0)
     sentiment_avg: Mapped[float] = mapped_column(Float, default=0)
     pos_pct: Mapped[float] = mapped_column(Float, default=0)

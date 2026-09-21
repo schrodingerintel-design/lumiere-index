@@ -239,7 +239,8 @@ def recompute_rankings(db: Session) -> datetime:
     cutoff_dt = now - timedelta(days=W)
 
     ds_q = db.query(
-        DailyScore.film_id, DailyScore.day, DailyScore.mentions_count, DailyScore.sentiment_avg
+        DailyScore.film_id, DailyScore.day, DailyScore.mentions_count, DailyScore.sentiment_avg,
+        DailyScore.observations_sum,
     ).filter(DailyScore.day >= cutoff_ca)
     if has_catalog_rows:
         # DailyScore rows that came purely from catalog-only sources are not
@@ -250,25 +251,40 @@ def recompute_rankings(db: Session) -> datetime:
                 func.date(Mention.created_at).label("day"),
                 func.count(Mention.id).label("cnt"),
                 func.avg(Mention.sentiment_score).label("savg"),
+                func.coalesce(func.sum(Mention.observations), 0).label("obs"),
             )
             .filter(Mention.source_id.in_(catalog_source_ids), Mention.created_at >= cutoff_dt)
             .group_by(Mention.film_id, func.date(Mention.created_at))
             .all()
         )
-        catalog_ds: dict[tuple[int, date], tuple[int, float]] = {}
-        for fid, day_val, cnt, savg in catalog_ds_rows:
+        catalog_ds: dict[tuple[int, date], tuple[int, float, int]] = {}
+        for fid, day_val, cnt, savg, obs in catalog_ds_rows:
             d = day_val if isinstance(day_val, date) else datetime.strptime(str(day_val), "%Y-%m-%d").date()
-            catalog_ds[(fid, d)] = (int(cnt or 0), float(savg or 0.0))
+            catalog_ds[(fid, d)] = (int(cnt or 0), float(savg or 0.0), int(obs or 0))
 
     ds_rows = ds_q.all()
+    # Two parallel series per film/day:
+    #   mentions_by_film      — COUNT of mention rows (evidence; sample_size,
+    #                           confidence tier, composite activity)
+    #   observations_by_film  — SUM of Mention.observations (raw measured
+    #                           VOLUME: Trends interest units, YouTube views,
+    #                           pageviews…). Aggregate sources emit ONE row
+    #                           carrying many observations, so row count alone
+    #                           flattens them all to the same value — the bug
+    #                           that rendered every Trends-covered title at
+    #                           exactly A=1.0 and six charts positions at one
+    #                           identical 21.3 Index Score.
     mentions_by_film: dict[int, dict[date, int]] = defaultdict(dict)
+    observations_by_film: dict[int, dict[date, int]] = defaultdict(dict)
     sentiment_by_film: dict[int, dict[date, float]] = defaultdict(dict)
-    for fid, day, cnt, savg in ds_rows:
+    for fid, day, cnt, savg, obs in ds_rows:
         key = (fid, day)
+        obs_val = int(obs or 0)
         if has_catalog_rows and key in catalog_ds:
             # Strip the catalog-only contribution out of the rolled-up counts.
-            c_cnt, c_savg = catalog_ds[key]
+            c_cnt, c_savg, c_obs = catalog_ds[key]
             real_cnt = int(cnt or 0) - c_cnt
+            real_obs = obs_val - c_obs
             if real_cnt <= 0:
                 continue  # this day's row was purely catalog data — not a signal
             # Recompute the real sentiment average without the catalog rows
@@ -277,26 +293,33 @@ def recompute_rankings(db: Session) -> datetime:
             real_savg = ((float(savg or 0.0) * total) - (c_savg * c_cnt)) / real_cnt
             real_savg = max(-1.0, min(1.0, real_savg))
             cnt, savg = real_cnt, real_savg
+            obs_val = max(real_obs, 0)
         mentions_by_film[fid][day] = int(cnt or 0)
+        observations_by_film[fid][day] = obs_val
         if savg is not None:
             sentiment_by_film[fid][day] = float(savg)
 
-    # Directly aggregate from Mention table for real-time coverage
+    # Directly aggregate from Mention table for real-time coverage (rows AND
+    # observation volume — the backstop must carry both series).
     m_q = (
         db.query(
             Mention.film_id,
             func.date(Mention.created_at).label("day"),
             func.count(Mention.id).label("cnt"),
             func.avg(Mention.sentiment_score).label("savg"),
+            func.coalesce(func.sum(Mention.observations), 0).label("obs"),
         )
         .filter(Mention.created_at >= cutoff_dt)
     )
     if has_catalog_rows:
         m_q = m_q.filter(~Mention.source_id.in_(catalog_source_ids))
     m_rows = m_q.group_by(Mention.film_id, func.date(Mention.created_at)).all()
-    for fid, day_val, cnt, savg in m_rows:
+    for fid, day_val, cnt, savg, obs in m_rows:
         d = day_val if isinstance(day_val, date) else datetime.strptime(str(day_val), "%Y-%m-%d").date()
-        mentions_by_film[fid][d] = max(mentions_by_film[fid].get(d, 0), int(cnt or 0))
+        cnt_int = int(cnt or 0)
+        obs_int = int(obs or 0) or cnt_int  # per-item rows default obs=0 → rows
+        mentions_by_film[fid][d] = max(mentions_by_film[fid].get(d, 0), cnt_int)
+        observations_by_film[fid][d] = max(observations_by_film[fid].get(d, 0), obs_int)
         if savg is not None:
             sentiment_by_film[fid][d] = float(savg)
 
@@ -344,6 +367,10 @@ def recompute_rankings(db: Session) -> datetime:
     for fid, film in films.items():
         # CA / M: log-transformed daily mention series, oldest→newest
         day_mentions = mentions_by_film.get(fid, {})
+        # A: daily observation VOLUME series — the raw measured attention the
+        # Index Score displays (a Trends row is one record carrying the real
+        # interest volume; counting rows would flatten every source to 1/day).
+        day_observations = observations_by_film.get(fid, {})
         log_series = [
             math.log1p(day_mentions.get(d, 0))
             for d in all_days_ca
@@ -373,10 +400,14 @@ def recompute_rankings(db: Session) -> datetime:
         last_signal = max((d for d, c in day_mentions.items() if c > 0), default=None)
 
         # ── Absolute attention intensity A(f) ────────────────────────────
-        # Decay-weighted average mentions/day from the title's first measured
-        # activity to today.  Independent of every other title in the pool:
-        # this is what the Index Score displays, so a #1 in a quiet week can
-        # (and must) score lower than a #1 during a blockbuster week.
+        # Decay-weighted average OBSERVATION volume/day from the title's first
+        # measured activity to today.  Observations, not mention rows: an
+        # aggregate source row carries the real underlying volume (Trends
+        # weekly interest, YouTube views), and counting rows would collapse
+        # every aggregate source to a flat 1.0/day regardless of popularity.
+        # Independent of every other title in the pool: this is what the Index
+        # Score displays, so a #1 in a quiet week can (and must) score lower
+        # than a #1 during a blockbuster week.
         if active_days > 0 and day_mentions:
             first_day = min(d for d, c in day_mentions.items() if c > 0)
             w_sum = 0.0
@@ -386,7 +417,7 @@ def recompute_rankings(db: Session) -> datetime:
                     continue
                 w = lam ** max((today - d).days, 0)
                 w_sum += w
-                w_mentions += w * day_mentions.get(d, 0)
+                w_mentions += w * day_observations.get(d, 0)
             attention_intensity[fid] = (w_mentions / w_sum) if w_sum > 0 else 0.0
         else:
             attention_intensity[fid] = 0.0
@@ -602,17 +633,22 @@ def recompute_rankings(db: Session) -> datetime:
     #
     #     score = 100 · log10(1 + A) / log10(1 + A_ref)
     #
-    # A(f) = decay-weighted mentions/day for the title (+ YouTube view
-    # velocity / K folded in when present) — an absolute count of measured
-    # attention that does not depend on what other titles are doing.
+    # A(f) = decay-weighted observation volume/day for the title (+ YouTube
+    # view velocity / K folded in when present) — an absolute count of
+    # measured attention that does not depend on what other titles are doing.
     # A_ref = config.score_attention_ref is the attention level that maps to
     # exactly 100.  There is no rank→score mapping anywhere, and no pool
     # anchor: the same measured attention produces the same score in a quiet
-    # week and a blockbuster week alike.  Because ordering uses the composite
-    # (a different, correlated measurement), the displayed score can
-    # occasionally rise down the chart by a hair — the presentation cap below
-    # keeps published scores monotone non-increasing without ever reordering
-    # the chart.
+    # week and a blockbuster week alike.
+    #
+    # Rank and score are deliberately independent measurements.  Rank orders
+    # by the composite model; the score reads raw volume.  When they disagree
+    # (e.g. a debut surging on momentum while a steady title holds more raw
+    # attention) the published score may rise by a step or two further down
+    # the chart — that is HONEST, not a bug: the score answers "how much
+    # attention is this title getting", and flattening it to preserve a
+    # visual monotone would reintroduce exactly the fake compression this
+    # scale exists to remove.  The old presentation cap is therefore gone.
     a_ref = max(settings.score_attention_ref, 1e-6)
     denom = math.log10(1.0 + a_ref)
     attention_raw: dict[int, float] = {
@@ -628,22 +664,11 @@ def recompute_rankings(db: Session) -> datetime:
         fid: _absolute_score(attention_raw[fid]) for fid in all_fids
     }
 
-    # Presentation cap per official chart: displayed scores never increase
-    # down the published order (rank is composite order; score is absolute
-    # attention — correlated but not identical).
-    for chart_id_cap, entity_ct_cap in OFFICIAL_CHARTS:
-        cap_ordered = [
-            fid for fid, c in sorted(
-                ((fid, composite[fid]) for fid in all_fids if fid in active_fids),
-                key=lambda x: (-x[1], x[0]),
-            )
-            if content_type_by_fid.get(fid) == entity_ct_cap
-        ]
-        running_cap = 100.0
-        for fid in cap_ordered:
-            s = min(score_map[fid], running_cap)
-            score_map[fid] = s
-            running_cap = s
+    # NOTE: no presentation cap. Earlier versions flattened the published
+    # scores to be monotone with the composite order; with observation-based
+    # attention that cap erased real volume differences (it rendered a 15×
+    # attention gap as two identical 21.27s). Rank stays composite order; the
+    # score stays the title's own truth.
 
     # ── 9. Previous snapshot lookup for movement tracking (per chart) ──────────
     prev_snap = db.scalar(select(func.max(Ranking.snapshot_at)))
