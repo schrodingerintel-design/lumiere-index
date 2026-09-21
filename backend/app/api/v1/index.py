@@ -77,6 +77,26 @@ def _entry_out(film: Film, row: DailyIndexSnapshot) -> IndexEntryOut:
     )
 
 
+def _weekly_momentum(row: WeeklyIndexSnapshot) -> str:
+    """Weekly Momentum from week-over-week rank change (deterministic).
+
+    Weekly cadence is slower than the daily chart, so thresholds are wider:
+    |Δ| ≥ 3 is a real move. A big debut (top 10, no previous week) SURGES in.
+    """
+    delta = row.rank_delta
+    if row.previous_week_rank is None:
+        return "SURGING" if row.rank <= 10 else "STEADY"
+    if delta >= 5:
+        return "SURGING"
+    if delta >= 3:
+        return "RISING"
+    if delta <= -5:
+        return "FALLING"
+    if delta <= -3:
+        return "COOLING"
+    return "STEADY"
+
+
 def _weekly_entry_out(film: Film, row: WeeklyIndexSnapshot) -> WeeklyEntryOut:
     return WeeklyEntryOut(
         film_id=row.film_id,
@@ -103,6 +123,7 @@ def _weekly_entry_out(film: Film, row: WeeklyIndexSnapshot) -> WeeklyEntryOut:
         peak_daily_rank=row.peak_daily_rank,
         source_coverage=row.source_coverage,
         confidence=row.confidence,
+        momentum=_weekly_momentum(row),
         week_start=row.week_start,
         week_end=row.week_end,
     )

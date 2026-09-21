@@ -140,7 +140,7 @@ function About() {
 
       <div className="border border-foreground/10 bg-surface p-6">
         <p className="text-sm text-foreground/80">
-          Want to know exactly how the Index Score is calculated?{" "}
+          Want to know exactly how the ranking is calculated?{" "}
           <Link to="/methodology" className="font-medium text-primary hover:underline">
             Read the Lumière Index Methodology →
           </Link>

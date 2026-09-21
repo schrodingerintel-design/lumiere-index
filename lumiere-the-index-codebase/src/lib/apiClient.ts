@@ -95,6 +95,8 @@ export interface RankedFilm {
   /** First-air date for TV_SHOW content (release_date stays null for TV). */
   first_air_date?: string | null;
   rank: number;
+  /** Internal ranking value — sorting/plumbing only. Never rendered; the
+   *  public product shows rank, movement and Momentum instead. */
   score: number;
   /** The official chart this rank belongs to — "MOVIE_100" or "TV_100".
    *  Rank is ALWAYS contextual to a chart; null + rank 0 means the title is
@@ -104,6 +106,8 @@ export interface RankedFilm {
   movement: number | null;
   peak_rank: number | null;
   weeks_on_chart: number | null;
+  /** Public Momentum — the derived state of change (rank-trajectory based). */
+  momentum?: string;
   /** Days since the title's first appearance on the live 15-minute chart.
    *  The tenure unit the UI shows. */
   days_on_chart?: number | null;
@@ -156,11 +160,10 @@ export interface TimelinePoint {
   score: number;
 }
 
-/** One daily sample of a title's chart position + score (film page history chart). */
+/** One daily sample of a title's chart position (film page history chart). */
 export interface RankHistoryPoint {
   day: string;
   rank: number;
-  score: number;
 }
 
 /** Film-centric trending entry returned by /api/v1/trending/films */
@@ -170,6 +173,7 @@ export interface TrendingFilmOut {
   director: string | null;
   year: number | null;
   rank: number;
+  /** Internal value — not shown publicly. */
   score: number;
   poster_url: string | null;
   gradient_from: string | null;
@@ -259,6 +263,7 @@ export interface MoverFilm {
   movement: number;
   previous_rank: number | null;
   current_rank: number;
+  /** Internal values — plumbing only, never rendered. */
   current_score: number;
   previous_score: number | null;
   score_delta: number | null;
@@ -286,12 +291,17 @@ export interface WeeklyEntry {
   gradient_from: string | null;
   gradient_to: string | null;
   rank: number;
+  /** Internal value — plumbing only, never rendered. */
   score: number;
   previous_week_rank: number | null;
   rank_delta: number;
   avg_daily_mentions: number;
   total_signal_volume: number;
   confidence: string | null;
+  /** Best daily rank reached within the week (peak context). */
+  peak_daily_rank?: number | null;
+  /** Public Momentum — week-over-week rank change based. */
+  momentum?: string;
   week_start: string;
   week_end: string;
 }
@@ -327,6 +337,7 @@ export interface NewEntryFilm {
   first_air_date?: string | null;
   debut_date: string;
   debut_rank: number;
+  /** Internal value — not shown publicly. */
   debut_score: number;
   current_rank: number | null;
   confidence: string | null;

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Film, Loader2, Search, Sparkles, X } from "lucide-react";
 import { searchFilms, getTopFilms } from "@/lib/apiClient";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
+import { MomentumInline } from "./Momentum";
 
 /** Returns `value` only after it has been stable for `delay` ms. */
 function useDebouncedValue<T>(value: T, delay = 250): T {
@@ -194,9 +195,9 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                                 {film.rank > 0 && <> &middot; #{film.rank} on The Index</>}
                               </div>
                             </div>
-                            {film.score > 0 && (
-                              <span className="shrink-0 font-mono text-xs tabular text-primary">
-                                {film.score.toFixed(1)}
+                            {film.rank > 0 && (
+                              <span className="shrink-0">
+                                <MomentumInline state={film.momentum} />
                               </span>
                             )}
                           </Link>

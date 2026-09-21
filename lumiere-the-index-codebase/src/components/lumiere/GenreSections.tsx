@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getGenreFilms, type RankedFilm } from "@/lib/apiClient";
 import { FilmCardSkeleton } from "./Skeletons";
+import { MomentumInline } from "./Momentum";
 
 function gradientStyle(from: string | null, to: string | null) {
   return `linear-gradient(155deg, ${from ?? "#333"}, ${to ?? "#111"})`;
@@ -161,11 +162,13 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
-              {/* Index Score — ivory on the artwork, like every other card.
-                  Unranked catalogue titles show "—" instead of a fake 0.0. */}
-              <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
-                {isRanked(film) ? film.score?.toFixed(1) : "-"}
-              </div>
+              {/* Momentum mark — quiet, top-right of the artwork. Ranked
+                  titles only; unranked catalogue titles show nothing. */}
+              {isRanked(film) && (
+                <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 leading-none">
+                  <MomentumInline state={film.momentum} className="text-cream" />
+                </div>
+              )}
               {isRanked(film) && film.prev_rank == null && (
                 <div className="absolute left-1.5 top-1.5 bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none text-ink">
                   New

@@ -3,7 +3,7 @@
  *
  * Two card types:
  *  - "film":  one title — full-bleed poster backdrop, giant rank, dominant
- *             Index Score, brand lockup
+ *             chart rank, brand lockup
  *  - "chart": a ranked list — top rows with poster thumbs, brand lockup
  *
  * Design language (matching the site): ink ground, ivory display type,
@@ -299,7 +299,7 @@ export interface ShareCardResult {
  *
  *  Immersive composition: the poster cover-fills the entire card as the
  *  backdrop under a cinematic scrim; a floating poster card, the giant
- *  chart rank and the dominant Index Score sit on top; title, meta and
+ *  chart rank and the title block sit on top; meta and
  *  the canonical domain anchor the bottom. */
 export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult> {
   await ensureFonts();
@@ -413,7 +413,7 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
     ctx.fillText(line, colX, pY + 380 + i * 48);
   });
 
-  // ── 6. Bottom band: dominant Index Score vs. title block ─────────────────
+  // ── 6. Bottom band: dominant chart position vs. title block ─────────────
   const bandY = 962;
   ctx.strokeStyle = HAIRLINE;
   ctx.lineWidth = 2;
@@ -422,15 +422,19 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   ctx.lineTo(W - 96, bandY);
   ctx.stroke();
 
-  // Score — the headline number, visually dominant.
+  // Position + tenure — the résumé block. Cards carry no public score.
   ctx.fillStyle = MUTED;
   ctx.font = `500 26px ${MONO_FONT}`;
-  ctx.fillText("I N D E X   S C O R E", 96, bandY + 66);
-  const scoreText = film.score?.toFixed(1) ?? "-";
-  const scoreFont = fitFont(ctx, scoreText, 520, 210, 600, DISPLAY_FONT);
+  ctx.fillText("O N   T H E   I N D E X", 96, bandY + 66);
+  const tenureText = [
+    (film.rank ?? 0) > 0 ? `#${film.rank} today` : null,
+    film.peak_rank ? `peak #${film.peak_rank}` : null,
+    film.days_on_chart ? `${film.days_on_chart} days on chart` : null,
+  ].filter(Boolean).join("  ·  ");
+  const tenureFont = fitFont(ctx, tenureText || "—", 520, 96, 600, DISPLAY_FONT);
   ctx.fillStyle = IVORY;
-  ctx.font = `600 ${scoreFont}px ${DISPLAY_FONT}`;
-  ctx.fillText(scoreText, 90, bandY + 254);
+  ctx.font = `600 ${tenureFont}px ${DISPLAY_FONT}`;
+  ctx.fillText(tenureText || "—", 90, bandY + 254);
   ctx.fillStyle = RED;
   ctx.fillRect(96, bandY + 288, 64, 5);
 
@@ -475,8 +479,6 @@ export interface ChartCardOptions {
   films: RankedFilm[];    // rows (max 5 shown)
   /** Display rank override — chart pages renumber (TV chart shows 1–50). */
   rankOf?: (film: RankedFilm, index: number) => number;
-  /** Per-chart score label — TV charts read "TVDex". Defaults to "INDEX". */
-  scoreLabel?: string;
 }
 
 /** Render the ranked-list card. 1080×1350 (4:5). Up to 5 rows.
@@ -607,14 +609,14 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
       .join("  ·  ");
     ctx.fillText(meta, textX, y + 100);
 
-    // Score right-aligned with its label.
+    // Rank right-aligned with its label — cards carry no public score.
     ctx.fillStyle = IVORY;
     ctx.font = `600 44px ${DISPLAY_FONT}`;
-    const scoreText = f.score?.toFixed(1) ?? "-";
-    ctx.fillText(scoreText, W - 96 - ctx.measureText(scoreText).width, y + rowH / 2 - 8);
+    const rankText = (f.rank ?? 0) > 0 ? `#${f.rank}` : "—";
+    ctx.fillText(rankText, W - 96 - ctx.measureText(rankText).width, y + rowH / 2 - 8);
     ctx.fillStyle = MUTED;
     ctx.font = `16px ${MONO_FONT}`;
-    const idxLabel = (opts.scoreLabel ?? "INDEX").toUpperCase();
+    const idxLabel = "RANK";
     ctx.fillText(idxLabel, W - 96 - ctx.measureText(idxLabel).width, y + rowH / 2 + 20);
   }
 

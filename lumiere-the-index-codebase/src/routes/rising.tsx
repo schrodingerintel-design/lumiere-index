@@ -73,11 +73,8 @@ function MoverCard({
             {film.title}
           </div>
         )}
-        {/* Current rank + score — the measurement, always visible */}
+        {/* Current rank — the measurement, always visible */}
         <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
-          {film.current_score?.toFixed(1)}
-        </div>
-        <div className="absolute left-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-cream/90">
           #{film.current_rank}
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3 pt-8">

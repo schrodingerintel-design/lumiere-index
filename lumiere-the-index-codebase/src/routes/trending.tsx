@@ -64,7 +64,7 @@ function TrendingRow({ film, position }: { film: TrendingFilmOut; position: numb
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="index-score text-xl sm:text-2xl">{film.score?.toFixed(1)}</div>
+          <div className="font-mono text-sm tabular text-muted-foreground">#{film.rank}</div>
         </div>
       </Link>
     </li>

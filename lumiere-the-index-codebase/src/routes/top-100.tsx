@@ -5,11 +5,11 @@ import { Layout } from "@/components/lumiere/Layout";
 import { getTopFilms, type RankedFilm } from "@/lib/apiClient";
 import { AdSlot, isAdSlotActive } from "@/components/lumiere/AdSlot";
 import { isNewRelease, tenureLabel } from "@/lib/filmUtils";
-import { filmTrend } from "@/lib/trend";
 import { RouteError } from "@/lib/route-error";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
+import { MomentumMark, MomentumInline } from "@/components/lumiere/Momentum";
 
 /** Render-order row: a ranked film, or a future non-ranked ad separator. */
 type ChartRow = { kind: "film"; film: RankedFilm } | { kind: "ad"; placement: string };
@@ -91,12 +91,12 @@ function Top100() {
         )}
         <div className="border-t-2 border-foreground/20">
           {/* Desktop header row */}
-          <div className="hidden grid-cols-[64px_64px_1fr_90px_110px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
+          <div className="hidden grid-cols-[64px_64px_1fr_90px_130px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
             <div>Rank</div>
             <div>Mvmt</div>
             <div>Title</div>
             <div>Days</div>
-            <div className="text-right">Index Score</div>
+            <div className="text-right">Momentum</div>
           </div>
           <ul>
             {isLoading
@@ -125,7 +125,7 @@ function Top100() {
                         params={{ slug: f.slug }}
                         /* Mobile: stacked card — rank/movement/title/score, meta underneath.
                            Desktop: full 6-column scan table. No horizontal overflow anywhere. */
-                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_110px] sm:px-5"
+                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_130px] sm:px-5"
                       >
                         <div className="flex flex-col items-start gap-0.5">
                           <span className="index-score text-2xl font-semibold sm:text-xl">
@@ -187,7 +187,9 @@ function Top100() {
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
                               {director ? `${director} · ${f.year}` : f.year}
-                              <span className="sm:hidden"> · {tenureLabel(f)}</span>
+                              <span className="sm:hidden">
+                                {' '}&middot; <MomentumInline state={f.momentum} />
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -195,11 +197,11 @@ function Top100() {
                           {tenureLabel(f)}
                         </div>
                         <div className="text-right">
-                          <div className="index-score text-xl font-semibold sm:text-lg">
-                            {f.score?.toFixed(1)}
+                          <div className="flex items-center justify-end sm:justify-end">
+                            <MomentumMark state={f.momentum} />
                           </div>
-                          <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
-                            Index
+                          <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
+                            {f.peak_rank ? `Peak #${f.peak_rank}` : ""}
                           </div>
                         </div>
                       </Link>

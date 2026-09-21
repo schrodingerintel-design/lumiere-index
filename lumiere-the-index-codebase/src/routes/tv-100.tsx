@@ -7,6 +7,7 @@ import { getTopFilms, getMetaRefresh, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { Movement } from "@/components/lumiere/Ranking";
+import { MomentumMark } from "@/components/lumiere/Momentum";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 import { tenureLabel } from "@/lib/filmUtils";
 import { ShareCardButton } from "@/components/lumiere/ShareCardButton";
@@ -67,7 +68,7 @@ function useCountdown(nextRefreshAt: string | null): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** The live #1 series — the TVDex Score leads, everything else supports it. */
+/** The live #1 series — rank, movement and momentum lead, everything else supports. */
 function ChampionSeries({ film }: { film: RankedFilm }) {
   const director =
     film.director && film.director !== "Unknown" ? film.director : null;
@@ -92,15 +93,16 @@ function ChampionSeries({ film }: { film: RankedFilm }) {
             {[director, film.year].filter(Boolean).join(" · ")}
           </div>
 
-          {/* The number is the headline */}
-          <div className="mt-5 flex items-end gap-3">
-            <span className="index-score text-6xl sm:text-7xl">
-              {film.score?.toFixed(1)}
-            </span>
-            <span className="pb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              TVDex
-              <br />
-              Score
+          {/* The state of change is the headline */}
+          <div className="mt-5 flex items-center gap-4">
+            <MomentumMark state={film.momentum} className="!text-[13px]" />
+            {film.peak_rank ? (
+              <span className="font-mono text-xs tabular text-muted-foreground">
+                Peak #{film.peak_rank}
+              </span>
+            ) : null}
+            <span className="font-mono text-xs tabular text-muted-foreground">
+              {film.days_on_chart ?? 1}d on chart
             </span>
           </div>
         </div>
@@ -162,12 +164,9 @@ function TV100() {
     });
   }
 
-  // TVDex scores come straight from the API's Index Score scale (the beta
-  // calibration already anchors the chart head near 98.5). An earlier local
-  // rescale (score / #1 × 98.5) exploded whenever a lower-ranked title
-  // measured more raw attention than #1 — e.g. 844.8 — and has been removed:
-  // rank orders the chart, the score is each title's own truth.
-  const tvScore = (f: RankedFilm): number => f.score ?? 0;
+  // Scores are internal; the page presents rank, movement and momentum.
+  // (An earlier local rescale, score / #1 × 98.5, was removed: it exploded
+  // whenever a lower-ranked title carried more raw attention — e.g. 844.8.)
 
   return (
     <Layout>
@@ -199,12 +198,8 @@ function TV100() {
               card={{
                 title: "TV 100",
                 subtitle: "The TV shows getting the most attention right now.",
-                films: entries.slice(0, 5).map((f) => ({
-                  ...f,
-                  score: tvScore(f),
-                })),
+                films: entries.slice(0, 5),
                 rankOf: (_f, i) => i + 1,
-                scoreLabel: "TVDex",
               }}
               className="mb-1"
             />
@@ -216,7 +211,7 @@ function TV100() {
         <section className="mt-8 px-4 sm:px-6">
           <div className="mx-auto max-w-6xl">
             <ChampionSeries
-              film={{ ...champion, score: tvScore(champion) }}
+              film={champion}
             />
           </div>
         </section>
@@ -236,7 +231,7 @@ function TV100() {
               <div>Mvmt</div>
               <div>Series</div>
               <div>Days</div>
-              <div className="text-right">TVDex Score</div>
+              <div className="text-right">Momentum</div>
             </div>
             <ul>
               {isLoading
@@ -292,11 +287,11 @@ function TV100() {
                             {tenureLabel(f)}
                           </div>
                           <div className="text-right">
-                            <div className="index-score text-xl font-semibold sm:text-lg">
-                              {tvScore(f).toFixed(1)}
+                            <div className="flex items-center justify-end">
+                              <MomentumMark state={f.momentum} />
                             </div>
-                            <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
-                              TVDex
+                            <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
+                              {f.peak_rank ? `Peak #${f.peak_rank}` : ""}
                             </div>
                           </div>
                         </Link>

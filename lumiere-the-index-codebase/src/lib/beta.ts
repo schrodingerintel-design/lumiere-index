@@ -24,10 +24,21 @@ export interface BetaRelease {
   changes: string[];
 }
 
-export const BETA_VERSION = "1.2.2";
+export const BETA_VERSION = "1.3";
 
 /** Newest first. Keep entries user-facing and short. */
 export const BETA_RELEASES: BetaRelease[] = [
+  {
+    version: "1.3",
+    date: "2026-09-21",
+    headline: "Scores are gone. Momentum is in.",
+    changes: [
+      "No more numbers on the charts. The internal score now stays behind the scenes; you see rank, movement, momentum, peak and time on chart instead.",
+      "New: Momentum. Every title shows whether attention is SURGING, RISING, STEADY, COOLING or FALLING, based on how its rank is actually moving.",
+      "Position and momentum are independent: a #1 title can be COOLING while holding #1, and a #26 title can be SURGING as attention arrives.",
+      "Share cards now lead with chart position and history instead of a score.",
+    ],
+  },
   {
     version: "1.2.2",
     date: "2026-09-21",

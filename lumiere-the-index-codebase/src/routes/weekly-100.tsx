@@ -7,6 +7,7 @@ import { RouteError } from "@/lib/route-error";
 import { ArrowUp, ArrowDown, Tv, Film } from "lucide-react";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
+import { MomentumMark } from "@/components/lumiere/Momentum";
 
 export const Route = createFileRoute("/weekly-100")({
   head: () => ({
@@ -100,7 +101,7 @@ function Weekly100() {
             <div>Mvmt</div>
             <div>Title</div>
             <div>Type</div>
-            <div className="text-right">Index Score</div>
+            <div className="text-right">Momentum</div>
           </div>
           <ul>
             {isLoading
@@ -205,11 +206,11 @@ function Weekly100() {
                           <TypeChip type={e.content_type} />
                         </div>
                         <div className="text-right">
-                          <div className="index-score text-xl font-semibold sm:text-lg">
-                            {e.score?.toFixed(1)}
+                          <div className="flex items-center justify-end">
+                            <MomentumMark state={e.momentum} />
                           </div>
-                          <div className="font-mono text-[8px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
-                            Index
+                          <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
+                            {e.peak_daily_rank ? `Peak #${e.peak_daily_rank}` : ""}
                           </div>
                         </div>
                       </Link>
