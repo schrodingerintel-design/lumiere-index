@@ -162,13 +162,12 @@ function TV100() {
     });
   }
 
-  // The TV chart runs on its own TVDex scale: the #1 series anchors at 98.5
-  // and every other entry scales proportionally within the chart — so the
-  // page reads like a true standalone ranking rather than a slice of the
-  // global index.
-  const tvTop = entries[0]?.score ?? 0;
-  const tvScore = (f: RankedFilm): number =>
-    tvTop > 0 ? Math.round(((f.score ?? 0) / tvTop) * 985) / 10 : 0;
+  // TVDex scores come straight from the API's Index Score scale (the beta
+  // calibration already anchors the chart head near 98.5). An earlier local
+  // rescale (score / #1 × 98.5) exploded whenever a lower-ranked title
+  // measured more raw attention than #1 — e.g. 844.8 — and has been removed:
+  // rank orders the chart, the score is each title's own truth.
+  const tvScore = (f: RankedFilm): number => f.score ?? 0;
 
   return (
     <Layout>

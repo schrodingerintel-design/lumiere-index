@@ -665,8 +665,13 @@ def recompute_rankings(db: Session) -> datetime:
             return 0.0
         return max(0.0, min(100.0, 100.0 * math.log10(1.0 + a) / denom))
 
+    # Published score = the absolute attention map, passed through the
+    # beta-era display calibration when enabled (config flips off at normal
+    # launch; attention_raw always persists the true intensity for audit).
+    from app.services.display_calibration import beta_display_score
+
     score_map: dict[int, float] = {
-        fid: _absolute_score(attention_raw[fid]) for fid in all_fids
+        fid: beta_display_score(_absolute_score(attention_raw[fid])) for fid in all_fids
     }
 
     # NOTE: no presentation cap. Earlier versions flattened the published

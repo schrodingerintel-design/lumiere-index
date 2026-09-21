@@ -27,6 +27,7 @@ import pytest
 
 from app.config import settings
 from app.models import Ranking
+from app.services.display_calibration import beta_display_score
 from app.services.ranking import recompute_rankings
 
 
@@ -34,10 +35,12 @@ A_REF = settings.score_attention_ref
 
 
 def _expected_score(a: float) -> float:
-    # Mirrors the production map including its clamp at 100.
+    # Mirrors the production map including its clamp at 100 and the beta
+    # display calibration (identity when the flag is off).
     if a <= 0.0:
         return 0.0
-    return min(100.0, 100.0 * math.log10(1.0 + a) / math.log10(1.0 + A_REF))
+    raw = min(100.0, 100.0 * math.log10(1.0 + a) / math.log10(1.0 + A_REF))
+    return beta_display_score(raw)
 
 
 def _add_source(db, key="test"):
@@ -157,12 +160,13 @@ def test_score_matches_absolute_map_of_attention_raw(db_session):
             f"score {r.score} != map(attention_raw={r.attention_raw}) = {expected}"
         )
 
-    # Map anchors: A = A_ref → exactly 100; A = 0 → 0; monotone in A;
-    # clamped at the top (100× the reference saturates at 100).
-    assert _expected_score(A_REF) == pytest.approx(100.0)
+    # Map anchors (in raw-map space): A = A_ref → 100; A = 0 → 0; monotone in
+    # A; clamped at the top (100× the reference saturates at 100). With the
+    # beta calibration on, the published score is the band-stretched value.
+    assert _expected_score(A_REF) == pytest.approx(beta_display_score(100.0))
     assert _expected_score(0.0) == 0.0
     assert _expected_score(1.0) < _expected_score(10.0) < _expected_score(100.0)
-    assert _expected_score(A_REF * 100) == pytest.approx(100.0)
+    assert _expected_score(A_REF * 100) == pytest.approx(beta_display_score(100.0))
 
 
 # ── 4. presentation monotonicity ─────────────────────────────────────────────
@@ -217,10 +221,13 @@ def test_quiet_week_top_score_below_blockbuster_week(db_session):
 
 # ── 6. no saturation plateau ─────────────────────────────────────────────────
 
-def test_no_saturation_plateau_at_the_top(db_session):
+def test_no_saturation_plateau_at_the_top(db_session, monkeypatch):
     """A 10× attention gap between #1 and #2 must stay clearly visible in the
     scores. The old exponential flattened such gaps into ~3 points everywhere;
     the log map preserves them across the scale's working range."""
+    # This assertion is about the RAW map's shape; run with the calibration
+    # off so the fixed band floor/ceiling cannot mask relative differences.
+    monkeypatch.setattr(settings, "beta_display_calibration", False)
     src = _add_source(db_session)
     leader = _add_film(db_session, "sat-1", "Saturation Leader")
     _add_mentions(db_session, leader.id, src.id, 10, suffix="l1")

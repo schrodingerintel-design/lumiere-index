@@ -252,6 +252,17 @@ class Settings(BaseSettings):
     # mentions/day (2500 views ≈ one measured mention of attention).
     score_youtube_views_per_mention: float = 2500.0
 
+    # ── Beta-era display calibration ─────────────────────────────────────
+    # During the public beta the absolute attention map renders low (one live
+    # source, chunk-relative data), so published scores are stretched into a
+    # presentation band: strongest measured attention → ceiling, chart
+    # bottom → floor, log-proportional in between. Flip OFF for normal
+    # launch — the raw absolute map returns and attention_raw history stays
+    # re-derivable. Set BETA_DISPLAY_CALIBRATION=false to reverse.
+    beta_display_calibration: bool = True
+    beta_display_floor: float = 26.0
+    beta_display_ceiling: float = 98.5
+
     # Confidence tiers for editorial claims (raw mention/signal counts, pre-normalization)
     confidence_low_threshold: int = 5       # below this → "insufficient"
     confidence_medium_threshold: int = 25   # below this → "low"

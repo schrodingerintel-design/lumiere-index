@@ -454,7 +454,11 @@ def _absolute_scores(attention: dict[int, float]) -> dict[int, float]:
     def _one(a: float) -> float:
         if a <= 0.0:
             return 0.0
-        return max(0.0, min(100.0, 100.0 * math.log10(1.0 + a) / denom))
+        raw = max(0.0, min(100.0, 100.0 * math.log10(1.0 + a) / denom))
+        # Same beta display calibration as the daily engine so weekly and
+        # daily scores stay on one scale.
+        from app.services.display_calibration import beta_display_score
+        return beta_display_score(raw)
 
     return {fid: _one(a) for fid, a in attention.items()}
 
