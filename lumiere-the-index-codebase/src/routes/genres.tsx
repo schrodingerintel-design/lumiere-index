@@ -12,11 +12,11 @@ import { AdSlot, isAdSlotActive } from "@/components/lumiere/AdSlot";
 export const Route = createFileRoute("/genres")({
   head: () => ({
     meta: [
-      { title: "Browse by Genre — The Index" },
+      { title: "Browse by Genre · The Index" },
       {
         name: "description",
         content:
-          "Explore the full catalogue grouped by genre — ranked or not. Genre membership is independent of chart ranking.",
+          "The full catalogue grouped by genre. Ranked or not, every title is here: genre membership is independent of chart ranking.",
       },
       ogUrlMeta("/genres"),
     ],
@@ -87,7 +87,7 @@ function GenresPage() {
             Genres
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            Every title in the catalogue, grouped by its canonical genre — ranked or not. Chart
+            Every title in the catalogue, grouped by its canonical genre, ranked or not. Chart
             membership and catalogue membership are independent: a title needs conversation signals
             to rank, not to belong.
           </p>

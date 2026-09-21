@@ -146,7 +146,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                   </div>
                 ) : isError ? (
                   <div className="px-5 py-4 text-sm text-down">
-                    Search failed — please try again.
+                    Search failed. Please try again.
                   </div>
                 ) : results.length === 0 ? (
                   <div className="px-5 py-6 text-center">
@@ -165,7 +165,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                     {showFuzzyNote && (
                       <div className="border-b border-foreground/10 bg-primary/5 px-5 py-3">
                         <p className="text-xs text-primary">
-                          No exact match for &ldquo;{debounced}&rdquo; — showing similar
+                          No exact match for &ldquo;{debounced}&rdquo;. Showing similar
                           results.
                         </p>
                       </div>

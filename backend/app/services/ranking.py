@@ -43,15 +43,21 @@ identical outputs when raw inputs are genuinely identical.
 
 Index Score
 ───────────
-A universal 0–100 mapping of the raw composite.  It is derived ONLY from
-measured signals — never from rank position.  The map
-    score = 100 · (1 − exp(−3 · composite / p95))
-anchors at the pool's 95th composite percentile: a title at the 95th
-percentile of measured momentum scores ≈ 95, a compressed (quiet) field
-spreads lower, a runaway leader approaches but never trivially reaches 100
-(3× the p95 composite rounds to 100.0 — technically achievable,
-exceptionally rare).  Internal precision is kept in the composite; the
-persisted score carries 2 decimals and the API displays 1.
+A universal 0–100 measure of ABSOLUTE attention, not pool position.  It is
+derived ONLY from measured signals — never from rank position and never from
+the pool's distribution.  The map
+    score = 100 · log10(1 + A) / log10(1 + A_ref)
+uses A, the title's own decay-weighted attention intensity (decayed
+mentions/day, YouTube view velocity folded in at a configured rate), and
+A_ref, a fixed calibration constant (config: score_attention_ref).
+A = A_ref maps to exactly 100 — technically achievable, exceptionally rare.
+A quiet week lands the #1 title in the 70s–80s; a blockbuster week can put
+half the chart in the 90s; #100 on a normal week sits in the 20s–30s.  Each
+decade of attention adds the same number of points, so meaningful
+differences in the underlying data are preserved instead of collapsing into
+the 93–96 band the old p95-anchored exponential produced.  Internal
+precision is kept in the composite for ordering; the persisted score carries
+2 decimals and the API displays 1.
 
 Charts
 ──────
@@ -330,6 +336,11 @@ def recompute_rankings(db: Session) -> datetime:
     all_days_ae = [cutoff_ae + timedelta(days=i) for i in range(ae_win + 1)]
 
     film_data: list[_FilmData] = []
+    # Absolute attention intensity per film (decay-weighted mentions/day over
+    # the period the title has been measured).  This — not the composite —
+    # drives the displayed Index Score.  Computed in the loop below and folded
+    # with YouTube view velocity after the per-film pass.
+    attention_intensity: dict[int, float] = {}
     for fid, film in films.items():
         # CA / M: log-transformed daily mention series, oldest→newest
         day_mentions = mentions_by_film.get(fid, {})
@@ -360,6 +371,25 @@ def recompute_rankings(db: Session) -> datetime:
         ]
 
         last_signal = max((d for d, c in day_mentions.items() if c > 0), default=None)
+
+        # ── Absolute attention intensity A(f) ────────────────────────────
+        # Decay-weighted average mentions/day from the title's first measured
+        # activity to today.  Independent of every other title in the pool:
+        # this is what the Index Score displays, so a #1 in a quiet week can
+        # (and must) score lower than a #1 during a blockbuster week.
+        if active_days > 0 and day_mentions:
+            first_day = min(d for d, c in day_mentions.items() if c > 0)
+            w_sum = 0.0
+            w_mentions = 0.0
+            for d in all_days_ca:
+                if d < first_day or d > today:
+                    continue
+                w = lam ** max((today - d).days, 0)
+                w_sum += w
+                w_mentions += w * day_mentions.get(d, 0)
+            attention_intensity[fid] = (w_mentions / w_sum) if w_sum > 0 else 0.0
+        else:
+            attention_intensity[fid] = 0.0
 
         film_data.append(_FilmData(
             film_id=fid,
@@ -476,6 +506,11 @@ def recompute_rankings(db: Session) -> datetime:
         if fid in active_fids and sig.view_count > 0:
             # Attention: log view velocity (views/day)
             yt_ca_raw[fid] = math.log1p(sig.view_velocity if sig.view_velocity > 0 else sig.view_count / 30.0)
+            # Absolute attention: view velocity folded into the intensity
+            # measure at the configured mention-equivalence rate.
+            k_views = max(settings.score_youtube_views_per_mention, 1.0)
+            velocity = sig.view_velocity if sig.view_velocity > 0 else sig.view_count / 30.0
+            attention_intensity[fid] = attention_intensity.get(fid, 0.0) + velocity / k_views
             if sig.view_velocity > 0:
                 yt_m_raw[fid] = math.log1p(sig.view_velocity)
             # Engagement: like & comment density per log view count
@@ -557,32 +592,61 @@ def recompute_rankings(db: Session) -> datetime:
     if not composite:
         return now
 
-    # ── Score scale: signal-driven, never rank-derived ─────────────────────
-    # The Index Score maps the raw composite onto the universal 0–100 scale
-    # through the pool's own measured distribution:
+    # Content-type coercion once (legacy NULL rows → MOVIE) — used by the
+    # score presentation cap and by chart qualification below.
+    content_type_by_fid = {fd.film_id: fd.content_type for fd in film_data}
+
+    # ── Score scale: ABSOLUTE attention, never rank- or pool-derived ──────
+    # The Index Score maps each title's own measured attention intensity onto
+    # the universal 0–100 scale:
     #
-    #     score = 100 · (1 − exp(−3 · composite / p95))
+    #     score = 100 · log10(1 + A) / log10(1 + A_ref)
     #
-    # p95 is the 95th percentile of the eligible pool's composites.  There is
-    # no rank→score mapping anywhere: the #1 spot earns whatever its signals
-    # measure.  A compressed (quiet) field spreads the chart lower; a runaway
-    # leader pushes toward but never trivially reaches 100 — a composite 3×
-    # the p95 anchor rounds to 100.0, which is technically achievable and
-    # exceptionally rare by construction.
-    p95_anchor = _percentile([composite[f] for f in active_fids], 0.95)
-    if p95_anchor <= 1e-9:
-        p95_anchor = 1e-9
-    score_map: dict[int, float] = {
-        fid: 100.0 * (1.0 - math.exp(-3.0 * (c / p95_anchor)))
-        for fid, c in composite.items()
+    # A(f) = decay-weighted mentions/day for the title (+ YouTube view
+    # velocity / K folded in when present) — an absolute count of measured
+    # attention that does not depend on what other titles are doing.
+    # A_ref = config.score_attention_ref is the attention level that maps to
+    # exactly 100.  There is no rank→score mapping anywhere, and no pool
+    # anchor: the same measured attention produces the same score in a quiet
+    # week and a blockbuster week alike.  Because ordering uses the composite
+    # (a different, correlated measurement), the displayed score can
+    # occasionally rise down the chart by a hair — the presentation cap below
+    # keeps published scores monotone non-increasing without ever reordering
+    # the chart.
+    a_ref = max(settings.score_attention_ref, 1e-6)
+    denom = math.log10(1.0 + a_ref)
+    attention_raw: dict[int, float] = {
+        fid: max(attention_intensity.get(fid, 0.0), 0.0) for fid in all_fids
     }
+
+    def _absolute_score(a: float) -> float:
+        if a <= 0.0:
+            return 0.0
+        return max(0.0, min(100.0, 100.0 * math.log10(1.0 + a) / denom))
+
+    score_map: dict[int, float] = {
+        fid: _absolute_score(attention_raw[fid]) for fid in all_fids
+    }
+
+    # Presentation cap per official chart: displayed scores never increase
+    # down the published order (rank is composite order; score is absolute
+    # attention — correlated but not identical).
+    for chart_id_cap, entity_ct_cap in OFFICIAL_CHARTS:
+        cap_ordered = [
+            fid for fid, c in sorted(
+                ((fid, composite[fid]) for fid in all_fids if fid in active_fids),
+                key=lambda x: (-x[1], x[0]),
+            )
+            if content_type_by_fid.get(fid) == entity_ct_cap
+        ]
+        running_cap = 100.0
+        for fid in cap_ordered:
+            s = min(score_map[fid], running_cap)
+            score_map[fid] = s
+            running_cap = s
 
     # ── 9. Previous snapshot lookup for movement tracking (per chart) ──────────
     prev_snap = db.scalar(select(func.max(Ranking.snapshot_at)))
-
-    # ── Weeks on chart: calendar weeks since the title's FIRST chart appearance
-    # (chart-scoped).  Derived from the earliest snapshot — never a carried
-    # counter — so the number stays truthful and self-heals.
     def _chart_first_seen(chart_id: str) -> dict[int, datetime]:
         return {
             fid: first_snap
@@ -601,7 +665,6 @@ def recompute_rankings(db: Session) -> datetime:
         return max(((now - start).days // 7) + 1, 1)
 
     # ── 10. Persist snapshot — one continuous series per official chart ───────
-    content_type_by_fid = {fd.film_id: fd.content_type for fd in film_data}
     for chart_id, entity_ct in OFFICIAL_CHARTS:
         # Chart qualification: the eligible pool restricted to this chart's
         # entity type.  Movies never receive TV ranks and vice versa.  Uses
@@ -678,6 +741,9 @@ def recompute_rankings(db: Session) -> datetime:
                 cp_score=round(cp_norm[fid], 4),
                 # Raw cultural momentum (pre-scale) — admin inspector only
                 composite_raw=round(comp, 6),
+                # Absolute attention intensity feeding the Index Score map
+                # (decayed mentions/day, YouTube-folded) — audit + calibration
+                attention_raw=round(attention_raw.get(fid, 0.0), 4),
                 # Absolute evidence floor (raw count + derived tier)
                 sample_size=sample_size_map.get(fid, 0),
                 confidence=confidence_map.get(fid, "insufficient"),

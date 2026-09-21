@@ -37,6 +37,10 @@ class Ranking(Base):
     # Raw cultural momentum before the 0–100 Index Score mapping — internal
     # only (admin score inspector); never exposed publicly.
     composite_raw: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Absolute attention intensity (decayed mentions/day, YouTube-folded) that
+    # the Index Score map consumed.  Nullable for backward compat; backfilled
+    # by the next recompute after the column lands.  Calibration/audit only.
+    attention_raw: Mapped[float | None] = mapped_column(Float, nullable=True)
     prev_rank: Mapped[int | None] = mapped_column(Integer)
     movement: Mapped[int] = mapped_column(Integer, default=0)
     peak_rank: Mapped[int | None] = mapped_column(Integer)

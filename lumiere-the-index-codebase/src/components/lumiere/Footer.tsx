@@ -13,6 +13,7 @@ const COMPANY_LINKS = [
 const EXPLORE_LINKS = [
   { to: "/", label: "The Index" },
   { to: "/tv-100", label: "TV 100" },
+  { to: "/weekly-100", label: "Weekly Top 100" },
   { to: "/rising", label: "Biggest Movers" },
   { to: "/new-entries", label: "New Entries" },
   { to: "/trending", label: "Trending" },
@@ -31,7 +32,7 @@ export function Footer() {
               <BetaBadge />
             </div>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              The cultural index for film and television — published daily.
+              The cultural index for film and television. Updated every 15 minutes.
             </p>
             {/* Official channels */}
             <div className="mt-5 flex items-center gap-2">
@@ -94,7 +95,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-border pt-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} The Index — by Lumière. All rights reserved.
+          © {new Date().getFullYear()} The Index by Lumière. All rights reserved.
         </div>
       </div>
     </footer>

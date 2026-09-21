@@ -28,7 +28,7 @@ import {
 export const Route = createFileRoute("/compare")({
   head: () => ({
     meta: [
-      { title: "Compare Films — The Index" },
+      { title: "Compare Films · The Index" },
       {
         name: "description",
         content:
@@ -234,7 +234,7 @@ function FilmPicker({
                 </div>
                 <div className="ml-auto shrink-0 text-right">
                   <div className="font-mono text-sm text-cream">
-                    {f.rank > 0 ? f.score?.toFixed(1) : "—"}
+                    {f.rank > 0 ? f.score?.toFixed(1) : "-"}
                   </div>
                   {f.rank > 0 && (
                     <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
@@ -278,13 +278,13 @@ function CompareRow({
       <div
         className={`text-left font-mono text-lg tabular sm:col-start-1 sm:row-start-1 sm:text-right ${aWins ? "text-cream font-semibold" : "text-foreground/70"}`}
       >
-        {a !== null ? format(a) : "—"}
+        {a !== null ? format(a) : "-"}
         {aWins && <span className="ml-1.5 text-[10px] text-primary">▲</span>}
       </div>
       <div
         className={`text-right font-mono text-lg tabular sm:col-start-3 sm:row-start-1 sm:text-left ${bWins ? "text-cream font-semibold" : "text-foreground/70"}`}
       >
-        {b !== null ? format(b) : "—"}
+        {b !== null ? format(b) : "-"}
         {bWins && <span className="ml-1.5 text-[10px] text-primary">▲</span>}
       </div>
     </div>
@@ -367,7 +367,7 @@ function ComparePage() {
         <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-primary">
           <ShieldCheck className="h-4 w-4 shrink-0" />
           <span>
-            All scores derived from audience sentiment & engagement — 0% critic weight.
+            All scores come from audience sentiment and engagement: 0% critic weight.
           </span>
         </div>
       </section>
@@ -412,7 +412,7 @@ function ComparePage() {
           <div className="border-y border-foreground/10 bg-surface p-12 text-center">
             <Scale className="mx-auto h-12 w-12 opacity-20" />
             <p className="mt-4 text-sm text-muted-foreground">
-              Select two films to compare — search in either card above.
+              Select two films to compare. Search in either card above.
             </p>
           </div>
         </section>

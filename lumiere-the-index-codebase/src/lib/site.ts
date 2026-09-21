@@ -11,7 +11,7 @@
  */
 export const SITE_URL = "https://lumiereindex.com";
 
-export const SITE_NAME = "The Index — by Lumière";
+export const SITE_NAME = "The Index by Lumière";
 export const TWITTER_HANDLE = "@lumieretheindex";
 
 /** Absolute URL for a site path, always on the canonical origin. */

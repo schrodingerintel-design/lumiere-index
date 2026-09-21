@@ -10,11 +10,11 @@ import { FilmCardSkeleton } from "@/components/lumiere/Skeletons";
 export const Route = createFileRoute("/new-entries")({
   head: () => ({
     meta: [
-      { title: "New Entries — The Index" },
+      { title: "New Entries · The Index" },
       {
         name: "description",
         content:
-          "Films entering The Index for the first time — their official debut rank and date.",
+          "Titles entering The Index for the first time: their official debut rank and date.",
       },
       ogUrlMeta("/new-entries"),
     ],
@@ -103,7 +103,7 @@ function NewEntriesPage() {
             New Entries
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            Films entering The Index for the first time — where they debuted and when. Each film
+            Titles entering The Index for the first time: where they debuted and when. Each entry
             appears here once, at its debut.
           </p>
           <Link
@@ -131,8 +131,8 @@ function NewEntriesPage() {
 
           {!isLoading && !error && films?.length === 0 && (
             <div className="border-y border-foreground/10 bg-surface p-12 text-center text-sm text-muted-foreground">
-              No debuts on the published Index yet. New Entries appear after the next daily
-              publication once films chart for the first time.
+              No debuts on the published Index yet. New Entries appear after the next
+              refresh once films chart for the first time.
             </div>
           )}
         </div>

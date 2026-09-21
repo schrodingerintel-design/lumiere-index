@@ -91,7 +91,7 @@ export function ShareCardButton({
     if (!result) return;
     const filmCard = variant === "film" ? (card as RankedFilm) : null;
     const chartOpts = variant === "chart" ? (card as ChartCardOptions) : null;
-    const title = filmCard ? `${filmCard.title} — The Index` : "The Index — Live Charts";
+    const title = filmCard ? `${filmCard.title} · The Index` : "The Index · Live Charts";
     const text = filmCard
       ? `${filmCard.title} is #${filmCard.rank} on The Index.`
       : (chartOpts?.title ?? "The Index");
@@ -184,7 +184,7 @@ export function ShareCardButton({
               {phase === "error" && (
                 <div className="flex aspect-[4/5] w-full max-w-[260px] items-center justify-center rounded-xl border bg-muted/40">
                   <span className="px-6 text-center text-sm text-muted-foreground">
-                    Couldn't render the card — try again.
+                    Couldn't render the card. Try again.
                   </span>
                 </div>
               )}

@@ -77,11 +77,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Index — The titles capturing the most cultural attention" },
+      { title: "The Index · The titles capturing the most cultural attention" },
       {
         name: "description",
         content:
-          "The Index is a daily measure of what's capturing cultural attention across film and television.",
+          "The Index measures what's capturing cultural attention across film and television, refreshed every 15 minutes.",
       },
       { name: "author", content: "Lumière" },
       { property: "og:title", content: "The Index" },
@@ -97,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image", content: sitePath("/og-image.png") },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "The Index — live cultural rankings for film and television" },
+      { property: "og:image:alt", content: "The Index: live cultural rankings for film and television" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@lumieretheindex" },
       { name: "twitter:creator", content: "@lumieretheindex" },

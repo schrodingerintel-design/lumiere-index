@@ -19,11 +19,11 @@ import { Skeleton } from "@/components/lumiere/Skeletons";
 export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
-      { title: "Now & Next — The Index" },
+      { title: "Now & Next · The Index" },
       {
         name: "description",
         content:
-          "Movies in theaters and coming soon — films tracked on the Index, plus the full TMDB release calendar.",
+          "Movies in theaters and coming soon: films tracked on the Index, plus the full TMDB release calendar.",
       },
       ogUrlMeta("/calendar"),
     ],
@@ -137,7 +137,7 @@ function CalendarPage() {
         </div>
         <h1 className="mt-2 font-serif text-5xl lg:text-6xl">Now &amp; Next</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Movies in theaters and coming soon — films tracked on the Index, plus the full TMDB
+          Movies in theaters and coming soon: films tracked on the Index, plus the full TMDB
           release calendar.
         </p>
 
@@ -236,7 +236,7 @@ function CalendarPage() {
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between border-t border-foreground/10 pt-2 text-[10px] text-muted-foreground">
-                      <span className="font-mono">Score {f.score?.toFixed(1) ?? "—"}</span>
+                      <span className="font-mono">Score {f.score?.toFixed(1) ?? "-"}</span>
                       <span className="font-mono text-primary">View Insights →</span>
                     </div>
                   </div>
@@ -334,7 +334,7 @@ function CalendarPage() {
                       <span className="font-mono">
                         {m.vote_count ? (
                           <>
-                            ★ {m.vote_average?.toFixed(1) ?? "—"} · {m.vote_count.toLocaleString()}{" "}
+                            ★ {m.vote_average?.toFixed(1) ?? "-"} · {m.vote_count.toLocaleString()}{" "}
                             votes
                           </>
                         ) : (

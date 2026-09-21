@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import {
   BETA_RELEASES,
@@ -25,6 +26,12 @@ import { LogoMark } from "@/components/lumiere/Brand";
  * Shows once per version (localStorage), dismissible via button, Escape or
  * backdrop tap; background scroll is locked while open. Renders nothing
  * when there's nothing to say.
+ *
+ * The dialog is portaled to document.body. This is not cosmetic: the badge
+ * instance mounts inside the header, whose `backdrop-filter` makes it the
+ * containing block for position:fixed descendants — an unportaled modal
+ * would center inside the 56px header strip and land off-screen. Portaling
+ * anchors the overlay to the real viewport everywhere it is used.
  */
 export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClose?: () => void }) {
   const [mode] = useState(() => (forceOpen ? "update" : pendingBetaAnnouncement()));
@@ -69,7 +76,10 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
       ? releasesSince(safeGet(LAST_SEEN_VERSION_KEY) ?? BETA_VERSION)
       : [CURRENT_RELEASE];
 
-  return (
+  // createPortal is never reached during SSR: on the server localStorage is
+  // unavailable so pendingBetaAnnouncement() returns null, and forceOpen is
+  // only ever set by a client-side badge tap.
+  return createPortal(
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center p-4"
       role="dialog"
@@ -110,12 +120,12 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
           {mode === "intro" && (
             <p className="text-sm leading-relaxed text-muted-foreground">
               The Index is a live chart of what film and television the culture is
-              actually talking about — refreshed every 15 minutes. It's in public
+              actually talking about, refreshed every 15 minutes. It's in public
               beta: everything you see can change, improve and grow. The{" "}
               <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-primary">
                 Beta&nbsp;v{BETA_VERSION}
               </span>{" "}
-              pill beside the logo always shows the current version — tap it any
+              pill beside the logo always shows the current version. Tap it any
               time to see what's changed.
             </p>
           )}
@@ -150,11 +160,12 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
             onClick={dismiss}
             className="rounded-md bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90"
           >
-            {mode === "intro" ? "Got it" : "Thanks — got it"}
+            {mode === "intro" ? "Got it" : "Thanks, got it"}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

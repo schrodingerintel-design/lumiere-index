@@ -224,6 +224,28 @@ class Settings(BaseSettings):
     headline_min_momentum: float = 0.6       # M_norm floor for headline (neutral center = 0.5)
     refresh_interval_minutes: int = 15
 
+    # ── Index Score calibration (absolute attention scale) ──────────────────
+    # The displayed Index Score is an ABSOLUTE measure of attention, not a
+    # pool-relative one: score = 100·log10(1+A)/log10(1+A_ref), where A is the
+    # title's own decay-weighted mentions/day. A_ref is the attention level
+    # that maps to exactly 100 (technically achievable, exceptionally rare).
+    # A_ref is a CALIBRATION CONSTANT tied to current source coverage.  With
+    # the beta-era source set (Wikipedia/Trends/Letterboxd/News/YouTube),
+    # charting titles measure ~0.2–3 decayed mentions/day, so A_ref=25 means:
+    # today's chart spans a wide, honest band (#1 ≈ 25–40, #100 in the single
+    # digits — measured attention IS low at beta coverage), a 10× blockbuster
+    # surge tops out in the 80s (no saturation), and 100 — reached at 25
+    # decayed mentions/day — stays genuinely rare.  As sources scale up
+    # (Reddit/TikTok/X enabled, millions of signals), RAISE this anchor via
+    # the SCORE_ATTENTION_REF env var — no code change.  Historical
+    # attention_raw is persisted on every ranking row, so past scores remain
+    # exactly re-derivable under any anchor.  Rank never feeds the score.
+    score_attention_ref: float = 25.0
+    # YouTube view velocity → mention-equivalents divisor. A trailer pulling
+    # 250k new views/day contributes the same absolute attention as ~100
+    # mentions/day (2500 views ≈ one measured mention of attention).
+    score_youtube_views_per_mention: float = 2500.0
+
     # Confidence tiers for editorial claims (raw mention/signal counts, pre-normalization)
     confidence_low_threshold: int = 5       # below this → "insufficient"
     confidence_medium_threshold: int = 25   # below this → "low"

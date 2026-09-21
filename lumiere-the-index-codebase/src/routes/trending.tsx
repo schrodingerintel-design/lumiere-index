@@ -8,7 +8,7 @@ import { RouteError } from "@/lib/route-error";
 export const Route = createFileRoute("/trending")({
   head: () => ({
     meta: [
-      { title: "Trending — The Index" },
+      { title: "Trending · The Index" },
       {
         name: "description",
         content:

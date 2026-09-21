@@ -183,12 +183,13 @@ def test_number_one_is_not_pinned_to_a_constant(db_session):
     )
 
     assert top_a is not None and top_b is not None
-    # Neither #1 is pinned to 98.5 by construction: both land near the top of
-    # the universal scale (strong pools anchor near the p95 composite), but
-    # neither equals the old constant, and the runaway pool's #1 does not
-    # score BELOW the near-tie pool's #1 — dominance is visible in the score.
-    assert 90.0 < top_b.score <= 100.0
-    assert top_a.score != 98.5 or True  # not pinned: either value is legal
+    # Absolute scale: neither #1 is pinned to a constant by a pool anchor.
+    # The near-tie pool's #1 (~15 mentions/day of measured attention) is
+    # honest "high attention" — it must NOT be pushed into the 90s by a
+    # relative anchor, and the runaway pool's #1 must not score BELOW it —
+    # dominance is visible in the score.
+    assert 40.0 <= top_b.score <= 100.0
+    assert top_b.score != 98.5  # not pinned: the old constant is gone
     assert top_a.score >= top_b.score - 0.5
 
 

@@ -49,6 +49,7 @@ from app.models import (
     Source,
     WeeklyIndexSnapshot,
 )
+from app.config import settings
 from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
 
 log = logging.getLogger(__name__)
@@ -58,11 +59,15 @@ CHART_SIZE = 100
 # Official chart identifiers (mirror app.models.snapshots / ranking engine).
 MOVIE_100 = "MOVIE_100"
 TV_100 = "TV_100"
+# The combined Weekly Top 100: movies AND TV shows on one chart, measured
+# across the full ISO week.  Rank is contextual to this chart too; every row
+# carries the title's content_type so clients can label Movie vs TV.
+WEEKLY_100 = "WEEKLY_100"
 OFFICIAL_CHARTS: tuple[tuple[str, str], ...] = (
     (MOVIE_100, "MOVIE"),
     (TV_100, "TV_SHOW"),
 )
-VALID_CHART_TYPES = frozenset({c for c, _ in OFFICIAL_CHARTS})
+VALID_CHART_TYPES = frozenset({c for c, _ in OFFICIAL_CHARTS} | {WEEKLY_100})
 
 
 def normalize_chart(chart: str | None) -> str | None:
@@ -81,6 +86,8 @@ def normalize_chart(chart: str | None) -> str | None:
         return MOVIE_100
     if key in ("TV", "TV_SHOW", "TV_SHOWS", "SHOWS"):
         return TV_100
+    if key in ("WEEKLY", "WEEK"):
+        return WEEKLY_100
     return None
 
 
@@ -432,19 +439,24 @@ def week_bounds(d: date) -> tuple[date, date]:
     return monday, sunday
 
 
-def _p95(values: list[float]) -> float:
-    """Linear-interpolated 95th percentile of `values`."""
-    if not values:
-        return 1e-9
-    s = sorted(values)
-    if len(s) == 1:
-        return s[0]
-    pos = (len(s) - 1) * 0.95
-    lo = math.floor(pos)
-    hi = math.ceil(pos)
-    if lo == hi:
-        return s[lo]
-    return s[lo] + (s[hi] - s[lo]) * (pos - lo)
+def _absolute_scores(attention: dict[int, float]) -> dict[int, float]:
+    """Map absolute attention intensities onto the universal 0–100 Index
+    Score scale — the SAME map the daily engine uses (see
+    app.services.ranking): 100·log10(1+A)/log10(1+A_ref), clamped to 100.
+
+    Never rank-derived and never pool-relative: the same measured attention
+    produces the same score in any week, so weekly numbers stay comparable
+    across the archive.
+    """
+    a_ref = max(settings.score_attention_ref, 1e-6)
+    denom = math.log10(1.0 + a_ref)
+
+    def _one(a: float) -> float:
+        if a <= 0.0:
+            return 0.0
+        return max(0.0, min(100.0, 100.0 * math.log10(1.0 + a) / denom))
+
+    return {fid: _one(a) for fid, a in attention.items()}
 
 
 def publish_weekly_index(
@@ -454,21 +466,36 @@ def publish_weekly_index(
 ) -> date | None:
     """Publish the official Weekly charts for the week containing `final_day`.
 
-    Publishes one weekly snapshot per official chart (Movie 100, TV 100).
+    Publishes THREE weekly charts from the same week-window aggregates:
+
+      MOVIE_100   weekly — movies only
+      TV_100      weekly — TV shows only
+      WEEKLY_100  the combined Weekly Top 100 — movies AND TV on one chart,
+                  every row labeled by the title's content_type
+
     The weekly score is a genuine weekly aggregate — it is NOT Sunday's daily
-    chart renamed.  Per title we aggregate the week's daily signal
-    measurements (daily_scores) plus the daily published chart history inside
+    chart renamed, and NOT the final ranking of the week.  Per title we
+    aggregate the week's daily signal measurements (daily_scores, with a
+    direct-mentions backstop) plus the published daily chart history inside
     the window:
 
-      weekly composite = 0.40·avg_daily_volume_norm     (sustained attention)
-                       + 0.20·days_present/7            (consistency)
-                       + 0.15·peak_rank_quality         (chart ceiling)
-                       + 0.15·avg_sentiment (0-1)       (audience engagement)
-                       + 0.10·source_coverage_norm      (cross-platform)
+      weekly composite = 0.40·log-volume_norm       (sustained attention)
+                       + 0.25·days_ranked/7         (consistency)
+                       + 0.20·mean_daily_rank_quality  (spike punisher)
+                       + 0.10·avg_sentiment (0-1)   (audience engagement)
+                       + 0.05·source_coverage_norm  (cross-platform)
 
-    then maps the composite onto the universal 0–100 Index Score scale with
-    the same signal-driven p95-anchored exponential used by the daily engine
-    (never rank-derived).  Idempotent per (chart, week).
+    Mean DAILY rank quality (not the weekly peak) is what makes a title that
+    sits near the top all week beat a title that touches #1 once and falls
+    out.  The composite maps onto the universal 0–100 Index Score through the
+    same ABSOLUTE attention map the daily engine uses
+    (100·log10(1+A)/log10(1+A_ref), A = avg decayed mentions/day in the
+    window) — never rank-derived.
+
+    Archive rule: a COMPLETED week's rows are immutable (re-publish is a
+    no-op) so historical archives accumulate forever.  The CURRENT week
+    refreshes in place on each run, so mid-week the chart shows the week so
+    far.  Idempotent per (chart, week) for completed weeks.
 
     `week_start` overrides the window (for historical backfill); by default
     the week is derived from `final_day` (default: today).
@@ -482,112 +509,190 @@ def publish_weekly_index(
 
     week_start_dt = datetime(week_start.year, week_start.month, week_start.day)
     week_end_exclusive = datetime.combine(week_end + timedelta(days=1), datetime.min.time())
+    now = datetime.now(timezone.utc)
+    # A completed week is an immutable archive; the CURRENT week refreshes in
+    # place so mid-week the chart shows the week so far.
+    is_completed_week = week_end < now.date()
 
-    published_any = False
-    for chart_id, entity_ct in OFFICIAL_CHARTS:
-        # Idempotent per (chart, week) — one chart's publication never blocks
-        # the other's.
-        existing = db.query(WeeklyIndexSnapshot.id).filter(
-            WeeklyIndexSnapshot.week_start == week_start,
-            WeeklyIndexSnapshot.chart_type == chart_id,
-        ).first()
-        if existing:
-            log.info("publish_weekly: %s week of %s already published — skipping", chart_id, week_start)
-            continue
+    # ── per-title week-window aggregates, loaded ONCE for all three charts ──
+    # NOT scoped by entity type here: the combined WEEKLY_100 pool spans both.
+    # Chart scoping happens per scope below.
+    catalog_ids = _catalog_source_ids(db)
 
-        # ── per-title daily signal measurements inside the window ────────────
-        # Restricted to this chart's entity type: movies never enter the TV
-        # weekly aggregate pool and vice versa.
-        ds_rows = (
-            db.query(
-                DailyScore.film_id,
-                func.count(DailyScore.day),
-                func.sum(DailyScore.mentions_count),
-                func.avg(DailyScore.sentiment_avg),
-            )
-            .join(Film, Film.id == DailyScore.film_id)
-            .filter(
-                DailyScore.day >= week_start,
-                DailyScore.day <= week_end,
-                Film.content_type == entity_ct,
-            )
-            .group_by(DailyScore.film_id)
-            .all()
+    days_present: dict[int, int] = {}
+    total_mentions: dict[int, int] = {}
+    avg_sentiment: dict[int, float] = {}
+    mention_days: dict[int, set[date]] = {}
+
+    # Rolled-up daily scores (primary source)
+    ds_rows = (
+        db.query(
+            DailyScore.film_id,
+            func.count(DailyScore.day),
+            func.sum(DailyScore.mentions_count),
+            func.avg(DailyScore.sentiment_avg),
         )
-        days_present: dict[int, int] = {}
-        total_mentions: dict[int, int] = {}
-        avg_sentiment: dict[int, float] = {}
-        for fid, days, mentions, savg in ds_rows:
-            days_present[fid] = int(days or 0)
-            total_mentions[fid] = int(mentions or 0)
-            avg_sentiment[fid] = float(savg or 0.0)
-
-        # Real-time backstop: daily_scores lag the rollup worker, so fill the
-        # same aggregates directly from mentions when the rollup has not run.
-        # Catalog-only sources are excluded — TMDB rows are not weekly signal
-        # volume.
-        catalog_ids = _catalog_source_ids(db)
-        m_rows_q = (
-            db.query(
-                Mention.film_id,
-                func.count(func.distinct(func.date(Mention.created_at))),
-                func.count(Mention.id),
-                func.avg(Mention.sentiment_score),
-            )
-            .join(Film, Film.id == Mention.film_id)
-            .filter(
-                Mention.created_at >= week_start_dt,
-                Mention.created_at < week_end_exclusive,
-                Film.content_type == entity_ct,
-            )
+        .filter(
+            DailyScore.day >= week_start,
+            DailyScore.day <= week_end,
         )
-        if catalog_ids:
-            m_rows_q = m_rows_q.filter(~Mention.source_id.in_(catalog_ids))
-        m_rows = m_rows_q.group_by(Mention.film_id).all()
-        for fid, days, mentions, savg in m_rows:
-            days_present[fid] = max(days_present.get(fid, 0), int(days or 0))
-            total_mentions[fid] = max(total_mentions.get(fid, 0), int(mentions or 0))
-            avg_sentiment[fid] = float(savg or 0.0)
+        .group_by(DailyScore.film_id)
+        .all()
+    )
+    for fid, days, mentions, savg in ds_rows:
+        days_present[fid] = int(days or 0)
+        total_mentions[fid] = int(mentions or 0)
+        avg_sentiment[fid] = float(savg or 0.0)
 
-        if not total_mentions:
-            log.warning("publish_weekly: no %s signal data in week %s..%s", chart_id, week_start, week_end)
-            continue
+    # Real-time backstop: daily_scores lag the rollup worker, so take the max
+    # of the same aggregates straight from mentions.  Catalog-only sources are
+    # excluded — TMDB rows are not weekly signal volume.
+    m_rows_q = (
+        db.query(
+            Mention.film_id,
+            func.count(func.distinct(func.date(Mention.created_at))),
+            func.count(Mention.id),
+            func.avg(Mention.sentiment_score),
+        )
+        .filter(
+            Mention.created_at >= week_start_dt,
+            Mention.created_at < week_end_exclusive,
+        )
+        .group_by(Mention.film_id)
+    )
+    if catalog_ids:
+        m_rows_q = m_rows_q.filter(~Mention.source_id.in_(catalog_ids))
+    m_days_q = (
+        db.query(
+            Mention.film_id,
+            func.date(Mention.created_at),
+        )
+        .filter(
+            Mention.created_at >= week_start_dt,
+            Mention.created_at < week_end_exclusive,
+        )
+        .group_by(Mention.film_id, func.date(Mention.created_at))
+    )
+    if catalog_ids:
+        m_days_q = m_days_q.filter(~Mention.source_id.in_(catalog_ids))
+    mention_days = {}
+    for fid, day_val in m_days_q.all():
+        d = day_val if isinstance(day_val, date) else date.fromisoformat(str(day_val))
+        mention_days.setdefault(fid, set()).add(d)
+    for fid, days, mentions, savg in m_rows_q.all():
+        days_present[fid] = max(days_present.get(fid, 0), int(days or 0))
+        total_mentions[fid] = max(total_mentions.get(fid, 0), int(mentions or 0))
+        avg_sentiment[fid] = float(savg or 0.0)
 
-        # ── published daily history inside the window (chart presence) ───────
-        daily_rows = (
+
+    # Published daily chart history inside the window, per daily chart — the
+    # consistency/rank-quality inputs (WEEKLY_100 pools both daily charts).
+    def _daily_history(hist_chart: str) -> tuple[dict[int, int], dict[int, int], dict[int, float]]:
+        rows = (
             db.query(
                 DailyIndexSnapshot.film_id,
                 func.count(DailyIndexSnapshot.id),
                 func.min(DailyIndexSnapshot.rank),
+                func.avg(DailyIndexSnapshot.rank),
             )
             .filter(
                 DailyIndexSnapshot.snapshot_date >= week_start,
                 DailyIndexSnapshot.snapshot_date <= week_end,
-                DailyIndexSnapshot.chart_type == chart_id,
+                DailyIndexSnapshot.chart_type == hist_chart,
             )
             .group_by(DailyIndexSnapshot.film_id)
             .all()
         )
-        chart_days: dict[int, int] = {}
-        peak_rank: dict[int, int] = {}
-        for fid, days, peak in daily_rows:
-            chart_days[fid] = int(days or 0)
-            peak_rank[fid] = int(peak or 999)
+        days_map: dict[int, int] = {}
+        peak_map: dict[int, int] = {}
+        avg_rank_map: dict[int, float] = {}
+        for fid, days, peak, avg_r in rows:
+            days_map[fid] = int(days or 0)
+            peak_map[fid] = int(peak or 999)
+            avg_rank_map[fid] = float(avg_r if avg_r is not None else (peak or 999))
+        return days_map, peak_map, avg_rank_map
 
-        candidate_ids = set(total_mentions.keys()) | set(chart_days.keys())
+    movie_hist = _daily_history(MOVIE_100)
+    tv_hist = _daily_history(TV_100)
+    if not total_mentions and not (movie_hist[0] or tv_hist[0]):
+        log.warning("publish_weekly: no signal data in week %s..%s", week_start, week_end)
+        return None
+
+    content_type_map = {
+        fid: (ct or "MOVIE").upper()
+        for fid, ct in db.query(Film.id, Film.content_type).all()
+    }
+
+    published_any = False
+    for chart_id, entity_ct, hist in (
+        (MOVIE_100, "MOVIE", movie_hist),
+        (TV_100, "TV_SHOW", tv_hist),
+        (WEEKLY_100, None, None),  # combined — pools both daily charts
+    ):
+        # Completed weeks are immutable archives (re-publish is a no-op);
+        # the current week refreshes in place.
+        existing = db.query(WeeklyIndexSnapshot.id).filter(
+            WeeklyIndexSnapshot.week_start == week_start,
+            WeeklyIndexSnapshot.chart_type == chart_id,
+        ).first()
+        if existing and is_completed_week:
+            log.info("publish_weekly: %s week of %s already archived — skipping", chart_id, week_start)
+            continue
+        if existing:
+            db.query(WeeklyIndexSnapshot).filter(
+                WeeklyIndexSnapshot.week_start == week_start,
+                WeeklyIndexSnapshot.chart_type == chart_id,
+            ).delete(synchronize_session=False)
+
+        # ── scope the aggregates to this chart ───────────────────────────
+        def _scoped(pool: dict[int, float]) -> dict[int, float]:
+            if entity_ct is None:
+                return dict(pool)
+            return {
+                fid: v for fid, v in pool.items()
+                if content_type_map.get(fid) == entity_ct
+            }
+
+        scope_days_present = _scoped({fid: float(v) for fid, v in days_present.items()})
+        scope_total_mentions = _scoped({fid: float(v) for fid, v in total_mentions.items()})
+        scope_sentiment = _scoped(avg_sentiment)
+        scope_mention_days = {
+            fid: days for fid, days in mention_days.items()
+            if entity_ct is None or content_type_map.get(fid) == entity_ct
+        }
+        if hist is not None:
+            scope_chart_days, scope_peak, scope_avg_rank = hist
+        else:
+            # Combined chart: merge both daily histories.  A title holds a
+            # rank on exactly one of them, so days add and avg rank joins.
+            scope_chart_days = {**movie_hist[0], **tv_hist[0]}
+            scope_peak = {**movie_hist[1], **tv_hist[1]}
+            scope_avg_rank = {**movie_hist[2], **tv_hist[2]}
+
+        candidate_ids = set(scope_total_mentions.keys()) | set(scope_chart_days.keys())
         if not candidate_ids:
+            log.info("publish_weekly: no %s candidates in week %s..%s", chart_id, week_start, week_end)
             continue
 
         coverage = _source_coverage(db, list(candidate_ids))
 
-        # ── raw weekly components (higher = stronger week) ───────────────────
-        vol_raw = {fid: float(total_mentions.get(fid, 0)) for fid in candidate_ids}
-        consist_raw = {fid: min(chart_days.get(fid, 0) or days_present.get(fid, 0), 7) / 7.0
-                       for fid in candidate_ids}
-        peak_quality = {
-            fid: 1.0 - min(peak_rank.get(fid, 101), 100) / 100.0 for fid in candidate_ids
+        # ── raw weekly components (higher = stronger week) ───────────────
+        vol_raw = {fid: float(scope_total_mentions.get(fid, 0)) for fid in candidate_ids}
+        # Consistency: share of the 7 days the title was RANKED on its daily
+        # chart (mention-days as fallback for titles without published
+        # dailies yet — early-beta coverage).
+        consist_raw = {
+            fid: min(scope_chart_days.get(fid, 0) or len(scope_mention_days.get(fid, set())), 7) / 7.0
+            for fid in candidate_ids
         }
-        sentiment_raw = {fid: (avg_sentiment.get(fid, 0.0) + 1.0) / 2.0 for fid in candidate_ids}
+        # Mean DAILY rank quality — averaging every ranked day (not the peak)
+        # is the spike punisher: top-5 all week ≈ 0.94, while a single #1 day
+        # followed by fall-out collapses toward ~0.1.
+        rank_quality = {
+            fid: 1.0 - min((scope_avg_rank.get(fid, 101.0) - 1.0) / 99.0, 1.0)
+            for fid in candidate_ids
+        }
+        sentiment_raw = {fid: (scope_sentiment.get(fid, 0.0) + 1.0) / 2.0 for fid in candidate_ids}
         coverage_raw = {fid: min(coverage.get(fid, 0), 7) / 7.0 for fid in candidate_ids}
 
         def _minmax(values: dict[int, float]) -> dict[int, float]:
@@ -600,35 +705,38 @@ def publish_weekly_index(
         vol_n = _minmax(vol_raw)
         cov_n = _minmax(coverage_raw)
 
-        WEIGHTS = dict(vol=0.40, consist=0.20, peak=0.15, sentiment=0.15, coverage=0.10)
+        WEIGHTS = dict(vol=0.40, consist=0.25, quality=0.20, sentiment=0.10, coverage=0.05)
         composite = {
             fid: (
                 WEIGHTS["vol"] * vol_n[fid]
                 + WEIGHTS["consist"] * consist_raw[fid]
-                + WEIGHTS["peak"] * peak_quality[fid]
+                + WEIGHTS["quality"] * rank_quality[fid]
                 + WEIGHTS["sentiment"] * sentiment_raw[fid]
                 + WEIGHTS["coverage"] * cov_n[fid]
             )
             for fid in candidate_ids
         }
-        # Signal-driven weekly score — the same universal 0–100 mapping as the
-        # daily engine (p95 anchor, exponential scale), never rank-derived.
-        p95 = _p95([c for c in composite.values() if c > 0])
-        p95 = p95 if p95 > 1e-9 else 1e-9
-        scored = sorted(
-            (
-                (fid, round(100.0 * (1.0 - math.exp(-3.0 * (c / p95))), 1))
-                for fid, c in composite.items()
-            ),
-            key=lambda x: (-x[1], x[0]),
-        )
-        top = scored[:CHART_SIZE]
-        if not top:
+        # Ordering is the weekly composite (sustained performance across the
+        # whole week), NOT the displayed score: rank measures position within
+        # the week's pool, the score measures absolute attention.
+        ordered = sorted(candidate_ids, key=lambda fid: (-composite[fid], fid))[:CHART_SIZE]
+        if not ordered:
             continue
+
+        # Displayed score = the same ABSOLUTE attention map as the daily
+        # engine, fed by the week's own attention intensity: average
+        # mentions/day across the window (same units as the daily map's A,
+        # flat-averaged over the week instead of λ-decayed from today).
+        scores = _absolute_scores({
+            fid: scope_total_mentions.get(fid, 0.0) / 7.0 for fid in ordered
+        })
 
         # Evidence tiers mirror the daily engine (absolute floor on signal volume)
         from app.services.confidence import confidence_tier
-        confidences = {fid: confidence_tier(total_mentions.get(fid, 0)) for fid, _ in top}
+        confidences = {
+            fid: confidence_tier(int(scope_total_mentions.get(fid, 0)))
+            for fid in ordered
+        }
 
         prev_week_ranks: dict[int, int] = {}
         prev_week = week_start - timedelta(days=7)
@@ -640,22 +748,22 @@ def publish_weekly_index(
         ).all():
             prev_week_ranks[fid] = rank
 
-        now = datetime.now(timezone.utc)
-        for rank_i, (fid, score) in enumerate(top, start=1):
+        for rank_i, fid in enumerate(ordered, start=1):
             prev = prev_week_ranks.get(fid)
+            mentions_week = int(scope_total_mentions.get(fid, 0))
             db.add(WeeklyIndexSnapshot(
                 week_start=week_start,
                 week_end=week_end,
                 chart_type=chart_id,
                 film_id=fid,
                 rank=rank_i,
-                score=score,
+                score=round(scores[fid], 1),
                 previous_week_rank=prev,
                 rank_delta=(prev - rank_i) if prev is not None else 0,
-                avg_daily_mentions=round(total_mentions.get(fid, 0) / 7.0, 2),
-                total_signal_volume=total_mentions.get(fid, 0),
-                avg_sentiment=avg_sentiment.get(fid),
-                peak_daily_rank=peak_rank.get(fid),
+                avg_daily_mentions=round(mentions_week / 7.0, 2),
+                total_signal_volume=mentions_week,
+                avg_sentiment=scope_sentiment.get(fid),
+                peak_daily_rank=scope_peak.get(fid),
                 source_coverage=coverage.get(fid, 0),
                 confidence=confidences[fid],
                 published_at=now,
@@ -667,7 +775,7 @@ def publish_weekly_index(
             db.rollback()
             log.error("publish_weekly: write failed for %s %s — %s", chart_id, week_start, exc)
             continue
-        log.info("publish_weekly: published %s week of %s (%d titles)", chart_id, week_start, len(top))
+        log.info("publish_weekly: published %s week of %s (%d titles)", chart_id, week_start, len(ordered))
         published_any = True
 
     return week_start if published_any else None

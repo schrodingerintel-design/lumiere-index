@@ -10,11 +10,11 @@ import { FilmCardSkeleton } from "@/components/lumiere/Skeletons";
 export const Route = createFileRoute("/rising")({
   head: () => ({
     meta: [
-      { title: "Biggest Movers — The Index" },
+      { title: "Biggest Movers · The Index" },
       {
         name: "description",
         content:
-          "The biggest rank changes on The Index — largest daily climbers and decliners.",
+          "The biggest rank changes on The Index: the largest climbers and decliners.",
       },
       ogUrlMeta("/rising"),
     ],
@@ -129,7 +129,7 @@ function BiggestMovers() {
             Biggest Movers
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            The largest rank changes between published Daily Indexes — which films moved the most,
+            The largest rank changes between published charts: which titles moved the most,
             up or down. Movement is measured in rank positions, never score points.
           </p>
         </div>

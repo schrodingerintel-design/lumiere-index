@@ -45,7 +45,7 @@ export function Movement({ film }: { film: RankedFilm }) {
   }
   return (
     <span className="font-mono text-sm text-muted-foreground" title="Held its rank">
-      —
+      -
     </span>
   );
 }

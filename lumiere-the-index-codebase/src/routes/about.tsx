@@ -8,7 +8,7 @@ import { Compass, Eye, TrendingUp } from "lucide-react";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About The Index — Lumière The Index" },
+      { title: "About The Index · Lumière The Index" },
       {
         name: "description",
         content:
@@ -79,14 +79,14 @@ function About() {
           <Compass className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For Audiences</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            See which films the world is talking about — ranked by real attention, not promotion.
+            See which films the world is talking about, ranked by real attention, not promotion.
           </p>
         </div>
         <div className="border border-foreground/10 bg-surface p-5">
           <TrendingUp className="mb-2 h-6 w-6 text-primary" />
           <h3 className="font-serif text-lg font-medium text-foreground">For Creators</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Follow how your work is landing across search, social, and community — as it happens.
+            Follow how your work is landing across search, social, and community, as it happens.
           </p>
         </div>
         <div className="border border-foreground/10 bg-surface p-5">
@@ -106,7 +106,7 @@ function About() {
           global reference point for cultural momentum.
         </p>
         <p>
-          Lumière is not just a chart. It is a way to understand culture as it happens — built for
+          Lumière is not just a chart. It is a way to understand culture as it happens, built for
           the future of entertainment.
         </p>
       </div>
@@ -114,7 +114,7 @@ function About() {
       <div>
         <h2 className="font-serif text-2xl text-foreground">Beta changelog</h2>
         <p className="mt-3">
-          The Index is in public beta — new signals, charts and fixes ship
+          The Index is in public beta: new signals, charts and fixes ship
           continuously. Every version is announced in the β chip beside the logo
           and summarized here, newest first.
         </p>

@@ -11,6 +11,7 @@ const PRIMARY_LINKS = [
   { to: "/", label: "The Index", exact: true },
   { to: "/top-100", label: "Movie 100", exact: false },
   { to: "/tv-100", label: "TV 100", exact: false },
+  { to: "/weekly-100", label: "Weekly Top 100", exact: false },
   { to: "/rising", label: "Biggest Movers", exact: false },
   { to: "/new-entries", label: "New Entries", exact: false },
   { to: "/trending", label: "Trending", exact: false },

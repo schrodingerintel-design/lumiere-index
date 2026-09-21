@@ -41,7 +41,7 @@ export function Brand({ bylineClassName = "" }: { bylineClassName?: string }) {
 /** Brand lockup wrapped in a link to the homepage. */
 export function BrandLink() {
   return (
-    <Link to="/" className="shrink-0 transition-opacity hover:opacity-80" aria-label="The Index — home">
+    <Link to="/" className="shrink-0 transition-opacity hover:opacity-80" aria-label="The Index, home">
       <Brand />
     </Link>
   );
