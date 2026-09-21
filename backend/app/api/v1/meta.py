@@ -18,6 +18,18 @@ _SOURCE_CONFIG_KEY = {
     "tiktok": "rapidapi_key",
 }
 
+# Adapter-level config switches (ENABLE_*_ADAPTER). A collector that is
+# config-disabled must be VISIBLE as disabled in Signal Health — previously a
+# flipped-off adapter was indistinguishable from a healthy one collecting
+# zero data (the Letterboxd silent-failure class of bug).
+_SOURCE_ADAPTER_FLAG = {
+    "reddit": "enable_reddit_adapter",
+    "tiktok": "enable_tiktok_adapter",
+    "youtube": "enable_youtube_adapter",
+    "wikipedia": "enable_wikimedia_adapter",
+    "letterboxd": "enable_letterboxd_adapter",
+}
+
 _KNOWN_SOURCES = {
     "reddit": "Reddit",
     "news": "News API",
@@ -93,15 +105,17 @@ def source_health(db: Session = Depends(get_db)):
         row = by_key.get(key)
         cfg_key = _SOURCE_CONFIG_KEY.get(key)
         configured = bool(getattr(settings, cfg_key)) if cfg_key else True
+        adapter_flag = _SOURCE_ADAPTER_FLAG.get(key)
+        adapter_enabled = bool(getattr(settings, adapter_flag)) if adapter_flag else True
         if row:
-            row["key_configured"] = configured
+            row["key_configured"] = configured and adapter_enabled
             result.append(SourceHealth(**row))
         else:
             result.append(
                 SourceHealth(
                     key=key,
                     name=_KNOWN_SOURCES[key],
-                    key_configured=configured,
+                    key_configured=configured and adapter_enabled,
                 )
             )
     return result
