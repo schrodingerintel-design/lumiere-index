@@ -32,7 +32,7 @@ export const Route = createFileRoute("/compare")({
       {
         name: "description",
         content:
-          "Head-to-head comparison of two films across Index Scores, sentiment, and box office.",
+          "Head-to-head comparison of two films across chart position, sentiment, and box office.",
       },
       ogUrlMeta("/compare"),
     ],
@@ -234,11 +234,11 @@ function FilmPicker({
                 </div>
                 <div className="ml-auto shrink-0 text-right">
                   <div className="font-mono text-sm text-cream">
-                    {f.rank > 0 ? f.score?.toFixed(1) : "-"}
+                    {f.rank > 0 ? `#${f.rank}` : "-"}
                   </div>
                   {f.rank > 0 && (
                     <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-                      #{f.rank}
+                      on The Index
                     </div>
                   )}
                 </div>
@@ -360,14 +360,14 @@ function ComparePage() {
         </div>
         <h1 className="mt-2 font-serif text-5xl lg:text-6xl">Compare Films</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Head-to-head analysis comparing Index Scores, viewer sentiment, and box office.
+          Head-to-head analysis comparing chart positions, viewer sentiment, and box office.
         </p>
 
         {/* Methodology note */}
         <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-primary">
           <ShieldCheck className="h-4 w-4 shrink-0" />
           <span>
-            All scores come from audience sentiment and engagement: 0% critic weight.
+            Chart positions come from measured audience attention; comparisons stay editorial.
           </span>
         </div>
       </section>
@@ -443,10 +443,17 @@ function ComparePage() {
 
             <div className="px-6 py-2">
               <CompareRow
-                label="Index Score"
-                a={filmA!.score}
-                b={filmB!.score}
-                format={(v) => v.toFixed(1)}
+                label="Chart position"
+                a={filmA!.rank > 0 ? filmA!.rank : null}
+                b={filmB!.rank > 0 ? filmB!.rank : null}
+                format={(v) => `#${v}`}
+                higher="worse"
+              />
+              <CompareRow
+                label="Weeks on chart"
+                a={filmA!.weeks_on_chart ?? null}
+                b={filmB!.weeks_on_chart ?? null}
+                format={(v) => `${v}`}
               />
               <CompareRow
                 label="Audience Review Volume"

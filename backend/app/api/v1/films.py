@@ -218,6 +218,34 @@ def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
     )
 
 
+def _momentum_map(
+    db: Session,
+    rows: list[tuple[Film, Ranking]],
+    chart_type: str | None,
+) -> dict[int, str]:
+    """Bulk Momentum states for a page of ranked rows (read-time, cheap).
+
+    Never touches the ranking engine — only reads existing snapshot history.
+    """
+    from app.services.momentum import momentum_for_films
+    if not rows or not chart_type:
+        return {}
+    pairs = {f.id: (r.rank, r.prev_rank) for f, r in rows}
+    try:
+        result = momentum_for_films(db, film_ranks=pairs, chart_type=chart_type)
+    except Exception:
+        return {}
+    return {fid: m.state for fid, m in result.items()}
+
+
+def chart_id_for_rows(rows: list[tuple[Film, Ranking]]) -> str | None:
+    """The chart these (film, ranking) rows live on (rows are own-chart)."""
+    for _, r in rows:
+        if r.chart_type:
+            return r.chart_type
+    return None
+
+
 def _mentions_map(db: Session, film_ids: list[int]) -> dict[int, int]:
     """Bulk mention counts within a 48-hour window, keyed by film id.
 
@@ -238,12 +266,14 @@ def _mentions_map(db: Session, film_ids: list[int]) -> dict[int, int]:
 
 
 def _with_mentions(rows, mentions: dict[int, int], days_map: dict[int, int] | None = None,
-                   at_one_map: dict[int, int] | None = None):
+                   at_one_map: dict[int, int] | None = None,
+                   momentum_map: dict[int, str] | None = None):
     return [
         _to_ranked(f, r).model_copy(update={
             "mentions_total": mentions.get(f.id, 0),
             **({"days_on_chart": (days_map or {}).get(f.id)} if days_map is not None else {}),
             **({"days_at_one": (at_one_map or {}).get(f.id)} if at_one_map is not None else {}),
+            **({"momentum": (momentum_map or {}).get(f.id, "STEADY")} if momentum_map is not None else {}),
         })
         for f, r in rows
     ]
@@ -279,7 +309,8 @@ def top_films(
     mentions = _mentions_map(db, [f.id for f, _ in rows])
     days = _days_on_chart_map(db, [f.id for f, _ in rows], chart_type=chart_id)
     at_one = _days_at_one_map(db, [f.id for f, _ in rows], chart_type=chart_id)
-    return _with_mentions(rows, mentions, days, at_one)
+    momentum = _momentum_map(db, rows, chart_id)
+    return _with_mentions(rows, mentions, days, at_one, momentum)
 
 
 @router.get("/films/new-releases", response_model=list[RankedFilm])
@@ -505,7 +536,8 @@ def search_films(
     ranked = [(f, _rank_on_own_chart(f)) for f in films if _rank_on_own_chart(f) is not None]
     unranked = [f for f in films if _rank_on_own_chart(f) is None]
     mentions = _mentions_map(db, film_ids)
-    out = _with_mentions(ranked, mentions) if ranked else []
+    ranked_momentum = _momentum_map(db, ranked, chart_id_for_rows(ranked))
+    out = _with_mentions(ranked, mentions, momentum_map=ranked_momentum) if ranked else []
     for f in unranked:
         out.append(
             RankedFilm(
@@ -682,6 +714,12 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
                 used_in_ranking=False,
             )
 
+    # Momentum for the title page — read-time from this chart's history.
+    detail_momentum = "STEADY"
+    if r is not None and r.chart_type:
+        detail_momentum = _momentum_map(db, [(film, r)], r.chart_type).get(film.id, "STEADY")
+
+    # `base` already carries the computed momentum — no duplicate kwarg.
     return FilmDetail(
         **base.model_dump(exclude={"mentions_total", "days_on_chart", "days_at_one"}),
         mentions_total=mentions_total,

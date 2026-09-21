@@ -236,7 +236,7 @@ function CalendarPage() {
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between border-t border-foreground/10 pt-2 text-[10px] text-muted-foreground">
-                      <span className="font-mono">Score {f.score?.toFixed(1) ?? "-"}</span>
+                      <span className="font-mono">{f.rank > 0 ? `#${f.rank}` : "Unranked"}</span>
                       <span className="font-mono text-primary">View Insights →</span>
                     </div>
                   </div>

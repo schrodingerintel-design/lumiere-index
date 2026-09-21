@@ -66,6 +66,10 @@ class RankedFilm(FilmBase):
     # Absolute evidence floor for editorial claims
     sample_size: int | None = None      # raw mention/signal count feeding the scores
     confidence: str | None = None       # "insufficient"|"low"|"moderate"|"high"
+    # Public Momentum — the derived state of change (SURGING/RISING/STEADY/
+    # COOLING/FALLING), computed at read time from rank trajectory history.
+    # Never the score's value: a #1 title can COOL while a #26 SURGES.
+    momentum: str = "STEADY"
 
 
 class SentimentBreakdown(BaseModel):
@@ -332,6 +336,9 @@ class WeeklyEntryOut(BaseModel):
     peak_daily_rank: int | None = None
     source_coverage: int = 0
     confidence: str | None = None
+    # Public Momentum — derived from week-over-week rank change (weekly
+    # cadence: |Δ| ≥ 3 is a real move, below that is noise).
+    momentum: str = "STEADY"
     week_start: date
     week_end: date
 

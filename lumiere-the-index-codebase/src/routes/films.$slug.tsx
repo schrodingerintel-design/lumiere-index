@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/lumiere/Skeletons";
 import { PosterCard } from "@/components/lumiere/PosterCard";
 import { AdSlot } from "@/components/lumiere/AdSlot";
 import { ShareCardButton } from "@/components/lumiere/ShareCardButton";
+import { MomentumMark } from "@/components/lumiere/Momentum";
 import {
   Bookmark,
   BookmarkCheck,
@@ -65,7 +66,7 @@ export const Route = createFileRoute("/films/$slug")({
       { title: `${(params?.slug ?? "").replace(/-/g, " ")} · The Index` },
       {
         name: "description",
-        content: `Live cultural index score and audience sentiment for film ${params?.slug}.`,
+        content: `Live cultural index ranking and audience sentiment for film ${params?.slug}.`,
       },
       {
         property: "og:title",
@@ -73,7 +74,7 @@ export const Route = createFileRoute("/films/$slug")({
       },
       {
         property: "og:description",
-        content: `Live cultural index score and audience sentiment for film ${params?.slug}.`,
+        content: `Live cultural index ranking and audience sentiment for film ${params?.slug}.`,
       },
       { property: "og:type", content: "video.movie" },
       { property: "og:url", content: sitePath(`/films/${params?.slug ?? ""}`) },
@@ -84,7 +85,7 @@ export const Route = createFileRoute("/films/$slug")({
       },
       {
         name: "twitter:description",
-        content: `Live cultural index score and audience sentiment for film ${params?.slug}.`,
+        content: `Live cultural index ranking and audience sentiment for film ${params?.slug}.`,
       },
     ],
     links: [canonicalLink(`/films/${params?.slug ?? ""}`)],
@@ -242,7 +243,7 @@ function RankHistoryChart({ history }: { history: RankHistoryPoint[] }) {
             }}
             labelStyle={{ color: "rgba(244,241,234,0.6)" }}
             formatter={(_v, _n, item) => [
-              `#${item?.payload?.rank} · score ${Number(item?.payload?.score ?? 0).toFixed(1)}`,
+              `#${item?.payload?.rank}`,
               "",
             ]}
           />
@@ -659,29 +660,16 @@ function FilmDetailView() {
                 {synopsis}
               </p>
 
-              {/* Score ring + stats + actions */}
+              {/* Momentum + chart résumé + actions */}
               <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-5">
-                {/* Score ring */}
-                <div className="relative h-24 w-24 shrink-0">
-                  <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-                    <circle cx="50" cy="50" r="44" fill="none" strokeWidth="6" className="stroke-foreground/10" />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="44"
-                      fill="none"
-                      strokeWidth="6"
-                      strokeLinecap="round"
-                      className="stroke-primary transition-[stroke-dasharray] duration-700"
-                      strokeDasharray={`${Math.max(0, Math.min(100, film.score ?? 0)) * 2.7646} 276.46`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="index-score text-2xl">{film.score?.toFixed(1) ?? "-"}</span>
-                    <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Index
+                {/* Momentum — the title's state of change (no public score) */}
+                <div className="flex h-24 w-24 shrink-0 flex-col items-center justify-center border border-foreground/10 bg-foreground/[0.02] text-center">
+                  <MomentumMark state={film.momentum} className="!text-[11px]" />
+                  {isRanked && (
+                    <span className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+                      Momentum
                     </span>
-                  </div>
+                  )}
                 </div>
 
                 {/* Chart stats — the title's Index résumé, chart-scoped */}
@@ -994,7 +982,7 @@ function FilmDetailView() {
       </section>
 
       {/* Future ad: title-secondary — after ALL primary title information
-          (header, Index/TVDex score, rank, history, sentiment, trailer,
+          (header, Index/TVDex score badge, rank, history, sentiment, trailer,
           facts, where-to-watch). Never over the backdrop, beside the title
           or its score, over posters, or inside the trailer. Renders nothing
           while advertising is disabled. */}

@@ -5,6 +5,7 @@ import {
   searchTmdbMovie,
   tmdbPosterUrl,
 } from "@/lib/apiClient";
+import { MomentumInline } from "./Momentum";
 
 function gradientStyle(from: string | null, to: string | null) {
   return `linear-gradient(155deg, ${from ?? "#333"}, ${to ?? "#111"})`;
@@ -12,7 +13,7 @@ function gradientStyle(from: string | null, to: string | null) {
 
 /**
  * The title card — poster as visual anchor, the way physical film artwork
- * deserves. Poster + title + score. Nothing else.
+ * deserves. Poster + title + rank context. No public score.
  */
 export function PosterCard({
   film,
@@ -67,12 +68,13 @@ export function PosterCard({
             {film.title}
           </div>
         )}
-        {/* Index Score — ivory, quiet, on the artwork. Unranked catalogue
-            titles show "—": the score only exists once measured onto the
-            official charts. */}
-        <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
-          {isRanked ? film.score?.toFixed(1) : "-"}
-        </div>
+        {/* Momentum mark — quiet, top-right of the artwork. Ranked titles
+            only; unranked catalogue titles show nothing (no invented state). */}
+        {isRanked && (
+          <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 leading-none">
+            <MomentumInline state={film.momentum} className="text-cream" />
+          </div>
+        )}
         {/* NEW badge takes the corner; the rank badge yields to it. Unranked
             titles get neither — they are simply not currently ranked. */}
         {!isRanked ? null : film.prev_rank == null ? (

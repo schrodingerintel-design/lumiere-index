@@ -4,10 +4,12 @@ import type { ReactNode } from "react";
 import type { RankedFilm } from "@/lib/apiClient";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 import { ListSkeleton } from "./Skeletons";
+import { MomentumMark, MomentumInline } from "./Momentum";
 
 /**
  * Movement indicator — arrow + number, color-supported but never color-only.
- * "NEW" for first chart appearances; "—" for holds.
+ * "NEW" for first chart appearances; "—" for holds. Derived from the chart's
+ * own published movement (previous chart period), never fabricated.
  */
 export function Movement({ film }: { film: RankedFilm }) {
   const change = film.movement ?? 0;
@@ -25,7 +27,7 @@ export function Movement({ film }: { film: RankedFilm }) {
     return (
       <span
         className="flex items-center gap-0.5 font-mono text-xs tabular text-up"
-        title={`Up ${change} since yesterday`}
+        title={`Up ${change} since the previous chart`}
       >
         <ArrowUp className="h-3 w-3" aria-hidden />
         {change}
@@ -36,7 +38,7 @@ export function Movement({ film }: { film: RankedFilm }) {
     return (
       <span
         className="flex items-center gap-0.5 font-mono text-xs tabular text-down"
-        title={`Down ${Math.abs(change)} since yesterday`}
+        title={`Down ${Math.abs(change)} since the previous chart`}
       >
         <ArrowDown className="h-3 w-3" aria-hidden />
         {Math.abs(change)}
@@ -45,7 +47,7 @@ export function Movement({ film }: { film: RankedFilm }) {
   }
   return (
     <span className="font-mono text-sm text-muted-foreground" title="Held its rank">
-      -
+      —
     </span>
   );
 }
@@ -59,10 +61,14 @@ function metaLine(film: RankedFilm): string {
 }
 
 /**
- * The editorial ranking row — rank, poster, title, score.
- * A quiet horizontal row with a hairline rule; metadata stays secondary.
+ * The editorial ranking row — the public information hierarchy:
+ * RANK → RANK MOVEMENT → MOMENTUM → PEAK → TIME ON CHART.
+ * The internal score is never shown; the ordering is the chart's own.
+ * Mobile: rank · title · movement inline; momentum + peak join the meta line.
  */
 export function RankRow({ film }: { film: RankedFilm }) {
+  const peak = film.peak_rank;
+  const director = film.director && film.director !== "Unknown" ? film.director : null;
   return (
     <Link
       to="/films/$slug"
@@ -77,17 +83,27 @@ export function RankRow({ film }: { film: RankedFilm }) {
         <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base">
           {film.title}
         </div>
-        <div className="mt-0.5 truncate text-xs text-muted-foreground sm:text-[13px]">
-          {metaLine(film)}
+        <div className="mt-0.5 flex items-center gap-2 truncate text-xs text-muted-foreground sm:text-[13px]">
+          <span className="truncate">
+            {[director, film.year].filter(Boolean).join(" · ")}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-2">
+            <MomentumInline state={film.momentum} />
+            {peak ? (
+              <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
+                Peak #{peak}
+              </span>
+            ) : null}
+          </span>
         </div>
       </div>
-      <div className="hidden w-14 shrink-0 sm:block">
+      <div className="w-12 shrink-0 sm:w-14">
         <Movement film={film} />
       </div>
-      <div className="shrink-0 text-right">
-        <div className="index-score text-xl sm:text-2xl">{film.score?.toFixed(1)}</div>
-        <div className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.18em] text-muted-foreground">
-          Index Score
+      <div className="hidden w-24 shrink-0 text-right sm:block">
+        <MomentumMark state={film.momentum} />
+        <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+          {film.days_on_chart != null ? `${film.days_on_chart}d on chart` : "\u00A0"}
         </div>
       </div>
     </Link>

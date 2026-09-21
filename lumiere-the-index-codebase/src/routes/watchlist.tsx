@@ -8,6 +8,7 @@ import { RouteError } from "@/lib/route-error";
 import { Bookmark, BookmarkX } from "lucide-react";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 import { tenureLabel } from "@/lib/filmUtils";
+import { MomentumMark } from "@/components/lumiere/Momentum";
 
 export const Route = createFileRoute("/watchlist")({
   head: () => ({
@@ -85,8 +86,7 @@ function WatchlistPage() {
               My Watchlist
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Titles you're tracking. Follow their score, rank, and momentum as the Index
-              updates.
+              Titles you're tracking. Follow their rank and momentum as the Index updates.
             </p>
           </div>
 
@@ -158,11 +158,9 @@ function WatchlistPage() {
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
-                        <div className="index-score text-xl sm:text-2xl">
-                          {film.score?.toFixed(1)}
-                        </div>
+                        <MomentumMark state={film.momentum} />
                         {film.rank > 0 && (
-                          <div className="mt-0.5 font-mono text-[10px] tabular text-muted-foreground">
+                          <div className="mt-1 font-mono text-[10px] tabular text-muted-foreground">
                             #{film.rank}
                           </div>
                         )}

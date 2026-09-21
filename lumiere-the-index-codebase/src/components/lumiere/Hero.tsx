@@ -17,6 +17,7 @@ import { RankRow, SectionHeading } from "./Ranking";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 import { TopTenSkeleton } from "./Skeletons";
 import { ShareCardButton } from "./ShareCardButton";
+import { MomentumMark, MomentumInline } from "./Momentum";
 
 /** Preload the next slide's backdrop image so swaps are instant. */
 function useBackdropPreload(films: RankedFilm[], index: number) {
@@ -275,15 +276,17 @@ export function Hero() {
                 </Link>
               </div>
 
-              {/* Index Score (mobile / tablet) — stacked under the metadata */}
-              <div className="mt-6 lg:hidden">
-                <div className="index-score text-7xl sm:text-8xl">
-                  {activeFilm?.score?.toFixed(1) ?? "-"}
+              {/* Momentum (mobile / tablet) — the state of change, editorial */}
+              {activeFilm && (
+                <div className="mt-6 lg:hidden">
+                  <MomentumMark state={activeFilm.momentum} />
+                  {activeFilm.peak_rank ? (
+                    <div className="mt-1.5 font-mono text-[11px] text-muted-foreground">
+                      Peak #{activeFilm.peak_rank}
+                    </div>
+                  ) : null}
                 </div>
-                <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                  Index Score
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Right — poster card + score ring, pinned to the far right edge */}
@@ -299,38 +302,24 @@ export function Hero() {
                     <div className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">
                       {activeFilm.title}
                     </div>
-                    <div className="mt-1 flex items-baseline gap-1.5">
-                      <span className="index-score text-base">{activeFilm.score?.toFixed(1) ?? "-"}</span>
-                      <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                        Index
-                      </span>
+                    <div className="mt-1">
+                      <MomentumInline state={activeFilm.momentum} />
                     </div>
                   </div>
                 </Link>
 
-                {/* Score ring — red emphasis around the ivory number */}
-                <div className="relative h-36 w-36">
-                  <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90" aria-hidden>
-                    <circle cx="70" cy="70" r="60" fill="none" strokeWidth="5" className="stroke-foreground/10" />
-                    <circle
-                      cx="70"
-                      cy="70"
-                      r="60"
-                      fill="none"
-                      strokeWidth="5"
-                      strokeLinecap="round"
-                      className="stroke-primary transition-[stroke-dasharray] duration-700"
-                      strokeDasharray={`${
-                        2 * Math.PI * 60 * Math.min(Math.max((activeFilm.score ?? 0) / 100, 0), 1)
-                      } ${2 * Math.PI * 60}`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="index-score text-4xl">{activeFilm.score?.toFixed(1) ?? "-"}</span>
-                    <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                      Index Score
+                {/* Momentum — the hero's state of change, editorial lockup.
+                    Peak and tenure ground it in the chart's history. */}
+                <div className="flex h-36 w-36 flex-col items-center justify-center border border-foreground/10 bg-foreground/[0.02] text-center">
+                  <MomentumMark state={activeFilm.momentum} className="!text-[11px]" />
+                  {activeFilm.peak_rank ? (
+                    <span className="mt-2 font-mono text-sm tabular text-foreground">
+                      Peak #{activeFilm.peak_rank}
                     </span>
-                  </div>
+                  ) : null}
+                  <span className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+                    {(activeFilm.days_on_chart ?? 1)} {activeFilm.days_on_chart === 1 ? "day" : "days"} on chart
+                  </span>
                 </div>
               </div>
             )}
@@ -418,7 +407,6 @@ export function TvTopFive() {
                 title: "TV 100 · Top 5",
                 subtitle: "The series generating the strongest measured cultural momentum today.",
                 films: top5,
-                scoreLabel: "TVDex",
               }}
             />
           }
@@ -497,7 +485,9 @@ function NewEntryRow({ film }: { film: NewEntryFilm }) {
             Debuted at #{film.debut_rank}
           </div>
         </div>
-        <span className="index-score text-base">{film.debut_score?.toFixed(1)}</span>
+        {/* New entries have no trajectory yet: the debut strength is the
+            only honest signal, mirroring the backend's NEW-entry rule. */}
+        <MomentumInline state={film.debut_rank <= 10 ? "SURGING" : "STEADY"} />
       </Link>
     </li>
   );
