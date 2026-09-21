@@ -53,12 +53,18 @@ def _fetch_chunk(
                 if title in interest_df.columns:
                     recent_score = int(interest_df[title].iloc[-1])
                     if recent_score > 0:
-                        # Sum the weekly interest series: each day's 0-100 index
-                        # is a real, comparable observation of search demand.
                         # One record per (film, day) — the daily ext_id makes
                         # re-runs idempotent instead of re-counting the same
                         # weekly series on every hourly run.
-                        weekly_total = int(interest_df[title].sum())
+                        #
+                        # observations = the title's AVERAGE DAILY search
+                        # interest (0–100 scale, weekly sum / 7 days). The
+                        # Index Score's attention intensity consumes this as
+                        # decayed observations/day, so the unit must be a
+                        # daily rate. Storing the raw weekly sum made every
+                        # charted title read ~7× hotter than reality and
+                        # saturated the whole chart at 100.
+                        daily_interest = round(float(interest_df[title].sum()) / 7.0, 1)
                         ext_id = f"gtrends_{title.replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d')}"
                         out.append(
                             RawMention(
@@ -67,7 +73,7 @@ def _fetch_chunk(
                                 url=f"https://trends.google.com/trends/explore?q={title}",
                                 author="Google Trends",
                                 engagement=recent_score * 10,
-                                observations=weekly_total,
+                                observations=int(daily_interest),
                                 created_at=datetime.now(timezone.utc),
                             )
                         )
