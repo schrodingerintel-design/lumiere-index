@@ -23,6 +23,7 @@ import pytest
 
 from app.config import settings
 from app.models import DailyScore, Mention, Ranking, Source
+from app.services.display_calibration import beta_display_score
 from app.services.ranking import recompute_rankings
 
 A_REF = settings.score_attention_ref
@@ -31,7 +32,8 @@ A_REF = settings.score_attention_ref
 def _score_of(a: float) -> float:
     if a <= 0.0:
         return 0.0
-    return min(100.0, 100.0 * math.log10(1.0 + a) / math.log10(1.0 + A_REF))
+    raw = min(100.0, 100.0 * math.log10(1.0 + a) / math.log10(1.0 + A_REF))
+    return beta_display_score(raw)
 
 
 def _add_source(db, key="trends"):

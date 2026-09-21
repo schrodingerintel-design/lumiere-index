@@ -24,10 +24,20 @@ export interface BetaRelease {
   changes: string[];
 }
 
-export const BETA_VERSION = "1.2.1";
+export const BETA_VERSION = "1.2.2";
 
 /** Newest first. Keep entries user-facing and short. */
 export const BETA_RELEASES: BetaRelease[] = [
+  {
+    version: "1.2.2",
+    date: "2026-09-21",
+    headline: "Fixed broken score numbers and stretched the beta scale",
+    changes: [
+      "Fixed: some TV chart scores showed impossible numbers like 844.8. Scores are now bounded and always make sense.",
+      "During the beta the scale is stretched so the chart reads fully: the top of the chart sits around 98.5 and the bottom around 26, with real gaps in between. When we launch normally the raw attention scale comes back.",
+      "Scores still measure real attention, never chart position. Two titles with the same attention still show the same score.",
+    ],
+  },
   {
     version: "1.2.1",
     date: "2026-09-21",
