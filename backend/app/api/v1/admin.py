@@ -167,6 +167,7 @@ def score_inspector(slug: str, db: Session = Depends(get_db)):
             "internal_candidate_position": (candidate_pos or 0) + 1,
             "index_score": r.score,
             "raw_composite": r.composite_raw,
+            "attention_raw": r.attention_raw,
             "normalized_components": {
                 "current_attention": r.ca_score,
                 "momentum": r.momentum_score,
@@ -199,8 +200,12 @@ def score_inspector(slug: str, db: Session = Depends(get_db)):
         },
         "charts": charts,
         "notes": [
-            "composite_raw is the pre-scale cultural momentum; the Index Score "
-            "maps it onto 0-100 via the pool's p95 anchor — never via rank.",
+            "attention_raw is the absolute attention intensity (decayed "
+            "mentions/day, YouTube-folded); the Index Score maps it via "
+            "100·log10(1+A)/log10(1+A_ref), clamped to 100 — never via rank "
+            "or a pool anchor.",
+            "composite_raw is the pre-scale cultural momentum used for "
+            "chart ordering; the displayed score is the absolute map above.",
             "A rank beyond 100 is an internal candidate position and must never "
             "be published; the continuous table only persists the Top 100.",
             "identical scores across many titles usually indicate a normalization "

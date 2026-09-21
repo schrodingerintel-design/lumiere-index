@@ -426,7 +426,7 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   ctx.fillStyle = MUTED;
   ctx.font = `500 26px ${MONO_FONT}`;
   ctx.fillText("I N D E X   S C O R E", 96, bandY + 66);
-  const scoreText = film.score?.toFixed(1) ?? "—";
+  const scoreText = film.score?.toFixed(1) ?? "-";
   const scoreFont = fitFont(ctx, scoreText, 520, 210, 600, DISPLAY_FONT);
   ctx.fillStyle = IVORY;
   ctx.font = `600 ${scoreFont}px ${DISPLAY_FONT}`;
@@ -610,7 +610,7 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
     // Score right-aligned with its label.
     ctx.fillStyle = IVORY;
     ctx.font = `600 44px ${DISPLAY_FONT}`;
-    const scoreText = f.score?.toFixed(1) ?? "—";
+    const scoreText = f.score?.toFixed(1) ?? "-";
     ctx.fillText(scoreText, W - 96 - ctx.measureText(scoreText).width, y + rowH / 2 - 8);
     ctx.fillStyle = MUTED;
     ctx.font = `16px ${MONO_FONT}`;

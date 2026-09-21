@@ -55,7 +55,7 @@ function MovementInline({ film }: { film: RankedFilm }) {
       </span>
     );
   }
-  return <span className="font-mono text-xs text-muted-foreground">—</span>;
+  return <span className="font-mono text-xs text-muted-foreground">-</span>;
 }
 
 /** Honest degraded state when the live charts can't be reached (backend down,
@@ -70,7 +70,7 @@ export function ChartsUnavailable({ onRetry }: { onRetry?: () => void }) {
       <h2 className="mt-3 font-display text-2xl">Charts reconnecting</h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
         Live rankings are temporarily unavailable. The Index refreshes every 15
-        minutes — this page recovers automatically once the chart engine is
+        minutes; this page recovers automatically once the chart engine is
         back.
       </p>
       {onRetry && (
@@ -278,7 +278,7 @@ export function Hero() {
               {/* Index Score (mobile / tablet) — stacked under the metadata */}
               <div className="mt-6 lg:hidden">
                 <div className="index-score text-7xl sm:text-8xl">
-                  {activeFilm?.score?.toFixed(1) ?? "—"}
+                  {activeFilm?.score?.toFixed(1) ?? "-"}
                 </div>
                 <div className="mt-2 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                   Index Score
@@ -300,7 +300,7 @@ export function Hero() {
                       {activeFilm.title}
                     </div>
                     <div className="mt-1 flex items-baseline gap-1.5">
-                      <span className="index-score text-base">{activeFilm.score?.toFixed(1) ?? "—"}</span>
+                      <span className="index-score text-base">{activeFilm.score?.toFixed(1) ?? "-"}</span>
                       <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                         Index
                       </span>
@@ -326,7 +326,7 @@ export function Hero() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="index-score text-4xl">{activeFilm.score?.toFixed(1) ?? "—"}</span>
+                    <span className="index-score text-4xl">{activeFilm.score?.toFixed(1) ?? "-"}</span>
                     <span className="mt-1 text-[9px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                       Index Score
                     </span>
@@ -357,7 +357,7 @@ export function TopTen() {
       <div className="mx-auto max-w-6xl">
         <SectionHeading
           kicker="The Index · Movie 100"
-          title="Movie 100 — Top 10"
+          title="Movie 100 · Top 10"
           copy="The ten films generating the strongest measured cultural momentum today."
           seeAllHref="/top-100"
           seeAllLabel="Full Movie 100"
@@ -365,7 +365,7 @@ export function TopTen() {
             <ShareCardButton
               variant="chart"
               card={{
-                title: "Movie 100 — Top 10",
+                title: "Movie 100 · Top 10",
                 subtitle: "The films generating the strongest measured cultural momentum today.",
                 films: top10,
               }}
@@ -407,7 +407,7 @@ export function TvTopFive() {
       <div className="mx-auto max-w-6xl">
         <SectionHeading
           kicker="The Index · TV 100"
-          title="TV 100 — Top 5"
+          title="TV 100 · Top 5"
           copy="The series generating the strongest measured cultural momentum today."
           seeAllHref="/tv-100"
           seeAllLabel="Full TV 100"
@@ -415,7 +415,7 @@ export function TvTopFive() {
             <ShareCardButton
               variant="chart"
               card={{
-                title: "TV 100 — Top 5",
+                title: "TV 100 · Top 5",
                 subtitle: "The series generating the strongest measured cultural momentum today.",
                 films: top5,
                 scoreLabel: "TVDex",

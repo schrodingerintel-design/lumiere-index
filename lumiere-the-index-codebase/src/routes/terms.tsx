@@ -6,7 +6,7 @@ import { RouteError } from "@/lib/route-error";
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms & Conditions — The Index" },
+      { title: "Terms & Conditions · The Index" },
       {
         name: "description",
         content: "The terms and conditions governing use of The Index.",
@@ -64,8 +64,8 @@ function Terms() {
 
       <Section num="3." title="Intellectual Property">
         <p>
-          All content within the Service — including rankings, charts, data presentations, branding,
-          and design — is owned by or licensed to The Index and is protected by applicable intellectual
+          All content within the Service, including rankings, charts, data presentations, branding
+          and design, is owned by or licensed to The Index and is protected by applicable intellectual
           property laws. You may not copy, reproduce, distribute, or create derivative works from the
           Service except as expressly permitted.
         </p>
@@ -108,7 +108,7 @@ function Terms() {
 
       <Section num="8." title="Contact">
         <p>If you have questions about these Terms, contact us at privacy@lumiereindex.com.</p>
-        <p className="text-xs text-muted-foreground">© The Index — by Lumière. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">© The Index · by Lumière. All rights reserved.</p>
       </Section>
     </StaticPage>
   );

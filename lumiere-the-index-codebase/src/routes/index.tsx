@@ -10,7 +10,7 @@ import { getTopFilms } from "@/lib/apiClient";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "The Index — The charting system for film and television culture" },
+      { title: "The Index · The charting system for film and television culture" },
       {
         name: "description",
         content:

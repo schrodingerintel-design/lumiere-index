@@ -271,6 +271,48 @@ export const getBiggestMovers = (limit: number = 10) =>
     `/api/v1/index/movers?limit=${limit}`,
   );
 
+// ── Weekly Top 100 (published weekly snapshot, movies + TV combined) ────────
+
+export interface WeeklyEntry {
+  film_id: number;
+  slug: string;
+  title: string;
+  original_title?: string | null;
+  content_type: "MOVIE" | "TV_SHOW" | string;
+  director: string | null;
+  year: number | null;
+  poster_url: string | null;
+  backdrop_url?: string | null;
+  gradient_from: string | null;
+  gradient_to: string | null;
+  rank: number;
+  score: number;
+  previous_week_rank: number | null;
+  rank_delta: number;
+  avg_daily_mentions: number;
+  total_signal_volume: number;
+  confidence: string | null;
+  week_start: string;
+  week_end: string;
+}
+
+export interface WeeklyChart {
+  meta: {
+    week_start: string;
+    week_end: string;
+    chart_type: string;
+    published_at: string | null;
+    entry_count: number;
+  };
+  entries: WeeklyEntry[];
+}
+
+/** The official Weekly Top 100 — movies and TV shows on one chart. */
+export const getWeeklyTop100 = (weekStart?: string) =>
+  apiFetch<WeeklyChart>(
+    `/api/v1/index/weekly?chart=WEEKLY_100&limit=100${weekStart ? `&week_start=${weekStart}` : ""}`,
+  );
+
 export interface NewEntryFilm {
   slug: string;
   title: string;

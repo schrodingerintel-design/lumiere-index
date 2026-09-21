@@ -17,11 +17,11 @@ type ChartRow = { kind: "film"; film: RankedFilm } | { kind: "ad"; placement: st
 export const Route = createFileRoute("/top-100")({
   head: () => ({
     meta: [
-      { title: "Movie 100 — The Index" },
+      { title: "Movie 100 · The Index" },
       {
         name: "description",
         content:
-          "The official Movie 100 — the 100 films currently generating the strongest measured cultural momentum.",
+          "The movies getting the most attention right now. Updated every 15 minutes.",
       },
       ogUrlMeta("/top-100"),
     ],
@@ -68,7 +68,7 @@ function Top100() {
     <Layout>
       <section className="px-4 pt-6 lg:px-6">
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          The Index · Movie 100 · Daily ·{" "}
+          The Index · Movie 100 · Updated every 15 minutes ·{" "}
           {new Date().toLocaleDateString("en-US", {
             month: "long",
             day: "numeric",
@@ -77,9 +77,9 @@ function Top100() {
         </div>
         <h1 className="mt-2 font-display text-5xl lg:text-6xl">Movie 100</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          The 100 films currently generating the strongest measured cultural
-          momentum. A public rank only exists between #1 and #100 — titles
-          beyond the chart are simply not currently ranked.
+          The movies getting the most attention right now. Updated every 15
+          minutes. A public rank only exists between #1 and #100; titles beyond
+          the chart are simply not currently ranked.
         </p>
       </section>
 
@@ -149,7 +149,7 @@ function Top100() {
                               </span>
                             ) : (
                               <span className="font-mono text-[11px] text-muted-foreground" title="Held its rank">
-                                —
+                                -
                               </span>
                             )}
                           </span>
@@ -175,7 +175,7 @@ function Top100() {
                               className="font-mono text-sm text-muted-foreground"
                               title="Held its rank"
                             >
-                              —
+                              -
                             </span>
                           )}
                         </div>

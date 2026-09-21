@@ -7,7 +7,7 @@ import { Lock, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/methodology")({
   head: () => ({
     meta: [
-      { title: "Index Methodology — The Index" },
+      { title: "Index Methodology · The Index" },
       {
         name: "description",
         content:
@@ -125,23 +125,59 @@ function Methodology() {
         </p>
         <List
           items={[
-            "Data collection — continuous. Audience activity is measured around the clock.",
-            "The official charts (Movie 100, TV 100) — a published ranking cycle. Each cycle writes one immutable snapshot per chart; ranks, movement, and days-on-chart are computed between consecutive snapshots of the same chart.",
-            "Biggest Movers — derived from rank changes between consecutive published Indexes. It highlights the titles climbing or falling fastest; it is not a separate ranking with separate math.",
+            "Data collection: continuous. Audience activity is measured around the clock.",
+            "The live charts (Movie 100, TV 100): recomputed every 15 minutes from the latest signals.",
+            "The Weekly Top 100: published once per week from the whole week's measurements. Sustained performance across the week counts more than a one-day spike.",
+            "Biggest Movers: derived from rank changes between consecutive published charts. It highlights the titles climbing or falling fastest; it is not a separate ranking with separate math.",
           ]}
         />
         <p>
-          Movement (↑/↓) is computed from rank change between the two most recent snapshots —
-          never from Index Score changes — so a film that moves from #20 to #15 shows ↑ 5
-          even if its score barely moved.
+          Movement (↑/↓) is computed from rank change between the two most recent snapshots,
+          never from Index Score changes. A film that moves from #20 to #15 shows ↑ 5 even if
+          its score barely moved.
         </p>
       </Section>
 
       <Section title="Index Score">
         <p>
-          Every title receives an Index Score representing its current cultural momentum. The
-          score is generated through the Index's ranking system using multiple data inputs.
+          Every title receives an Index Score representing the amount of attention it is
+          actually receiving right now. The score is generated through the Index's ranking
+          system using multiple data inputs.
         </p>
+        <p>
+          Rank and score measure different things. Rank is how a title compares with other
+          titles right now. The Index Score is how much attention the title is actually
+          receiving. That means a #1 during a quiet week can score lower than a #5 during a
+          huge week, and the same score means the same amount of attention in any week.
+        </p>
+        <div className="mt-4 overflow-hidden rounded-lg border border-foreground/10">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-foreground/10 bg-foreground/[0.03] text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                <th className="px-4 py-2 font-medium">Index Score</th>
+                <th className="px-4 py-2 font-medium">Meaning</th>
+              </tr>
+            </thead>
+            <tbody className="font-mono">
+              {[
+                ["95–100", "Exceptional"],
+                ["90–94.9", "Massive attention"],
+                ["80–89.9", "Very high attention"],
+                ["70–79.9", "High attention"],
+                ["60–69.9", "Strong"],
+                ["50–59.9", "Moderate"],
+                ["40–49.9", "Noticeable"],
+                ["25–39.9", "Low"],
+                ["0–24.9", "Minimal"],
+              ].map(([band, meaning]) => (
+                <tr key={band} className="border-b border-foreground/5 last:border-0">
+                  <td className="px-4 py-1.5 tabular-nums text-foreground/90">{band}</td>
+                  <td className="px-4 py-1.5 font-sans text-muted-foreground">{meaning}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p>
           The score is not a review score. It does not represent whether a movie is “good” or “bad.”
           It represents how strongly a title is impacting culture at a given moment.
@@ -154,8 +190,8 @@ function Methodology() {
           <span>How the Index Score (0–100) is Calculated</span>
         </div>
         <p className="mt-3 text-xs text-foreground/70">
-          The pipeline runs in one direction — raw data is never edited to change a
-          score, and no number is ever synthesized:
+          The pipeline runs in one direction: raw data is never edited to change a
+          score, and no number is ever synthesized.
         </p>
         <ul className="mt-3 space-y-2 font-mono text-xs text-foreground/80">
           <li>
@@ -163,7 +199,7 @@ function Methodology() {
             deduped and verified.
           </li>
           <li>
-            • <strong>Processing:</strong> it rolls into daily per-title series —
+            • <strong>Processing:</strong> it rolls into daily per-title series:
             volume, sentiment, and momentum.
           </li>
           <li>
@@ -173,13 +209,14 @@ function Methodology() {
             disadvantaged against one tracked for months.
           </li>
           <li>
-            • <strong>Relative normalization:</strong> components are percentile-normalized within
-            the active pool, then blended and scaled to 0–100. The score is relative cultural
-            momentum — not a review score.
+            • <strong>Absolute score:</strong> the blended components set the ranking order.
+            The displayed Index Score is then mapped from the title's own measured attention
+            (its decayed mentions per day) onto 0–100 through a fixed logarithmic scale. The
+            score measures attention, not chart position, and is not a review score.
           </li>
           <li>
             • <strong>Evidence floor:</strong> every score carries a confidence tier from its raw
-            sample size. Titles with insufficient evidence get hedged copy — or no claims at all —
+            sample size. Titles with insufficient evidence get hedged copy, or no claims at all,
             never invented ones.
           </li>
         </ul>
@@ -193,7 +230,7 @@ function Methodology() {
         </p>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          <span>0% critic weight — rankings are driven entirely by audience attention.</span>
+          <span>0% critic weight: rankings are driven entirely by audience attention.</span>
         </div>
       </Section>
 
@@ -204,7 +241,7 @@ function Methodology() {
           stories. Our goal is simple: to build the world's most trusted measurement of entertainment
           culture.
         </p>
-        <p className="text-xs text-muted-foreground">© The Index — by Lumière</p>
+        <p className="text-xs text-muted-foreground">© The Index by Lumière</p>
       </Section>
     </StaticPage>
   );

@@ -6,7 +6,7 @@ import { RouteError } from "@/lib/route-error";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — The Index" },
+      { title: "Privacy Policy · The Index" },
       {
         name: "description",
         content:
@@ -213,13 +213,13 @@ function Privacy() {
       <Section num="13." title="Contact Us">
         <p>If you have questions regarding this Privacy Policy, contact:</p>
         <p className="font-mono text-sm">
-          Lumière — The Index
+          Lumière · The Index
           <br />
           Email: privacy@lumiereindex.com
           <br />
           Website: lumiereindex.com
         </p>
-        <p className="text-xs text-muted-foreground">© The Index — by Lumière. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">© The Index · by Lumière. All rights reserved.</p>
       </Section>
     </StaticPage>
   );

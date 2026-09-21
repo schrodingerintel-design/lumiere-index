@@ -62,14 +62,14 @@ import {
 export const Route = createFileRoute("/films/$slug")({
   head: ({ params }) => ({
     meta: [
-      { title: `${(params?.slug ?? "").replace(/-/g, " ")} — The Index` },
+      { title: `${(params?.slug ?? "").replace(/-/g, " ")} · The Index` },
       {
         name: "description",
         content: `Live cultural index score and audience sentiment for film ${params?.slug}.`,
       },
       {
         property: "og:title",
-        content: `${(params?.slug ?? "").replace(/-/g, " ")} — The Index`,
+        content: `${(params?.slug ?? "").replace(/-/g, " ")} · The Index`,
       },
       {
         property: "og:description",
@@ -80,7 +80,7 @@ export const Route = createFileRoute("/films/$slug")({
       { name: "twitter:card", content: "summary_large_image" },
       {
         name: "twitter:title",
-        content: `${(params?.slug ?? "").replace(/-/g, " ")} — The Index`,
+        content: `${(params?.slug ?? "").replace(/-/g, " ")} · The Index`,
       },
       {
         name: "twitter:description",
@@ -166,8 +166,7 @@ function ProviderGroup({
             key={p.provider_id}
             href={link}
             target="_blank"
-            rel="noopener noreferrer"
-            title={`${p.provider_name} — ${label}`}
+            rel="noopener noreferrer"                    title={`${p.provider_name}, ${label}`}
             className="flex items-center gap-1.5 border border-foreground/10 bg-foreground/5 px-1.5 py-1 transition hover:border-foreground/25 hover:bg-foreground/10"
           >
             {p.logo_path ? (
@@ -637,7 +636,7 @@ function FilmDetailView() {
 
               {/* Year · runtime · genres */}
               <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
-                <span>{film.year || "—"}</span>
+                <span>{film.year || "-"}</span>
                 {runtime && (
                   <>
                     <span className="text-foreground/25">·</span>
@@ -678,7 +677,7 @@ function FilmDetailView() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="index-score text-2xl">{film.score?.toFixed(1) ?? "—"}</span>
+                    <span className="index-score text-2xl">{film.score?.toFixed(1) ?? "-"}</span>
                     <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-muted-foreground">
                       Index
                     </span>
@@ -826,7 +825,7 @@ function FilmDetailView() {
                 <div className="aspect-video w-full overflow-hidden bg-black/40">
                   <iframe
                     src={`https://www.youtube.com/embed/${trailerKey}?rel=0&modestbranding=1&playsinline=1`}
-                    title={`${film.title} — Official Trailer`}
+                    title={`${film.title} · Official Trailer`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                     className="absolute inset-0 h-full w-full"
@@ -862,7 +861,7 @@ function FilmDetailView() {
                         "en-US",
                         { month: "short", day: "numeric", year: "numeric" },
                       )
-                    : status || "—"
+                    : status || "-"
                 }
               />
               {runtime && (

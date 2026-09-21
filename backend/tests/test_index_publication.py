@@ -196,25 +196,30 @@ def test_publish_weekly_aggregates_window_not_daily_copy(pub_db):
     pub_db.commit()
 
     # Film A: steady signal across distinct days inside the window
-    # Film B: one huge spike today only (spiky, less consistent)
-    now = datetime.now(timezone.utc)
-    # Keep every mention inside this ISO week (Monday..Sunday): hours back,
-    # not days back, so we never cross the week boundary being tested.
-    for hour_offset in (1, 5, 20, 30, 44, 50):
+    # Film B: one huge spike on a single day (spiky, less consistent)
+    # Published for LAST week explicitly: a complete Monday..Sunday window
+    # makes the seeding deterministic. Seeding relative to 'now' instead is
+    # date-dependent (on a Monday, 'N hours ago' falls into the previous ISO
+    # week and silently shrinks the window).
+    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    for d in range(6):  # six distinct days, one mention each
         pub_db.add(Mention(
-            film_id=films[0].id, source_id=src.id, external_id=f"a-{hour_offset}",
-            text=f"Film 0 discussion h {hour_offset}", sentiment_score=0.5,
-            created_at=now - timedelta(hours=hour_offset),
+            film_id=films[0].id, source_id=src.id, external_id=f"a-{d}",
+            text=f"Film 0 discussion day {d}", sentiment_score=0.5,
+            created_at=datetime(last_monday.year, last_monday.month, last_monday.day,
+                                10, d, 0, tzinfo=timezone.utc) + timedelta(days=d),
         ))
-    for i in range(12):
+    spike_day = last_monday + timedelta(days=6)
+    for i in range(12):  # all twelve on one day
         pub_db.add(Mention(
             film_id=films[1].id, source_id=src.id, external_id=f"b-{i}",
             text=f"Film 1 spike mention {i}", sentiment_score=0.5,
-            created_at=now - timedelta(hours=2),
+            created_at=datetime(spike_day.year, spike_day.month, spike_day.day,
+                                8, i, 0, tzinfo=timezone.utc),
         ))
     pub_db.commit()
 
-    assert publish_weekly_index(pub_db) is not None
+    assert publish_weekly_index(pub_db, week_start=last_monday) is not None
     rows = {r.film_id: r for r in pub_db.query(WeeklyIndexSnapshot).all()}
     # Both films chart; A spread across days vs B's single-day spike
     assert rows[films[0].id].total_signal_volume == 6
@@ -233,8 +238,10 @@ def test_publish_weekly_is_idempotent(pub_db):
     pub_db.commit()
 
     assert publish_weekly_index(pub_db) is not None
-    assert publish_weekly_index(pub_db) is None
-    assert pub_db.query(func.count(WeeklyIndexSnapshot.id)).scalar() <= 2
+    # The CURRENT week refreshes in place (shows the week so far); only
+    # completed weeks become immutable archives.
+    assert publish_weekly_index(pub_db) is not None
+    assert pub_db.query(func.count(WeeklyIndexSnapshot.id)).scalar() <= 6
 
 
 def test_publish_weekly_movement_vs_previous_week(pub_db):
@@ -259,8 +266,10 @@ def test_publish_weekly_movement_vs_previous_week(pub_db):
     pub_db.commit()
 
     publish_weekly_index(pub_db)
+    this_monday = week_bounds(date.today())[0]
     rows = {r.film_id: r for r in pub_db.query(WeeklyIndexSnapshot).filter(
-        WeeklyIndexSnapshot.week_start == week_bounds(date.today())[0]).all()}
+        WeeklyIndexSnapshot.week_start == this_monday,
+        WeeklyIndexSnapshot.chart_type == "MOVIE_100").all()}
     assert rows[films[0].id].previous_week_rank == 1
     assert rows[films[1].id].previous_week_rank == 2
 
@@ -443,3 +452,148 @@ def test_week_bounds_iso():
     monday, sunday = week_bounds(date(2026, 9, 9))
     assert monday == date(2026, 9, 7)
     assert sunday == date(2026, 9, 13)
+
+
+# ── combined Weekly Top 100 (WEEKLY_100) ─────────────────────────────────────
+
+def test_weekly_100_combines_movies_and_tv(pub_db):
+    """The combined chart pools movies and TV shows into one ranking; the
+    per-chart weeklies stay type-pure; every row keeps its content_type."""
+    films = _add_films(pub_db, 2)
+    shows = []
+    for i in range(2):
+        s = Film(slug=f"show-{i}", title=f"Show {i}", year=2025, content_type="TV_SHOW")
+        pub_db.add(s)
+        shows.append(s)
+    pub_db.commit()
+
+    src = Source(key="reddit", name="Reddit", weight=1.0)
+    pub_db.add(src)
+    pub_db.commit()
+
+    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    for fid, n in ((films[0].id, 10), (films[1].id, 4), (shows[0].id, 8), (shows[1].id, 2)):
+        for j in range(n):
+            pub_db.add(Mention(
+                film_id=fid, source_id=src.id, external_id=f"wk-{fid}-{j}",
+                text="talk", created_at=datetime(
+                    last_monday.year, last_monday.month, last_monday.day,
+                    9, j, 0, tzinfo=timezone.utc) + timedelta(days=1),
+            ))
+    pub_db.commit()
+
+    assert publish_weekly_index(pub_db, week_start=last_monday) is not None
+
+    weekly = {
+        (r.chart_type, r.film_id): r
+        for r in pub_db.query(WeeklyIndexSnapshot).filter(
+            WeeklyIndexSnapshot.week_start == last_monday).all()
+    }
+    # Combined chart contains both types.
+    combined = [(r, fid) for (chart, fid), r in weekly.items() if chart == "WEEKLY_100"]
+    assert len(combined) == 4
+    combined_ranks = sorted(r.rank for r, _ in combined)
+    assert combined_ranks == [1, 2, 3, 4]
+    # Rank order follows weekly volume: film0(10) > show0(8) > film1(4) > show1(2).
+    by_volume = sorted(combined, key=lambda x: -x[0].total_signal_volume)
+    assert [r.rank for r, _ in by_volume] == [1, 2, 3, 4]
+    # Movie/TV labels survive on combined rows.
+    fids = {f.id: f for f in films + shows}
+    for r, fid in combined:
+        expected = "TV_SHOW" if fids[fid].content_type == "TV_SHOW" else "MOVIE"
+        assert (fids[fid].content_type or "MOVIE").upper() == expected
+    # Per-chart weeklies remain type-pure.
+    assert all(fids[fid].content_type == "MOVIE"
+               for (chart, fid), _ in weekly.items() if chart == "MOVIE_100")
+    assert all(fids[fid].content_type == "TV_SHOW"
+               for (chart, fid), _ in weekly.items() if chart == "TV_100")
+
+
+def test_weekly_100_sustained_beats_spike(pub_db):
+    """A title near the top all week must outrank a title that touches #1 on
+    one day and disappears — the core weekly-ranking requirement."""
+    a = Film(slug="steady", title="Steady All Week", year=2025)
+    b = Film(slug="spiker", title="One-Day Spike", year=2025)
+    pub_db.add_all([a, b])
+    pub_db.commit()
+    src = Source(key="reddit", name="Reddit", weight=1.0)
+    pub_db.add(src)
+    pub_db.commit()
+
+    monday = week_bounds(date.today())[0]
+    now = datetime.now(timezone.utc)
+    # Steady: ranked #4 every day of the week (published dailies).
+    for d in range(7):
+        pub_db.add(DailyIndexSnapshot(
+            snapshot_date=monday + timedelta(days=d), chart_type="MOVIE_100",
+            film_id=a.id, rank=4, score=70.0, published_at=now,
+        ))
+    # Spiker: ranked #1 on ONE day, gone the rest of the week.
+    pub_db.add(DailyIndexSnapshot(
+        snapshot_date=monday + timedelta(days=2), chart_type="MOVIE_100",
+        film_id=b.id, rank=1, score=90.0, published_at=now,
+    ))
+    pub_db.commit()
+
+    assert publish_weekly_index(pub_db, week_start=monday) is not None
+    rows = {r.film_id: r for r in pub_db.query(WeeklyIndexSnapshot).filter(
+        WeeklyIndexSnapshot.week_start == monday,
+        WeeklyIndexSnapshot.chart_type == "WEEKLY_100").all()}
+    assert rows[a.id].rank < rows[b.id].rank, (
+        "steady all-week title must outrank the one-day #1 spike"
+    )
+    assert rows[a.id].peak_daily_rank == 4
+    assert rows[b.id].peak_daily_rank == 1  # peak kept for display, not for ordering
+
+
+def test_weekly_100_completed_week_is_immutable_archive(pub_db):
+    """Re-publishing a COMPLETED week must not change it (archive contract);
+    the current week refreshes in place."""
+    films = _add_films(pub_db, 2)
+    src = Source(key="reddit", name="Reddit", weight=1.0)
+    pub_db.add(src)
+    pub_db.commit()
+
+    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    for j in range(5):
+        pub_db.add(Mention(
+            film_id=films[0].id, source_id=src.id, external_id=f"arc-{j}",
+            text="talk", created_at=datetime(
+                last_monday.year, last_monday.month, last_monday.day,
+                10, j, 0, tzinfo=timezone.utc) + timedelta(days=2),
+        ))
+    pub_db.commit()
+
+    assert publish_weekly_index(pub_db, week_start=last_monday) is not None
+    before = {
+        (r.chart_type, r.film_id): (r.rank, r.score)
+        for r in pub_db.query(WeeklyIndexSnapshot).filter(
+            WeeklyIndexSnapshot.week_start == last_monday).all()
+    }
+    # More signal arrives after the week completed.
+    pub_db.add(Mention(
+        film_id=films[1].id, source_id=src.id, external_id="arc-late",
+        text="late talk", created_at=datetime.now(timezone.utc),
+    ))
+    pub_db.commit()
+    assert publish_weekly_index(pub_db, week_start=last_monday) is None
+    after = {
+        (r.chart_type, r.film_id): (r.rank, r.score)
+        for r in pub_db.query(WeeklyIndexSnapshot).filter(
+            WeeklyIndexSnapshot.week_start == last_monday).all()
+    }
+    assert before == after  # archived, untouched
+
+
+def test_weekly_api_serves_combined_chart(client):
+    """GET /api/v1/index/weekly?chart=WEEKLY_100 returns the combined chart."""
+    today = date.today()
+    monday = today - timedelta(days=today.weekday())
+    resp = client.get("/api/v1/index/weekly", params={"chart": "weekly"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["meta"]["chart_type"] in ("WEEKLY_100", "MOVIE_100")  # empty DB → defaults ok
+    # Historical fetch with an explicit week must not 400 either.
+    resp2 = client.get("/api/v1/index/weekly", params={"chart": "WEEKLY_100", "week_start": monday.isoformat()})
+    assert resp2.status_code == 200
+    assert resp2.json()["meta"]["chart_type"] == "WEEKLY_100"

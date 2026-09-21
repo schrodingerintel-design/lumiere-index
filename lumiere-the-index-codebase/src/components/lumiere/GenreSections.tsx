@@ -164,7 +164,7 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
               {/* Index Score — ivory on the artwork, like every other card.
                   Unranked catalogue titles show "—" instead of a fake 0.0. */}
               <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
-                {isRanked(film) ? film.score?.toFixed(1) : "—"}
+                {isRanked(film) ? film.score?.toFixed(1) : "-"}
               </div>
               {isRanked(film) && film.prev_rank == null && (
                 <div className="absolute left-1.5 top-1.5 bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none text-ink">
@@ -223,7 +223,7 @@ export function GenreSections() {
         </div>
         <h2 className="mt-1.5 font-display text-2xl font-medium sm:text-3xl">Collections</h2>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Every title in the catalogue, grouped by genre — ranked or not. Chart membership and
+          Every title in the catalogue, grouped by genre. Ranked or not: chart membership and
           catalogue membership are independent.
         </p>
       </div>

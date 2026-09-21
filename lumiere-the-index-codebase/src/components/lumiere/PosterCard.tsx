@@ -71,7 +71,7 @@ export function PosterCard({
             titles show "—": the score only exists once measured onto the
             official charts. */}
         <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[12px] font-semibold leading-none text-cream">
-          {isRanked ? film.score?.toFixed(1) : "—"}
+          {isRanked ? film.score?.toFixed(1) : "-"}
         </div>
         {/* NEW badge takes the corner; the rank badge yields to it. Unranked
             titles get neither — they are simply not currently ranked. */}

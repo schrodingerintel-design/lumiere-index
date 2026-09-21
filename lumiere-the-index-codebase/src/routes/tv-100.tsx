@@ -18,25 +18,25 @@ type TvChartRow = { kind: "film"; film: RankedFilm } | { kind: "ad"; placement: 
 export const Route = createFileRoute("/tv-100")({
   head: () => ({
     meta: [
-      { title: "TV 100 — The Index" },
+      { title: "TV 100 · The Index" },
       {
         name: "description",
         content:
-          "The official TV 100 — the 100 television series generating the strongest measured cultural momentum, refreshed every 15 minutes.",
+          "The TV shows getting the most attention right now. Updated every 15 minutes.",
       },
-      { property: "og:title", content: "TV 100 — The Index" },
+      { property: "og:title", content: "TV 100 · The Index" },
       {
         property: "og:description",
         content:
-          "The 100 television series generating the strongest measured cultural momentum right now, re-ranked every 15 minutes.",
+          "The TV shows getting the most attention right now. Updated every 15 minutes.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "TV 100 — The Index" },
+      { name: "twitter:title", content: "TV 100 · The Index" },
       {
         name: "twitter:description",
         content:
-          "The 100 television series generating the strongest measured cultural momentum right now, re-ranked every 15 minutes.",
+          "The TV shows getting the most attention right now. Updated every 15 minutes.",
       },
       ogUrlMeta("/tv-100"),
     ],
@@ -182,9 +182,8 @@ function TV100() {
               TV 100
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              The 100 television series generating the strongest measured
-              cultural momentum right now, re-ranked every 15 minutes.
-              {snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
+              The TV shows getting the most attention right now. Updated every
+              15 minutes.{snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
             </p>
           </div>
           <div className="flex items-end gap-6">
@@ -200,7 +199,7 @@ function TV100() {
               variant="chart"
               card={{
                 title: "TV 100",
-                subtitle: "The series generating the strongest cultural momentum right now.",
+                subtitle: "The TV shows getting the most attention right now.",
                 films: entries.slice(0, 5).map((f) => ({
                   ...f,
                   score: tvScore(f),

@@ -24,16 +24,27 @@ export interface BetaRelease {
   changes: string[];
 }
 
-export const BETA_VERSION = "1.2";
+export const BETA_VERSION = "1.2.1";
 
 /** Newest first. Keep entries user-facing and short. */
 export const BETA_RELEASES: BetaRelease[] = [
+  {
+    version: "1.2.1",
+    date: "2026-09-21",
+    headline: "A new Index Score, the Weekly Top 100, and clearer words",
+    changes: [
+      "The Index Score now measures real attention. A 90 means a title is getting massive attention, not just a high chart spot. Quiet weeks and blockbuster weeks now look different.",
+      "New: the Weekly Top 100. One chart of the movies and TV shows that performed best across the whole week. Staying near the top all week beats a one-day spike. Every entry is labeled Movie or TV.",
+      "Rank and score now mean different things: rank is how a title compares with other titles right now, and the score is how much attention the title is actually getting.",
+      "Simpler words everywhere. Same data, same rankings, easier reading.",
+    ],
+  },
   {
     version: "1.2",
     date: "2026-09-20",
     headline: "The Index moves to lumiereindex.com",
     changes: [
-      "New home: the Index now lives at lumiereindex.com — faster pages, proper search-engine listings, and share links that always land on the canonical site.",
+      "New home: the Index now lives at lumiereindex.com. Faster pages, proper search-engine listings, and share links that always land on the canonical site.",
       "Resilience: if the charts' data connection hiccups, the site now says so honestly and recovers automatically instead of hanging.",
       "Under the hood: the chart database keeps itself lean, so refreshing every 15 minutes stays fast as history grows.",
     ],
@@ -41,10 +52,10 @@ export const BETA_RELEASES: BetaRelease[] = [
   {
     version: "1.1",
     date: "2026-09",
-    headline: "TV 100 with its own ranking — TVDex",
+    headline: "TV 100 with its own ranking: TVDex",
     changes: [
-      "Television gets its own chart: the TV 100, ranked by the TVDex score — television's answer to the movie Index Score.",
-      "Genre shelves now list the full catalogue, ranked or not — browsing a genre is no longer limited to chart members.",
+      "Television gets its own chart: the TV 100, ranked by the TVDex score, television's answer to the movie Index Score.",
+      "Genre shelves now list the full catalogue, ranked or not. Browsing a genre is no longer limited to chart members.",
     ],
   },
   {
