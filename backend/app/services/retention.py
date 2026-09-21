@@ -303,12 +303,44 @@ def prune_raw_signals(db: Session) -> dict:
     return out
 
 
+# ── one-time unit migration ─────────────────────────────────────────────────
+# Trends observations were stored as WEEKLY interest totals (sum of seven
+# 0–100 values); the score unit is a DAILY rate. Rows written before the
+# adapter fix carry a 7×-inflated value. This idempotent normalizer divides
+# any such row down; it self-disables once no inflated rows remain (the
+# UPDATE matches zero rows) and is wired into run_retention so production
+# heals itself on the first nightly pass after deploy.
+TRENDS_UNIT_FIX_KEY = "trends_obs_weekly_to_daily_2026_09"
+
+
+def normalize_trends_observation_units(db: Session) -> dict:
+    from app.models import Source
+    from sqlalchemy import text as _text
+    try:
+        src = db.query(Source).filter(Source.key == "trends").first()
+        if src is None:
+            return {"trends_unit_fix": "no-source"}
+        result = db.execute(
+            _text(
+                "UPDATE mentions SET observations = FLOOR(observations / 7) "
+                "WHERE source_id = :sid AND observations >= 7"
+            ),
+            {"sid": src.id},
+        )
+        db.commit()
+        return {"trends_unit_fix": result.rowcount or 0}
+    except Exception as exc:
+        db.rollback()
+        return {"trends_unit_fix": f"error: {exc}"}
+
+
 def run_retention(db: Session) -> dict:
     """Full maintenance pass — safe to run concurrently with serving traffic
     (chunked deletes, no long table locks)."""
     ranking_report = collapse_ranking_history(db)
     raw_report = prune_raw_signals(db)
-    report = {"ran_at": _utcnow().isoformat(), **ranking_report, **raw_report}
+    unit_report = normalize_trends_observation_units(db)
+    report = {"ran_at": _utcnow().isoformat(), **ranking_report, **raw_report, **unit_report}
     log.info("retention: %s", report)
     return report
 
