@@ -319,7 +319,12 @@ def recompute_rankings(db: Session) -> datetime:
         cnt_int = int(cnt or 0)
         obs_int = int(obs or 0) or cnt_int  # per-item rows default obs=0 → rows
         mentions_by_film[fid][d] = max(mentions_by_film[fid].get(d, 0), cnt_int)
-        observations_by_film[fid][d] = max(observations_by_film[fid].get(d, 0), obs_int)
+        # Real-time Mention aggregation OVERRIDES the rolled-up value for
+        # observation volume: rollup_daily rebuilds hourly, so DailyScore can
+        # lag a same-day correction (unit fixes, deleted rows) by up to an
+        # hour — and max() would preserve the stale inflated value. The
+        # mention table is the source of truth for today's volume.
+        observations_by_film[fid][d] = obs_int
         if savg is not None:
             sentiment_by_film[fid][d] = float(savg)
 
