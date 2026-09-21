@@ -155,10 +155,21 @@ def fetch_letterboxd(
             continue
 
     # ── report the run honestly (no more silent zeros) ────────────────────
-    if db is not None and films_walked > 0:
+    # Unconditional on films_walked: a run that walked ZERO films (empty film
+    # list, SOURCE_MAX_ITEMS_PER_RUN=0) must also be visible, not just runs
+    # that reached upstream.
+    if db is not None:
         try:
             from app.ingest.pipeline import record_ingest, record_ingest_stats
-            if feeds_found == 0:
+            if films_walked == 0:
+                record_ingest(
+                    db, "letterboxd",
+                    error=(
+                        "walked 0 films — the film list was empty or "
+                        "SOURCE_MAX_ITEMS_PER_RUN is set to 0"
+                    ),
+                )
+            elif feeds_found == 0:
                 # Reached upstream and came back empty for every film tried.
                 # Almost always means slug resolution never matches — a real
                 # integration problem that must be visible, not silent.
