@@ -58,6 +58,19 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         log.warning("startup: schema convergence failed (non-fatal) — %s", exc)
 
+    # One-shot data healing at boot (idempotent, best-effort): normalizes any
+    # legacy Trends weekly-total observation rows to the daily-interest unit
+    # so the attention scale is correct immediately after this deploy instead
+    # of waiting for the nightly retention pass.
+    try:
+        from app.db import SessionLocal
+        from app.services.retention import normalize_trends_observation_units
+        with SessionLocal() as db:
+            fixed = normalize_trends_observation_units(db)
+            log.info("startup: trends observation unit normalizer — %s", fixed)
+    except Exception as exc:
+        log.warning("startup: trends unit normalizer failed (non-fatal) — %s", exc)
+
     # If the database has no films or ranking snapshots, run seed immediately.
     try:
         from app.db import SessionLocal
