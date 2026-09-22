@@ -71,6 +71,19 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         log.warning("startup: trends unit normalizer failed (non-fatal) — %s", exc)
 
+    # One-shot catalog identity repair at boot (idempotent, best-effort):
+    # links known incident titles to their true TMDB id via title + YEAR,
+    # so film pages never present another film's metadata.
+    try:
+        from app.db import SessionLocal
+        from app.services.correction import repair_known_incidents
+        with SessionLocal() as db:
+            reports = repair_known_incidents(db)
+            if reports:
+                log.info("startup: catalog identity repair — %s", reports)
+    except Exception as exc:
+        log.warning("startup: catalog identity repair failed (non-fatal) — %s", exc)
+
     # If the database has no films or ranking snapshots, run seed immediately.
     try:
         from app.db import SessionLocal

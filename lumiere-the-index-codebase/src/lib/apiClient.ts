@@ -119,6 +119,13 @@ export interface RankedFilm {
    *  Indie, Animation, Romance, Comedy). Single source of truth for genres —
    *  the frontend must never re-derive genres from synopsis substrings. */
   genre_tag?: string | null;
+  /** Provider identity — the ONLY key film-page enrichment may use. Null
+   *  means metadata surfaces render "Not available" rather than borrowing
+   *  another title's facts (the Titans/Wrath of the Titans incident). */
+  tmdb_id?: number | null;
+  /** True when the release/air date is in the future: the title can rank on
+   *  attention, but must be labeled UPCOMING and must not show box office. */
+  is_upcoming?: boolean;
   is_fallback?: boolean;
   sample_size?: number | null;
   confidence?: string | null;

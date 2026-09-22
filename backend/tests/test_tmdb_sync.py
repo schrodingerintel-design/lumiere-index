@@ -180,8 +180,11 @@ def test_sync_requires_valid_content_type(db_session, monkeypatch):
 
 
 def test_sync_tmdb_catalog_backfills_legacy_row(db_session, monkeypatch):
+    """Legacy rows backfill their TMDB id via title + YEAR. (Title-alone
+    linking is banned — that's how Titans (2026) once borrowed the 2012
+    film's box office — so the fixture year must match the sample.)"""
     _patch_movie_fetch(monkeypatch)
-    legacy = Film(slug="galactic", title="Galactic", director="Old Director", year=2024)
+    legacy = Film(slug="galactic", title="Galactic", director="Old Director", year=2025)
     db_session.add(legacy)
     db_session.commit()
     legacy_id = legacy.id

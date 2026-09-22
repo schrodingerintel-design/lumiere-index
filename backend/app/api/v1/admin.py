@@ -215,6 +215,33 @@ def score_inspector(slug: str, db: Session = Depends(get_db)):
     }
 
 
+# ── Catalog metadata-integrity audit & repair ──────────────────────────────
+
+@router.get("/admin/catalog/integrity", dependencies=[Depends(_require_admin)])
+def catalog_integrity(max_probe: int = 10, db: Session = Depends(get_db)):
+    """DB-wide metadata-integrity audit (read-only).
+
+    Reports catalog rows missing a provider id, stored ids that no longer
+    resolve live, and unreleased titles. Rows without a verified id must
+    render "Not available" downstream — never borrowed metadata.
+    """
+    from app.services.correction import audit_catalog_integrity
+    return audit_catalog_integrity(db, max_probe=max_probe)
+
+
+@router.post("/admin/catalog/repair", dependencies=[Depends(_require_admin)])
+def catalog_repair(db: Session = Depends(get_db)):
+    """Repair catalog identity for known incident slugs (idempotent).
+
+    Links rows to their true TMDB id via title + YEAR — never title alone.
+    Returns the per-slug action report (linked / already_linked /
+    no_confident_match).
+    """
+    from app.services.correction import repair_known_incidents
+    reports = repair_known_incidents(db)
+    return {"ok": True, "repairs": reports}
+
+
 @router.get("/admin/maintenance/preview", dependencies=[Depends(_require_admin)])
 def maintenance_preview(db: Session = Depends(get_db)):
     """What the retention pass would reclaim (no writes)."""

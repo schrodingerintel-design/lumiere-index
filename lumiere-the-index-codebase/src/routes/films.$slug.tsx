@@ -315,9 +315,15 @@ function FilmDetailView() {
 
   // TV shows are first-class content: their TMDB identity lives in the /tv
   // endpoints with name/first_air_date shapes. Movies use /movie endpoints.
-  // Explicit generics: movie and TV endpoints return different result shapes,
-  // so the query is typed by the fields this page actually consumes.
+  //
+  // IDENTITY RULE (non-negotiable): enrichment keys off the catalog's stored
+  // tmdb_id — never a title search. A title-only TMDB search is how Titans
+  // (2026) once displayed Wrath of the Titans (2012)'s $150M budget, $302M
+  // box office and studios. Priority: stored ID > title+year search guard.
+  // No stored id ⇒ no TMDB enrichment at all: metadata renders "Not
+  // available" rather than borrowing another film's facts.
   const isTvShow = film?.content_type === "TV_SHOW";
+  const storedTmdbId: number | null = film?.tmdb_id ?? null;
   const { data: tmdb } = useQuery<{
     results: {
       id: number;
@@ -331,12 +337,26 @@ function FilmDetailView() {
       isTvShow
         ? searchTmdbTv(film!.title, film?.year ?? undefined)
         : searchTmdbMovie(film!.title, film?.year ?? undefined),
-    enabled: !!film,
+    // Legacy-id repair ONLY: runs when the catalog row has no stored id, and
+    // even then the result must match the film's year (enforced below).
+    enabled: !!film && storedTmdbId == null,
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  const tmdbId = tmdb?.results?.[0]?.id;
-  const tmdbFilm = tmdb?.results?.[0];
+  // The verified id: stored identity always wins. The search fallback only
+  // counts when its first result shares the film's year — a different-year
+  // result is a different film and is discarded (the Titans fix).
+  const searchFirst = tmdb?.results?.[0];
+  const searchDateStr =
+    (searchFirst as { release_date?: string } | undefined)?.release_date ??
+    (searchFirst as { first_air_date?: string } | undefined)?.first_air_date ?? "";
+  const searchYear = Number(searchDateStr.slice(0, 4));
+  const yearMatches = !!film?.year && searchYear === film.year;
+  const tmdbId = storedTmdbId ?? (yearMatches ? searchFirst!.id : null);
+  // Poster/overview fallback from search results is only valid on the same
+  // guarded path as tmdbId — a wrong-film poster is just as wrong as a
+  // wrong-film box office.
+  const tmdbFilm = storedTmdbId == null && yearMatches ? searchFirst : undefined;
 
   // Dynamic OG image — declared before the early returns below so the hook order
   // stays stable once film data arrives (which flips `filmLoading` off).
@@ -506,8 +526,13 @@ function FilmDetailView() {
   const seasonCount = isTvShow ? tmdbDetails?.number_of_seasons : undefined;
   const episodeCount = isTvShow ? tmdbDetails?.number_of_episodes : undefined;
   const genres = tmdbDetails?.genres ?? [];
-  const budget = !isTvShow && tmdbDetails?.budget ? tmdbDetails.budget : null;
-  const revenue = !isTvShow && tmdbDetails?.revenue ? tmdbDetails.revenue : null;
+  // An unreleased film cannot have a box-office run: any such number on an
+  // UPCOMING title is inherited from the wrong film by definition, so the
+  // fields are suppressed outright (the Titans incident's most misleading
+  // symptom).
+  const upcoming = film.is_upcoming === true;
+  const budget = !isTvShow && !upcoming && tmdbDetails?.budget ? tmdbDetails.budget : null;
+  const revenue = !isTvShow && !upcoming && tmdbDetails?.revenue ? tmdbDetails.revenue : null;
   const language = tmdbDetails?.original_language
     ? new Intl.DisplayNames(["en"], { type: "language" }).of(tmdbDetails.original_language) ??
       tmdbDetails.original_language
@@ -602,6 +627,11 @@ function FilmDetailView() {
                 <span className="rounded-sm border border-foreground/15 bg-foreground/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                   {isTvShow ? "TV Show" : "Movie"}
                 </span>
+                {film.is_upcoming && (
+                  <span className="rounded-sm border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                    Upcoming
+                  </span>
+                )}
                 {isRanked ? (
                   <>
                     <span className="rounded-sm bg-primary px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">
@@ -904,7 +934,18 @@ function FilmDetailView() {
                 ))}
               </select>
             </div>
-            {watchData && hasWatchOptions ? (
+            {/* An unreleased title has nothing to stream yet — provider data
+                keyed to its (future) id would be inherited from the wrong
+                film, so the honest state is a scheduled-release note. */}
+            {upcoming ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Not available yet. This title is scheduled for release
+                {film.release_date
+                  ? ` on ${new Date(`${film.release_date}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                  : ""}
+                . Streaming options appear closer to release.
+              </p>
+            ) : watchData && hasWatchOptions ? (
               <>
                 <ProviderGroup label="Streaming" providers={watchRegionData?.flatrate} link={watchLink} />
                 <ProviderGroup

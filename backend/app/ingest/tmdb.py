@@ -355,14 +355,24 @@ def _upsert_content(db, item: dict, content_type: str) -> tuple[Film, bool]:
         .first()
     )
     if not film:
-        # Legacy rows may exist without a tmdb_id; match on slug/title within
-        # the same content type so we link instead of duplicating.
-        film = (
+        # Legacy rows may exist without a tmdb_id. Link ONLY on a confident
+        # identity match: title AND release year both equal. A bare title
+        # match is how "Titans" (2026) once borrowed the 2012 film's box
+        # office — title-only linking is permanently banned.
+        candidate = (
             db.query(Film)
             .filter(Film.content_type == content_type)
-            .filter((Film.slug == slug) | (Film.title == title))
+            .filter(Film.slug == slug)
             .first()
         )
+        if not (candidate and candidate.year == year):
+            candidate = (
+                db.query(Film)
+                .filter(Film.content_type == content_type)
+                .filter(Film.title == title, Film.year == year)
+                .first()
+            )
+        film = candidate
 
     if not film:
         person = (
