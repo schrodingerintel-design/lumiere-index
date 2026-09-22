@@ -48,8 +48,13 @@ def _breaker_on_checkout(dbapi_conn, record, cursor):
 
 
 @event.listens_for(engine, "engine_connect")
-def _breaker_on_connect(conn, record):
-    """A fresh connection was established successfully."""
+def _breaker_on_connect(conn, **kw):
+    """A fresh Connection was produced successfully.
+
+    SQLAlchemy 2.0 signature: the event receives only the connection and is
+    invoked on success only. Connection failures dispatch to handle_error
+    (above), which opens the breaker; this closes it.
+    """
     db_health.record_success()
 
 
@@ -58,13 +63,24 @@ def _breaker_on_error(context):
     """Open the breaker on connection-level failures (not SQL-level ones)."""
     from sqlalchemy.exc import InterfaceError, OperationalError
 
-    exc = context.original_exception
-    # OperationalError covers connect timeouts / refused / dropped
-    # connections (the outage signatures); InterfaceError covers a
-    # connection lost mid-use. SQL-level mistakes (ProgrammingError etc.)
-    # are app bugs, not outages, and must not trip the breaker.
-    if isinstance(exc, (OperationalError, InterfaceError)):
-        db_health.record_failure(f"{type(exc).__name__}: {str(exc)[:200]}")
+    # handle_error carries the RAW DBAPI exception in original_exception
+    # (e.g. pymysql.err.OperationalError), which is NOT a subclass of the
+    # SQLAlchemy wrapper classes. The wrapped forms live on
+    # sqlalchemy_exception / chained_exception — check all three so outage
+    # signatures (connect refused/timeout, dropped connections) are caught
+    # no matter which shape surfaces. Non-DBAPI errors (app bugs like a
+    # bad query) never match and must not trip the breaker.
+    # (chained_exception is a declared-but-unset slot on some SA 2.0.x
+    # builds; getattr keeps this tolerant of the context shape.)
+    candidates = (
+        getattr(context, "sqlalchemy_exception", None),
+        getattr(context, "chained_exception", None),
+        getattr(context, "original_exception", None),
+    )
+    for exc in candidates:
+        if isinstance(exc, (OperationalError, InterfaceError)):
+            db_health.record_failure(f"{type(exc).__name__}: {str(exc)[:200]}")
+            return
 
 
 class Base(DeclarativeBase):

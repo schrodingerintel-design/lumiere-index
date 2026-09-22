@@ -12,9 +12,10 @@ Follows the official Source Policy:
 """
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
+
+import structlog
 
 from app.config import settings
 from app.core.source_policy import is_adapter_permitted, STATUS_DISABLED_CONFIG
@@ -22,7 +23,7 @@ from app.ingest.base import RawMention, RawMetricSnapshot, SourceAdapter, Source
 from app.ingest.pipeline import ingest_metric_batch, record_ingest_stats
 from app.models.youtube import YouTubeSignal
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 
 def fetch_youtube_for_film(

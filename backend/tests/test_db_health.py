@@ -93,7 +93,7 @@ def test_engine_listeners_drive_breaker(db_session):
     db_module._breaker_on_checkout(object(), None, None)  # successful checkout
     assert db_health.is_open() is False
 
-    db_module._breaker_on_connect(object(), None)  # fresh connect
+    db_module._breaker_on_connect(object())  # fresh connect (SA 2.0: conn only)
     assert db_health.is_open() is False
 
 

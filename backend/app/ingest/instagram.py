@@ -22,14 +22,15 @@ from __future__ import annotations
 
 import csv
 import io
-import logging
 from datetime import datetime, timezone
 from typing import Optional
+
+import structlog
 
 from app.core.source_policy import STATUS_DISABLED_ACCESS_POLICY
 from app.ingest.base import RawMention, SourceAdapter, SourceHealth
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 
 def fetch_instagram(film_titles: list[tuple]) -> list[RawMention]:
