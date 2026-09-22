@@ -33,10 +33,11 @@ function withStubbedStorage<T>(fn: () => T): T {
 }
 
 /**
- * The beta announcement contract: a first-time viewer gets the intro once;
- * a returning viewer gets a what's-new popup whenever the shipped version
- * is newer than the last one they acknowledged; an up-to-date viewer is
- * left alone. Storage failures must never throw into the UI.
+ * The beta announcement contract: a first-time viewer is NEVER shown a
+ * popup (the intro was removed by product decision — the badge is the
+ * on-demand surface); a returning viewer gets a what's-new popup whenever
+ * the shipped version is newer than the last one they acknowledged; an
+ * up-to-date viewer is left alone. Storage failures must never throw.
  */
 describe("beta release registry", () => {
   it("has a current release entry that matches BETA_VERSION", () => {
@@ -66,9 +67,9 @@ describe("pendingBetaAnnouncement", () => {
     store.clear();
   });
 
-  it("shows the intro to a brand-new viewer", () => {
+  it("stays quiet for a brand-new viewer (no first-visit popup)", () => {
     withStubbedStorage(() => {
-      expect(pendingBetaAnnouncement()).toBe("intro");
+      expect(pendingBetaAnnouncement()).toBeNull();
     });
   });
 

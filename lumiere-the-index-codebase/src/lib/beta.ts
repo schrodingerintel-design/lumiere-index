@@ -99,19 +99,25 @@ export const BETA_INTRO_SEEN_KEY = "theindex.beta.introSeen";
 
 /**
  * What the popup should show for this visitor:
- *  - "intro"  — first visit ever: explain the beta, once.
- *  - "update" — returning viewer whose last-seen version is older: show
+ *  - "update" — viewer who has acknowledged a previous beta version: show
  *               what changed in the versions since.
- *  - null     — already seen the current version; stay quiet.
+ *  - null     — stay quiet. First-time visitors are NEVER shown a popup:
+ *               the intro was removed by product decision (nothing should
+ *               greet a brand-new visitor but the site itself). The badge
+ *               remains the on-demand surface — tapping it always opens the
+ *               latest release notes. Returning viewers only get a popup
+ *               when the version actually changed since their last visit.
  *
  * localStorage can throw (private mode, disabled storage) — every read is
  * guarded so the badge and popup can never break the page.
  */
-export function pendingBetaAnnouncement(): "intro" | "update" | null {
+export function pendingBetaAnnouncement(): "update" | null {
   try {
     const lastSeen = localStorage.getItem(LAST_SEEN_VERSION_KEY);
     if (lastSeen === null) {
-      return localStorage.getItem(BETA_INTRO_SEEN_KEY) ? null : "intro";
+      // Never seen any version before: silent. (Previously this returned
+      // "intro" for first-time visitors; that auto-popup is gone.)
+      return null;
     }
     return lastSeen === BETA_VERSION ? null : "update";
   } catch {

@@ -16,11 +16,12 @@ import { LogoMark } from "@/components/lumiere/Brand";
 /**
  * The Beta notice — the single popup system for beta communication.
  *
- * Two modes, driven by pendingBetaAnnouncement():
- *  - intro:  a brand-new viewer is told, once, that The Index is a public
- *            beta — what that means and where the version pill lives.
+ * One mode, driven by pendingBetaAnnouncement():
  *  - update: a returning viewer whose last-seen version is older gets the
- *            what's-new rundown for every version they missed.
+ *            what's-new rundown for every version they missed. First-time
+ *            visitors get NO popup — nothing should greet a brand-new
+ *            visitor but the site itself; the badge is the on-demand
+ *            surface (tap it to open the latest notes any time).
  *
  * Always a CENTERED modal (mobile and desktop), with a dimming backdrop.
  * Shows once per version (localStorage), dismissible via button, Escape or
@@ -34,7 +35,7 @@ import { LogoMark } from "@/components/lumiere/Brand";
  * anchors the overlay to the real viewport everywhere it is used.
  */
 export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClose?: () => void }) {
-  const [mode] = useState(() => (forceOpen ? "update" : pendingBetaAnnouncement()));
+  const [mode] = useState(() => (forceOpen ? "update" : pendingBetaAnnouncement()) as "update" | null);
   const [visible, setVisible] = useState(mode !== null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const wasForced = useRef(forceOpen === true);
@@ -97,10 +98,10 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
             <LogoMark className="h-5 w-5 shrink-0 text-foreground" />
             <div>
               <p className="font-display text-lg leading-tight tracking-tight text-foreground">
-                {mode === "intro" ? "You're viewing a beta" : `What's new in Beta ${BETA_VERSION}`}
+                {`What's new in Beta ${BETA_VERSION}`}
               </p>
               <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                {mode === "intro" ? `The Index · Beta v${BETA_VERSION}` : CURRENT_RELEASE.date}
+                {CURRENT_RELEASE.date}
               </p>
             </div>
           </div>
@@ -117,19 +118,6 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {mode === "intro" && (
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              The Index is a live chart of what film and television the culture is
-              actually talking about, refreshed every 15 minutes. It's in public
-              beta: everything you see can change, improve and grow. The{" "}
-              <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-primary">
-                Beta&nbsp;v{BETA_VERSION}
-              </span>{" "}
-              pill beside the logo always shows the current version. Tap it any
-              time to see what's changed.
-            </p>
-          )}
-
           {missed.map((release) => (
             <div key={release.version} className={release !== missed[0] ? "mt-5 border-t border-foreground/5 pt-4" : ""}>
               <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -160,7 +148,7 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
             onClick={dismiss}
             className="rounded-md bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground transition hover:bg-primary/90"
           >
-            {mode === "intro" ? "Got it" : "Thanks, got it"}
+            Thanks, got it
           </button>
         </div>
       </div>
