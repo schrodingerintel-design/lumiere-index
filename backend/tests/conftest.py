@@ -15,6 +15,26 @@ from app.config import settings
 # calls. Seed data + in-memory SQLite is all the tests need.
 settings.tmdb_api_key = ""
 
+# Tests must never hit the live MySQL either. The app's lifespan opens a
+# connection at TestClient startup; without this the (working since the
+# breaker fix) outage circuit breaker opens on the unreachable workspace DB
+# and every request 503s. Bind the app engine to in-memory SQLite and create
+# the schema so lifespan DB touchpoints succeed against a real, empty DB.
+settings.database_url_raw = "sqlite://"
+import app.db as _app_db
+
+_app_db.engine.dispose()
+_app_db.engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    future=True,
+)
+_app_db.SessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=_app_db.engine, future=True
+)
+Base.metadata.create_all(bind=_app_db.engine)
+
 
 @pytest.fixture(scope="function")
 def db_session():

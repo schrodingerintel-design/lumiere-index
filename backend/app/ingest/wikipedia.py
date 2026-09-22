@@ -13,11 +13,11 @@ Complies with the public Source Policy:
 """
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 import httpx
+import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.config import settings
@@ -25,7 +25,7 @@ from app.core.source_policy import is_adapter_permitted, STATUS_DISABLED_CONFIG
 from app.ingest.base import RawMention, RawMetricSnapshot, SourceAdapter, SourceHealth
 from app.ingest.pipeline import ingest_metric_batch
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger()
 
 _WIKI_API = "https://en.wikipedia.org/w/api.php"
 _PAGEVIEWS_URL = (
