@@ -25,6 +25,31 @@ def test_film_detail(client: TestClient):
     assert data["director"] == "Bong Joon-ho"
 
 
+def test_film_detail_serializes_identity_and_upcoming(client: TestClient, db_session):
+    """The Titans contract: API rows carry the stored provider id (the ONLY
+    key film-page enrichment may use) and the UPCOMING flag for unreleased
+    titles — an unreleased film ranks on attention but must never present
+    box-office facts."""
+    from datetime import date, timedelta
+    from app.models import Film
+
+    future = Film(slug="upcoming-movie", title="Upcoming Movie", director="Someone",
+                  year=2027, release_date=date.today() + timedelta(days=60), tmdb_id=424242)
+    db_session.add(future)
+    db_session.commit()
+
+    resp = client.get("/api/v1/films/upcoming-movie")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["tmdb_id"] == 424242
+    assert body["is_upcoming"] is True
+
+    future.release_date = date.today() - timedelta(days=10)
+    db_session.commit()
+    body = client.get("/api/v1/films/upcoming-movie").json()
+    assert body["is_upcoming"] is False
+
+
 def test_film_detail_not_found(client: TestClient):
     response = client.get("/api/v1/films/non-existent-film")
     assert response.status_code == 404

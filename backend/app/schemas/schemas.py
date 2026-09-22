@@ -35,6 +35,15 @@ class FilmBase(BaseModel):
     first_air_date: date | None = None
     # Canonical genre tag — the frontend groups collections by this field.
     genre_tag: str | None = None
+    # Provider identity — the ONLY key downstream enrichment may use. Film
+    # pages fetch TMDB details by this stored id, never by title search, so
+    # a generic title can never borrow another film's box office (the
+    # Titans/Wrath of the Titans incident). Null ⇒ surfaces render
+    # "Not available" instead of unverified metadata.
+    tmdb_id: int | None = None
+    # True when the title's release/air date is in the future — it can rank
+    # on attention, but must be labeled UPCOMING rather than shown box office.
+    is_upcoming: bool = False
 
 
 class RankedFilm(FilmBase):

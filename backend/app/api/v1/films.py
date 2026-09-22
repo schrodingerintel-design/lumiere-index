@@ -198,6 +198,18 @@ def _ranked_query(
     return q
 
 
+def _is_upcoming(film: Film) -> bool:
+    """True when the title's release/air date is in the future.
+
+    An unreleased title legitimately ranks on attention — it just must be
+    labeled UPCOMING instead of carrying box-office-style facts.
+    """
+    today = datetime.now(timezone.utc).date()
+    if film.content_type == "TV_SHOW":
+        return film.first_air_date is not None and film.first_air_date > today
+    return film.release_date is not None and film.release_date > today
+
+
 def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
     return RankedFilm(
         id=film.id, slug=film.slug, title=film.title,
@@ -209,6 +221,8 @@ def _to_ranked(film: Film, r: Ranking) -> RankedFilm:
         gradient_to=film.gradient_to, release_date=film.release_date,
         first_air_date=film.first_air_date,
         genre_tag=film.genre_tag,
+        tmdb_id=film.tmdb_id,
+        is_upcoming=_is_upcoming(film),
         rank=r.rank, score=r.score, chart_type=r.chart_type,
         prev_rank=r.prev_rank,
         movement=r.movement, peak_rank=r.peak_rank, weeks_on_chart=r.weeks_on_chart,
@@ -477,6 +491,8 @@ def new_entries(
                 gradient_from=f.gradient_from, gradient_to=f.gradient_to,
                 release_date=f.release_date, first_air_date=f.first_air_date,
                 genre_tag=f.genre_tag,
+                tmdb_id=f.tmdb_id,
+                is_upcoming=_is_upcoming(f),
                 rank=0, score=0.0,
             )
         result.append(item)
@@ -549,6 +565,8 @@ def search_films(
                 gradient_from=f.gradient_from, gradient_to=f.gradient_to,
                 release_date=f.release_date, first_air_date=f.first_air_date,
                 genre_tag=f.genre_tag,
+                tmdb_id=f.tmdb_id,
+                is_upcoming=_is_upcoming(f),
                 rank=0, score=0.0,
             )
         )
@@ -687,6 +705,8 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
         gradient_from=film.gradient_from, gradient_to=film.gradient_to,
         release_date=film.release_date, first_air_date=film.first_air_date,
         genre_tag=film.genre_tag,
+        tmdb_id=film.tmdb_id,
+        is_upcoming=_is_upcoming(film),
         rank=0, score=0,
     )
     # IMDb enrichment lookup (Phase 2 & 3)
