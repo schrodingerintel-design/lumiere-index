@@ -1,4 +1,4 @@
-import { useState, useEffect, type KeyboardEvent } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, ArrowRight } from "lucide-react";
@@ -103,6 +103,7 @@ export function Hero() {
   // keeps the established touch carousel, so mobile behavior is not rewritten
   // just to make the desktop composition more spatial.
   const [index, setIndex] = useState(0);
+  const heroRef = useRef<HTMLElement>(null);
   const [isCompact, setIsCompact] = useState(false);
   const [manualSelection, setManualSelection] = useState(false);
   const topFive = films?.slice(0, 5) ?? [];
@@ -140,6 +141,31 @@ export function Hero() {
     setIndex(0);
     setManualSelection(false);
   }, [leader?.slug]);
+
+  // The slideshow is also controllable without first tabbing into the hero.
+  // Ignore form fields, editable content, dialogs, and modified shortcuts so
+  // global arrow support never steals normal keyboard interaction.
+  useEffect(() => {
+    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (topFive.length < 2 || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (event.target instanceof HTMLElement) {
+        if (heroRef.current?.contains(event.target)) return;
+        if (event.target.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) {
+          return;
+        }
+      }
+      event.preventDefault();
+      setManualSelection(true);
+      setIndex((current) =>
+        event.key === "ArrowLeft"
+          ? (current - 1 + topFive.length) % topFive.length
+          : (current + 1) % topFive.length,
+      );
+    };
+    document.addEventListener("keydown", handleDocumentKeyDown);
+    return () => document.removeEventListener("keydown", handleDocumentKeyDown);
+  }, [topFive.length]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (topFive.length < 2 || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -181,6 +207,7 @@ export function Hero() {
 
   return (
     <section
+      ref={heroRef}
       className="relative scroll-mt-14 outline-none max-sm:min-h-[78svh] sm:flex sm:min-h-[500px] lg:min-h-[600px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary/70"
       role="region"
       aria-roledescription="carousel"
@@ -266,7 +293,7 @@ export function Hero() {
             </div>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60">
               Movie 100 · Updated every 15 min
-              <span className="hidden xl:inline"> · ← → to explore</span>
+              <span className="hidden sm:inline"> · ← → to explore</span>
             </span>
           </div>
 
