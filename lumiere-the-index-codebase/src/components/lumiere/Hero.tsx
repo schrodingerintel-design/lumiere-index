@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowRight } from "lucide-react";
 import {
   getTopFilms,
   getBiggestMovers,
@@ -19,7 +19,7 @@ import { TopTenSkeleton } from "./Skeletons";
 import { ShareCardButton } from "./ShareCardButton";
 import { MomentumMark, MomentumInline } from "./Momentum";
 
-/** Preload the next slide's backdrop image so swaps are instant. */
+/** Preload the next mobile hero artwork so touch transitions stay instant. */
 function useBackdropPreload(films: RankedFilm[], index: number) {
   useEffect(() => {
     if (films.length < 2) return;
@@ -99,16 +99,37 @@ export function Hero() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Desktop is intentionally anchored to the current #1. The compact layout
+  // keeps the established touch carousel, so mobile behavior is not rewritten
+  // just to make the desktop composition more spatial.
   const [index, setIndex] = useState(0);
+  const [isCompact, setIsCompact] = useState(false);
   const topFive = films?.slice(0, 5) ?? [];
-  const activeFilm = topFive[index] ?? null;
+  const leader = films?.[0] ?? null;
+  const activeFilm = isCompact ? topFive[index] ?? leader : leader;
 
   useBackdropPreload(topFive, index);
 
   useEffect(() => {
-    if (topFive.length < 2) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % topFive.length), 8000);
-    return () => clearInterval(t);
+    const compact = window.matchMedia("(max-width: 1023px)");
+    let timer: number | undefined;
+    const sync = () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      setIsCompact(compact.matches);
+      if (!compact.matches || topFive.length < 2) {
+        setIndex(0);
+        return;
+      }
+      timer = window.setInterval(() => {
+        setIndex((current) => (current + 1) % topFive.length);
+      }, 8000);
+    };
+    sync();
+    compact.addEventListener("change", sync);
+    return () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      compact.removeEventListener("change", sync);
+    };
   }, [topFive.length]);
 
   if (isLoading || !films) {
@@ -169,16 +190,13 @@ export function Hero() {
         </div>
       )}
 
-      {/* Mobile: invisible tap zones over the backdrop — tap left third for the
-          previous title, right third for the next, middle to open the film.
-          Desktop gets visible edge arrows. Sits below the content layer, so the
-          title link is never blocked. Shown up to lg — tablets keep the touch
-          layout. */}
+      {/* Compact touch navigation preserves the existing mobile hero rhythm.
+          It sits below the content layer and disappears on the desktop anchor. */}
       {topFive.length > 1 && (
         <div className="absolute inset-0 grid grid-cols-3 lg:hidden">
           <button
             type="button"
-            onClick={() => setIndex((i) => (i - 1 + topFive.length) % topFive.length)}
+            onClick={() => setIndex((current) => (current - 1 + topFive.length) % topFive.length)}
             aria-label="Previous title"
             className="h-full w-full"
           />
@@ -190,53 +208,36 @@ export function Hero() {
           />
           <button
             type="button"
-            onClick={() => setIndex((i) => (i + 1) % topFive.length)}
+            onClick={() => setIndex((current) => (current + 1) % topFive.length)}
             aria-label="Next title"
             className="h-full w-full"
           />
         </div>
       )}
 
-      {/* Desktop arrows — quiet circular controls at the edges. Mobile uses
-          the invisible tap zones above instead. */}
-      {topFive.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={() => setIndex((i) => (i - 1 + topFive.length) % topFive.length)}
-            aria-label="Previous title"
-            className="absolute left-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground lg:flex lg:left-6"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIndex((i) => (i + 1) % topFive.length)}
-            aria-label="Next title"
-            className="absolute right-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-foreground/15 bg-ink/40 text-foreground/70 backdrop-blur-sm transition hover:border-foreground/40 hover:text-foreground lg:flex lg:right-6"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </>
-      )}
-
-      {/* Content layer — transparent to taps so the zones beneath receive them;
-          interactive children re-enable pointer events explicitly. Horizontal
-          padding clears the desktop edge arrows. */}
+      {/* The leader is the focal point. The rank, movement, and tenure lockup
+          stays deliberately sparse so the artwork carries the atmosphere. */}
       <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-16 lg:pt-12 xl:px-20">
         <div className="mx-auto max-w-7xl lg:flex lg:min-h-[520px] lg:flex-col xl:min-h-[600px]">
-          {/* Rank badge — the only element at the top, square, hugging the
-              top-left corner of the content canvas */}
-          <div className="inline-flex flex-wrap items-center self-start border border-foreground/15 bg-ink/45 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
-            <span className="font-semibold text-primary">#{activeFilm?.rank ?? 1}</span>
-            <span aria-hidden className="mx-2.5">·</span>
-            {activeFilm && <MovementInline film={activeFilm} />}
-            <span aria-hidden className="mx-2.5">·</span>
-            <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 self-start">
+            <div className="inline-flex flex-wrap items-center border border-foreground/15 bg-ink/45 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
+              <span className="mr-2 inline-flex items-center gap-1.5 text-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                Live
+              </span>
+              <span className="text-primary">#{activeFilm?.rank ?? 1}</span>
+              <span aria-hidden className="mx-2.5">·</span>
+              {activeFilm && <MovementInline film={activeFilm} />}
+              <span aria-hidden className="mx-2.5">·</span>
+              <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60">
+              Movie 100 · Updated every 15 min
+            </span>
           </div>
 
           {/* Everything else sits at the bottom of the hero */}
-          <div className="lg:mt-auto lg:flex lg:items-end lg:justify-between lg:gap-14">
+          <div key={activeFilm?.slug} className="hero-leader-transition lg:mt-auto lg:flex lg:items-end lg:justify-between lg:gap-14">
             {/* Left — title, metadata, synopsis, actions */}
             <div className="min-w-0 max-w-2xl lg:pb-4">
               {/* Title — the film stays the hero */}
@@ -289,7 +290,7 @@ export function Hero() {
               )}
             </div>
 
-            {/* Right — poster card + score ring, pinned to the far right edge */}
+            {/* Right — poster card + movement lockup, pinned to the far right edge */}
             {activeFilm && (
               <div className="pointer-events-auto hidden shrink-0 items-center gap-7 lg:flex lg:pb-2">
                 <Link
@@ -506,7 +507,7 @@ function TrendingRow({ film }: { film: TrendingFilmOut }) {
           <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
             {film.title}
           </div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">{film.trend_reason}</div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">Drawing attention across the Index</div>
         </div>
       </Link>
     </li>
@@ -514,7 +515,7 @@ function TrendingRow({ film }: { film: TrendingFilmOut }) {
 }
 
 /** Homepage rhythm — What's moving → What's new → What's being discussed. */
-export function PulseRow() {
+export function PulseRow({ rail = false }: { rail?: boolean }) {
   const { data: movers, isLoading: moversLoading, error: moversError } = useQuery({
     queryKey: ["index", "movers"],
     queryFn: () => getBiggestMovers(),
@@ -540,8 +541,8 @@ export function PulseRow() {
   const loading = moversLoading || entriesLoading || trendingLoading;
 
   return (
-    <section className="mt-14 px-4 sm:px-6">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 md:grid-cols-3">
+    <section className={`${rail ? "home-pulse-rail mt-14 lg:mt-0" : "mt-14"} px-4 sm:px-6`}>
+      <div className={`mx-auto grid max-w-6xl grid-cols-1 gap-10 ${rail ? "home-pulse-grid" : "md:grid-cols-3"}`}>
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Biggest Movers

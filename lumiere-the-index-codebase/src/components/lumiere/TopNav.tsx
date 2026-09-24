@@ -11,7 +11,7 @@ const PRIMARY_LINKS = [
   { to: "/", label: "The Index", exact: true },
   { to: "/top-100", label: "Movie 100", exact: false },
   { to: "/tv-100", label: "TV 100", exact: false },
-  { to: "/weekly-100", label: "Weekly Top 100", exact: false },
+  { to: "/weekly-100", label: "Weekly 100", exact: false },
   { to: "/rising", label: "Biggest Movers", exact: false },
   { to: "/new-entries", label: "New Entries", exact: false },
   { to: "/trending", label: "Trending", exact: false },
@@ -68,7 +68,7 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
           <button
             type="button"
             onClick={onSearch}
-            className="flex h-9 items-center gap-2 rounded-full border border-foreground/10 bg-foreground/[0.04] px-3.5 text-[13px] text-muted-foreground transition hover:border-foreground/20 hover:text-foreground"
+            className="flex h-9 items-center gap-2 border border-foreground/10 bg-foreground/[0.04] px-3.5 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground"
           >
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search</span>

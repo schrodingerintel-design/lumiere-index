@@ -204,6 +204,57 @@
 .delay-200 { animation-delay: .12s }
 .delay-300 { animation-delay: .18s }
 
+/* The homepage's desktop composition: a wide live chart with a narrow,
+   editorial intelligence rail. It stays a single canvas rather than a set of
+   floating cards. The mobile version remains the original vertical flow. */
+@media (min-width: 1024px) {
+  .home-desktop-composition {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(17.5rem, 0.7fr);
+    column-gap: 3.5rem;
+    align-items: start;
+    width: 100%;
+    max-width: 90rem;
+    margin-inline: auto;
+  }
+
+  .home-desktop-composition > section {
+    min-width: 0;
+    padding-inline: 2rem;
+  }
+
+  .home-desktop-composition > section:first-child {
+    padding-top: 2.5rem;
+  }
+
+  .home-desktop-composition > .home-pulse-rail {
+    margin-top: 0;
+    padding-top: 2.5rem;
+  }
+
+  .home-desktop-composition > section > .mx-auto {
+    max-width: none;
+  }
+
+  .home-pulse-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+/* A new #1 should feel like a page turning, not a carousel advancing. */
+@keyframes heroLeaderIn {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-leader-transition {
+  animation: heroLeaderIn 560ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-leader-transition { animation: none; }
+}
+
 /* Scrollbars */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
