@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type KeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, ArrowRight } from "lucide-react";
@@ -104,9 +104,10 @@ export function Hero() {
   // just to make the desktop composition more spatial.
   const [index, setIndex] = useState(0);
   const [isCompact, setIsCompact] = useState(false);
+  const [manualSelection, setManualSelection] = useState(false);
   const topFive = films?.slice(0, 5) ?? [];
   const leader = films?.[0] ?? null;
-  const activeFilm = isCompact ? topFive[index] ?? leader : leader;
+  const activeFilm = isCompact || manualSelection ? topFive[index] ?? leader : leader;
 
   useBackdropPreload(topFive, index);
 
@@ -118,6 +119,7 @@ export function Hero() {
       setIsCompact(compact.matches);
       if (!compact.matches || topFive.length < 2) {
         setIndex(0);
+        if (!compact.matches) setManualSelection(false);
         return;
       }
       timer = window.setInterval(() => {
@@ -131,6 +133,25 @@ export function Hero() {
       compact.removeEventListener("change", sync);
     };
   }, [topFive.length]);
+
+  // A new live leader always resets manual exploration, keeping the default
+  // desktop state honest without discarding the carousel implementation.
+  useEffect(() => {
+    setIndex(0);
+    setManualSelection(false);
+  }, [leader?.slug]);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (topFive.length < 2 || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    setManualSelection(true);
+    setIndex((current) =>
+      event.key === "ArrowLeft"
+        ? (current - 1 + topFive.length) % topFive.length
+        : (current + 1) % topFive.length,
+    );
+  };
 
   if (isLoading || !films) {
     // A failed fetch must never masquerade as "loading" forever — say so and
@@ -159,7 +180,19 @@ export function Hero() {
   const daysOnChart = activeFilm?.days_on_chart ?? 1;
 
   return (
-    <section className="relative sm:flex sm:min-h-[500px] lg:min-h-[600px]">
+    <section
+      className="relative scroll-mt-14 outline-none max-sm:min-h-[78svh] sm:flex sm:min-h-[500px] lg:min-h-[600px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary/70"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Movie 100 featured titles. Use the left and right arrow keys to explore."
+      tabIndex={topFive.length > 1 ? 0 : -1}
+      onKeyDown={handleKeyDown}
+    >
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {activeFilm
+          ? `${activeFilm.title}, ranked number ${activeFilm.rank} on Movie 100.`
+          : "Loading Movie 100 featured titles."}
+      </span>
       {/* Backdrop — very visible at the top, then dissolving continuously into
           blur and the page canvas toward the bottom. Two masked copies of the
           same still create the sharp→blur crossfade; no banding, no hard edge. */}
@@ -233,6 +266,7 @@ export function Hero() {
             </div>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60">
               Movie 100 · Updated every 15 min
+              <span className="hidden xl:inline"> · ← → to explore</span>
             </span>
           </div>
 
