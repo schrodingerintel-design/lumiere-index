@@ -250,8 +250,8 @@ export function Hero() {
         </div>
       )}
 
-      {/* Compact touch navigation preserves the existing mobile hero rhythm.
-          It sits below the content layer and disappears on the desktop anchor. */}
+      {/* Compact touch navigation keeps the mobile hero art-led while the
+          editorial lockup sits in one deliberate block near the lower edge. */}
       {topFive.length > 1 && (
         <div className="absolute inset-0 grid grid-cols-3 lg:hidden">
           <button
@@ -277,9 +277,9 @@ export function Hero() {
 
       {/* The leader is the focal point. The rank, movement, and tenure lockup
           stays deliberately sparse so the artwork carries the atmosphere. */}
-      <div className="pointer-events-none relative px-4 pt-10 sm:px-8 sm:pt-14 lg:px-16 lg:pt-12 xl:px-20">
-        <div className="mx-auto max-w-7xl lg:flex lg:min-h-[520px] lg:flex-col xl:min-h-[600px]">
-          <div className="flex flex-wrap items-center justify-between gap-3 self-start">
+      <div className="pointer-events-none relative max-sm:flex max-sm:min-h-[84svh] max-sm:flex-col max-sm:px-5 max-sm:pb-5 max-sm:pt-6 sm:px-8 sm:pt-14 lg:px-16 lg:pt-12 xl:px-20">
+        <div className="mx-auto max-w-7xl max-sm:flex max-sm:min-h-[calc(84svh-6.75rem)] max-sm:w-full max-sm:flex-col lg:flex lg:min-h-[520px] lg:flex-col xl:min-h-[600px]">
+          <div className="hidden flex-wrap items-center justify-between gap-3 self-start sm:flex">
             <div className="inline-flex flex-wrap items-center border border-foreground/15 bg-ink/45 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
               <span className="mr-2 inline-flex items-center gap-1.5 text-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
@@ -297,12 +297,18 @@ export function Hero() {
             </span>
           </div>
 
-          {/* Everything else sits at the bottom of the hero */}
-          <div key={activeFilm?.slug} className="hero-leader-transition lg:mt-auto lg:flex lg:items-end lg:justify-between lg:gap-14">
+          <div className="mb-5 flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/55 sm:hidden">
+            <span className="text-foreground">Movie 100</span>
+            <span>Updated every 15 min · ← →</span>
+          </div>
+
+          {/* On mobile, one lower lockup carries the title, current movement,
+              metadata, and chart history in a deliberate editorial order. */}
+          <div key={activeFilm?.slug} className="hero-leader-transition max-sm:mt-auto max-sm:border-l-2 max-sm:border-primary/80 max-sm:pb-1 max-sm:pl-4 lg:mt-auto lg:flex lg:items-end lg:justify-between lg:gap-14">
             {/* Left — title, metadata, synopsis, actions */}
             <div className="min-w-0 max-w-2xl lg:pb-4">
               {/* Title — the film stays the hero */}
-              <h1 className="mt-5 font-display text-4xl font-medium leading-[1.02] sm:text-5xl md:text-6xl lg:mt-0 lg:text-[72px] lg:leading-[0.98] xl:text-[80px]">
+              <h1 className="mt-0 font-display text-[2.75rem] font-medium leading-[0.98] sm:mt-5 sm:text-5xl md:text-6xl lg:mt-0 lg:text-[72px] lg:leading-[0.98] xl:text-[80px]">
                 <Link
                   to="/films/$slug"
                   params={{ slug: activeFilm?.slug ?? "" }}
@@ -312,11 +318,15 @@ export function Hero() {
                 </Link>
               </h1>
 
-              {/* One line of metadata, quietly */}
-              <p className="mt-4 text-sm text-muted-foreground sm:text-[15px]">
-                {[director, activeFilm?.year, `${daysOnChart} ${daysOnChart === 1 ? "day" : "days"} on chart`]
-                  .filter(Boolean)
-                  .join(" · ")}
+              {/* Current placement is secondary to the title. */}
+              <div className="mt-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground sm:hidden">
+                <span className="text-primary">#{activeFilm?.rank ?? 1}</span>
+                {activeFilm && <MovementInline film={activeFilm} />}
+              </div>
+
+              {/* Credits stay tertiary and separate from chart history. */}
+              <p className="mt-3 text-sm text-foreground/75 sm:mt-4 sm:text-[15px] sm:text-muted-foreground">
+                {[director, activeFilm?.year].filter(Boolean).join(" · ")}
               </p>
 
               {/* Synopsis — a short taste on desktop */}
@@ -338,17 +348,10 @@ export function Hero() {
                 </Link>
               </div>
 
-              {/* Momentum (mobile / tablet) — the state of change, editorial */}
-              {activeFilm && (
-                <div className="mt-6 lg:hidden">
-                  <MomentumMark state={activeFilm.momentum} />
-                  {activeFilm.peak_rank ? (
-                    <div className="mt-1.5 font-mono text-[11px] text-muted-foreground">
-                      Peak #{activeFilm.peak_rank}
-                    </div>
-                  ) : null}
-                </div>
-              )}
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-foreground/20 pt-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:hidden">
+                {activeFilm?.peak_rank ? <span>Peak #{activeFilm.peak_rank}</span> : null}
+                <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
+              </div>
             </div>
 
             {/* Right — poster card + movement lockup, pinned to the far right edge */}
