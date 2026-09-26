@@ -6,9 +6,8 @@
  * <AdSlot placement="…" /> and this module decides whether any script runs.
  *
  * Guarantees:
- *  - With ADS_ENABLED=false (current production state) nothing here ever
- *    executes a load: no <script> tag, no network request to Google, no
- *    dataLayer traffic. The bundle merely carries inert constants.
+ *  - With ADS_ENABLED=false nothing here ever executes a load: no <script>
+ *    tag, no network request to Google, no dataLayer traffic.
  *  - With consent unresolved or denied, the library never loads.
  *  - The library is injected at most once per document.
  *  - Auto Ads stay OFF unless separately enabled (VITE_ADS_AUTO=true) —

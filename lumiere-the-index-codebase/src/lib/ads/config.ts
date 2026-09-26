@@ -22,11 +22,13 @@
  *
  * CURRENT STATE
  * ─────────────
- * Advertising is NOT active. With ADS_ENABLED=false (the default):
- *   - no Google scripts load (client or server)
- *   - no ad requests occur
- *   - no containers, space, or placeholders appear
- * The production site behaves exactly as though advertising does not exist.
+ * Advertising is ACTIVE but consent-gated. The publisher id is configured, so
+ * with ADS_ENABLED=true:
+ *   - a visitor who consents may load the library and receive ads
+ *   - a visitor who declines gets no Google script, no ad request, and no
+ *     reserved space
+ * With ADS_ENABLED=false the site behaves exactly as though advertising does
+ * not exist: no scripts, no requests, no containers.
  */
 
 /** Build-time flags via Vite env vars (set in the host environment, not committed):
@@ -40,7 +42,7 @@ const env = import.meta.env as Record<string, string | undefined>;
 
 export const ADS_ENABLED = env.VITE_ADS_ENABLED === "true";
 
-/** Google AdSense publisher account. Empty until monetization is approved. */
+/** Google AdSense publisher account. */
 export const ADSENSE_CLIENT = env.VITE_ADSENSE_CLIENT ?? "";
 
 /** Google Auto Ads — deliberately OFF. The Index controls its own placements
@@ -49,8 +51,9 @@ export const ADSENSE_CLIENT = env.VITE_ADSENSE_CLIENT ?? "";
 export const AUTO_ADS_ENABLED = env.VITE_ADS_AUTO === "true";
 
 /** Consent gate. When true (the default), no advertising script may load until
- *  a consent mechanism has granted permission. The consent layer itself is
- *  intentionally NOT implemented yet — see adsense.ts. */
+ *  a consent mechanism has granted permission. The first-party banner in
+ *  AdConsentBanner.tsx is that mechanism — it records a real decision, it
+ *  never auto-grants. */
 export const CONSENT_REQUIRED = env.VITE_ADS_CONSENT_REQUIRED !== "false";
 
 /** Developer slot preview. Only ever honoured in dev builds; production builds

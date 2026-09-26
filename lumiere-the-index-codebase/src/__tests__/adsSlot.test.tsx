@@ -63,4 +63,18 @@ describe("AdSlot rendering", () => {
     expect(html).not.toContain("<ins");
     expect(html).toContain('data-ad-status="blocked"');
   });
+
+  it("reserves NO height while the slot is blocked, so no blank void remains", async () => {
+    const html = await renderSlot({
+      VITE_ADS_ENABLED: "true",
+      VITE_SHOW_AD_SLOTS: "false",
+      PROD: false,
+    });
+    // The placement is identified but must not hold open dead space for an
+    // ad that can never be requested (consent declined/unresolved).
+    expect(html).toContain('data-ad-slot="top100-after-20"');
+    expect(html).not.toContain("min-h-[100px]");
+    expect(html).not.toContain("min-h-[120px]");
+    expect(html).not.toContain("py-6");
+  });
 });

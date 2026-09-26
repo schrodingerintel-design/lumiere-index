@@ -12,6 +12,8 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SITE_URL, SITE_NAME, sitePath } from "@/lib/site";
+import { AdConsentBanner } from "@/components/lumiere/AdConsentBanner";
+import { ADSENSE_CLIENT } from "@/lib/ads/config";
 
 function NotFoundComponent() {
   return (
@@ -107,6 +109,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       ...(import.meta.env.VITE_GOOGLE_SITE_VERIFICATION
         ? [{ name: "google-site-verification", content: import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string }]
         : []),
+      // Google AdSense account verification. Read from the single publisher-id
+      // source so this tag, ads.txt, and the adsbygoogle.js request can never
+      // drift apart. Rendered only when a publisher id is configured.
+      ...(ADSENSE_CLIENT
+        ? [{ name: "google-adsense-account", content: ADSENSE_CLIENT }]
+        : []),
     ],
     scripts: [
       {
@@ -155,6 +163,10 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        {/* AdSense is loaded lazily by AdSlot — never here — and only once a
+            real consent decision exists. The banner is the surface that
+            records that decision. */}
+        <AdConsentBanner />
         <Scripts />
         <Analytics />
       </body>
