@@ -88,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // Build marker: a deliberately harmless, content-neutral comment whose
       // only purpose is to change the build hash so a deployment can be
       // observed end-to-end. Safe to remove.
-      { name: "build-marker", content: "stale-deploy-acceptance-2026-09-26" },
+      { name: "build-marker", content: "stale-deploy-acceptance-2026-09-26-run2" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "The Index · The titles capturing the most cultural attention" },
       {
