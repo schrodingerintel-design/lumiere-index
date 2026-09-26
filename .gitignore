@@ -1,6 +1,12 @@
 # Freebuff desktop state (conversation DB) — never commit
 .freebuff/
 
+# Local environment files — never commit (any depth)
+.env
+.env.local
+.env.*
+!.env.example
+
 # Logs
 *.log
 logs/
