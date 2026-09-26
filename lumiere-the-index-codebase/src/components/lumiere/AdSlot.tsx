@@ -25,7 +25,7 @@
  * no poster, and no title typography — only the Google-mandated label and
  * (when enabled) the creative itself.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   ADS_ENABLED,
   ADSENSE_CLIENT,
@@ -33,6 +33,7 @@ import {
   getPlacement,
 } from "@/lib/ads/config";
 import { loadAdSenseScript, adSenseLoadStatus } from "@/lib/ads/adsense";
+import { getConsentState, subscribeConsent } from "@/lib/ads/consent";
 
 /** Dev-only guard: slot preview can never activate in a production build. */
 const IS_PROD_BUILD = import.meta.env.PROD;
@@ -54,6 +55,12 @@ export function AdSlot({ placement }: { placement: string }) {
   // pure render decision.
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [inView, setInView] = useState(!config?.lazy);
+
+  // Consent is resolved during render, so it must be SUBSCRIBED to: a slot
+  // that first rendered while the visitor had not yet decided would otherwise
+  // stay blocked for the whole session. Server snapshot is "unknown", which
+  // matches the no-window fallback in getConsentState().
+  useSyncExternalStore(subscribeConsent, getConsentState, () => "unknown");
 
   useEffect(() => {
     if (!config?.lazy || inView) return;
@@ -77,12 +84,27 @@ export function AdSlot({ placement }: { placement: string }) {
     return () => io.disconnect();
   }, [config?.lazy, inView]);
 
+  // Every gate must pass before anything is requested: placement enabled,
+  // ads enabled globally, the slot near the viewport, AND the library
+  // actually allowed to load (which already accounts for consent). A denied
+  // or unresolved consent state must produce no ad request whatsoever.
   const shouldLoad = Boolean(
-    config?.enabled && ADS_ENABLED && inView,
+    config?.enabled && ADS_ENABLED && inView && adSenseLoadStatus().allowed,
   );
 
   useEffect(() => {
-    if (shouldLoad) loadAdSenseScript();
+    if (!shouldLoad) return;
+    loadAdSenseScript();
+    // A <ins class="adsbygoogle"> element only renders a creative once its
+    // request is pushed onto the adsbygoogle queue. The library drains that
+    // queue when it loads, so pushing before the script arrives is correct —
+    // and required: without this push the slot stays an empty box forever.
+    try {
+      const w = window as unknown as { adsbygoogle?: unknown[] };
+      (w.adsbygoogle = w.adsbygoogle ?? []).push({});
+    } catch {
+      // Blocked or unavailable — the reserved region simply stays quiet.
+    }
   }, [shouldLoad]);
 
   // ── Developer slot preview (dev builds only) ─────────────────────────
@@ -119,20 +141,37 @@ export function AdSlot({ placement }: { placement: string }) {
       // Never a click/keyboard target: ads are not interactive product UI.
       role="complementary"
       aria-label="Advertisement"
-      // Static Tailwind classes (never interpolated) so the JIT compiler sees
+      // Static Tailwind class strings (never interpolated) so the JIT sees
       // them. Mobile gets its own fluid unit; desktop a wider horizontal one.
-      className="mx-auto w-full min-h-[100px] px-4 py-6 sm:px-6 lg:min-h-[120px]"
+      //
+      // The reserved height is applied ONLY while a creative can actually
+      // appear. Reserving it unconditionally would leave a permanent blank
+      // ~130px void at every placement for visitors who decline consent, or
+      // when no ad is served — the exact outcome the design contract forbids.
+      className={
+        ready && inView
+          ? "mx-auto w-full min-h-[100px] px-4 py-6 sm:px-6 lg:min-h-[120px]"
+          : "mx-auto w-full px-4 sm:px-6"
+      }
     >
       {ready && inView ? (
         // AdSense ins element — populated by the library once loaded.
         // Kept deliberately bare: no rank typography, no score, no poster.
-        <ins
-          className="adsbygoogle block"
-          style={{ display: "block" }}
-          data-ad-client={ADSENSE_CLIENT || undefined}
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        />
+        <>
+          {/* Google's labelling policy: the placement must be visibly marked
+              as advertising, in the ad's own frame. Mono metadata styling
+              keeps it quiet and unmistakably not a ranked title. */}
+          <p className="mb-1 text-center font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground/60">
+            Advertisement
+          </p>
+          <ins
+            className="adsbygoogle block"
+            style={{ display: "block" }}
+            data-ad-client={ADSENSE_CLIENT || undefined}
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        </>
       ) : null}
     </div>
   );

@@ -92,7 +92,29 @@ export function getConsentState(): ConsentState {
   return readLocalConsent();
 }
 
-/** Allow a future consent UI to record a decision explicitly. */
+/* ── Reactivity ────────────────────────────────────────────────────────────
+ * The gate is read during render (AdSlot) and by the banner itself. Without a
+ * way to observe changes, a slot that rendered while consent was "unknown"
+ * would stay blocked for the rest of the session even after the visitor
+ * accepts. A minimal external-store subscription keeps every consumer correct
+ * the instant a decision is recorded, with no polling and no global state. */
+
+const listeners = new Set<() => void>();
+
+/** Subscribe to consent changes. Returns an unsubscribe function. */
+export function subscribeConsent(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notifyConsentChanged(): void {
+  // Copy first: a listener may unsubscribe during iteration.
+  for (const listener of [...listeners]) listener();
+}
+
+/** Allow a first-party consent UI to record a decision explicitly. */
 export function setLocalConsent(state: Exclude<ConsentState, "unknown">): void {
   if (typeof window === "undefined") return;
   try {
@@ -101,4 +123,17 @@ export function setLocalConsent(state: Exclude<ConsentState, "unknown">): void {
     // Storage unavailable (private mode) — consent simply stays "unknown"
     // and advertising scripts remain blocked, which is the safe default.
   }
+  notifyConsentChanged();
+}
+
+/** Re-open the consent UI: forget a recorded decision so the banner can be
+ *  shown again. Used by the footer's "Ad choices" control. */
+export function clearLocalConsent(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(LOCAL_CONSENT_KEY);
+  } catch {
+    // Non-fatal: the banner simply re-asks on the next visit.
+  }
+  notifyConsentChanged();
 }

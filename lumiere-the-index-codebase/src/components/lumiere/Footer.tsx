@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { BrandLink } from "@/components/lumiere/Brand";
 import { BetaBadge } from "@/components/lumiere/BetaBadge";
+import { AdConsentSettings } from "@/components/lumiere/AdConsentBanner";
 import { XIcon, Music2 } from "lucide-react";
 
 const COMPANY_LINKS = [
@@ -95,7 +96,8 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-border pt-6 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} The Index by Lumière. All rights reserved.
+          © {new Date().getFullYear()} The Index by Lumière. All rights reserved.{" "}
+          <AdConsentSettings />
         </div>
       </div>
     </footer>

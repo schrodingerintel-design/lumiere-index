@@ -1,11 +1,11 @@
 # The Index — Advertising Architecture
 
-Infrastructure for future Google AdSense monetization.
+Google AdSense, wired into the site's own placement system.
 
-> **Current state: advertising is DISABLED.** With `ADS_ENABLED=false` (the
-> shipped default) no Google script loads, no ad request occurs, no container
-> or reserved space renders, and the production site behaves exactly as though
-> advertising does not exist. This document describes the dormant system.
+> **Current state: advertising is ACTIVE and consent-gated.** The publisher id
+> is configured, but the AdSense library still loads only after a real consent
+> decision: a visitor who declines gets no Google script, no ad request, and no
+> reserved space. Auto Ads remain OFF — The Index controls its own placements.
 
 ## RANKING INDEPENDENCE (architectural guarantee)
 
@@ -39,6 +39,7 @@ Enforced by construction:
 | `consent.ts` | Consent-state resolution (TCF v2.2 → Consent Mode v2 → local flag) |
 | `adsense.ts` | The ONLY code that touches Google scripts; gated loader |
 | `../../components/lumiere/AdSlot.tsx` | The single reusable ad surface |
+| `../../components/lumiere/AdConsentBanner.tsx` | First-party consent banner + footer reset control |
 
 ## Configuration
 
@@ -54,7 +55,9 @@ committed):
 | `VITE_SHOW_AD_SLOTS` | `false` | Dev slot preview boxes. **Ignored in production builds** (hard `import.meta.env.PROD` gate). |
 
 With ads disabled there are **zero ad containers in the DOM** — pages render
-byte-identically to a build without the ad system.
+byte-identically to a build without the ad system. With ads enabled but
+consent unresolved or denied, the containers collapse to **no reserved
+height**, so a declined visitor sees no dead space either.
 
 ## Placement registry
 
@@ -107,24 +110,29 @@ No fake consent is implemented and nothing auto-grants. Resolution order in
 
 1. IAB TCF v2.2 CMP (`window.__tcfapi`) — Google's recommended integration.
 2. Google Consent Mode v2 signals (`ad_storage`) on the dataLayer.
-3. First-party flag `localStorage["index.ads.consent"]` (a future banner
-   writes here via `setLocalConsent()`).
+3. First-party flag `localStorage["index.ads.consent"]`, written by
+   `AdConsentBanner` via `setLocalConsent()`.
 4. Otherwise `"unknown"` → **scripts stay blocked**.
+
+`AdConsentBanner` is mounted once in the root shell and renders only while the
+decision is genuinely undecided (never during SSR, so there is no hydration
+mismatch). Consent is **observable**, not merely readable: `setLocalConsent`
+and `clearLocalConsent` notify `subscribeConsent` subscribers, so a slot that
+first rendered while consent was `"unknown"` opens the moment the visitor
+accepts. The footer's **Ad choices** control clears the decision and re-opens
+the banner, so withdrawing consent is as easy as granting it.
 
 Non-personalized decisions (serving non-personalized ads where consent is
 limited) can plug into the same gate before any script loads.
 
-## Activation checklist (when we decide to monetize)
+## Activation status
 
-1. Get AdSense approval; note the publisher id.
-2. Set `VITE_ADS_ENABLED=true` and `VITE_ADSENSE_CLIENT=ca-pub-…` in the
-   production environment.
-3. Disable specific placements by flipping `enabled: false` in `PLACEMENTS`.
-4. Choose/integrate a CMP (writes TCF or Consent Mode signals) or ship a
-   consent banner that calls `setLocalConsent()`.
-5. Confirm `ads.txt` is served at the domain root with the publisher line.
-6. Review AdSense policy labelling — the "Advertisement" label is already
-   rendered on every slot; verify it satisfies the current policy.
-7. Keep `VITE_ADS_AUTO` unset/false unless deliberately enabling Auto Ads.
-8. Re-run `npx vitest run src/__tests__/ads.test.ts` after any change to this
-   system.
+1. AdSense approval + publisher id — **done** (`ca-pub-4820978382535849`).
+2. `VITE_ADS_ENABLED=true` + `VITE_ADSENSE_CLIENT` — **done** in `.env.local`;
+   set the same two vars in the **Vercel** production environment.
+3. Per-placement kill-switches — available via `enabled: false` in `PLACEMENTS`.
+4. Consent mechanism — **done**: first-party `AdConsentBanner`.
+5. `ads.txt` at the domain root — **done** (`public/ads.txt`).
+6. Visible "Advertisement" label on every filled slot — **done**.
+7. `VITE_ADS_AUTO` — deliberately **off**; leave unset.
+8. After any change here, re-run `npx vitest run src/__tests__/ads.test.ts`.
