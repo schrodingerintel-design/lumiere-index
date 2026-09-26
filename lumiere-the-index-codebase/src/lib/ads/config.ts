@@ -45,6 +45,22 @@ export const ADS_ENABLED = env.VITE_ADS_ENABLED === "true";
 /** Google AdSense publisher account. */
 export const ADSENSE_CLIENT = env.VITE_ADSENSE_CLIENT ?? "";
 
+/**
+ * Publisher account used for Google's site-verification meta tag.
+ *
+ * Deliberately NOT read from the environment. AdSense refuses to verify a site
+ * whose `<meta name="google-adsense-account">` is missing, and that tag has to
+ * be present in the served HTML whether or not ad serving has been switched
+ * on — gating it behind VITE_ADSENSE_CLIENT meant a build without the ad
+ * variables shipped no tag at all, and verification failed.
+ *
+ * This is a public identifier, not a credential: it is already exposed in
+ * ads.txt and in every adsbygoogle.js request. The id is public and
+ * intentionally committed; ads.txt and this tag are both asserted against it
+ * in the test suite so the three can never drift apart.
+ */
+export const ADSENSE_ACCOUNT_ID = "ca-pub-4820978382535849";
+
 /** Google Auto Ads — deliberately OFF. The Index controls its own placements
  *  so ads can never appear inside navigation, the hero, or between critical
  *  ranking information. Keep separately configurable and off by default. */
