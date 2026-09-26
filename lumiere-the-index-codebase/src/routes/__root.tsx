@@ -13,7 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SITE_URL, SITE_NAME, sitePath } from "@/lib/site";
 import { AdConsentBanner } from "@/components/lumiere/AdConsentBanner";
-import { ADSENSE_CLIENT } from "@/lib/ads/config";
+import { ADSENSE_ACCOUNT_ID } from "@/lib/ads/config";
 
 function NotFoundComponent() {
   return (
@@ -109,12 +109,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       ...(import.meta.env.VITE_GOOGLE_SITE_VERIFICATION
         ? [{ name: "google-site-verification", content: import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string }]
         : []),
-      // Google AdSense account verification. Read from the single publisher-id
-      // source so this tag, ads.txt, and the adsbygoogle.js request can never
-      // drift apart. Rendered only when a publisher id is configured.
-      ...(ADSENSE_CLIENT
-        ? [{ name: "google-adsense-account", content: ADSENSE_CLIENT }]
-        : []),
+      // Google AdSense account verification. UNCONDITIONAL on purpose: AdSense
+      // rejects verification when this tag is absent, so it must ship in every
+      // build regardless of the ad-serving env vars. Served from the static
+      // ADSENSE_ACCOUNT_ID, which the test suite pins against ads.txt.
+      { name: "google-adsense-account", content: ADSENSE_ACCOUNT_ID },
     ],
     scripts: [
       {

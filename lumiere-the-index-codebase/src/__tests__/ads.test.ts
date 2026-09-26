@@ -129,6 +129,49 @@ describe("adSense script gating", () => {
   });
 });
 
+/**
+ * The verification meta tag, the loader's client id, and the ads.txt
+ * declaration must all name the same publisher. AdSense rejects a site whose
+ * three declarations disagree, and the meta tag in particular is UNCONDITIONAL
+ * in the head — it is no longer derived from the ad-serving env var, because a
+ * build without those vars shipped no tag at all and verification failed.
+ */
+describe("publisher id consistency", () => {
+  it("declares a publisher account id", async () => {
+    const { ADSENSE_ACCOUNT_ID } = await import("@/lib/ads/config");
+    expect(ADSENSE_ACCOUNT_ID).toMatch(/^ca-pub-\d+$/);
+  });
+
+  it("ships the same publisher id in ads.txt", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { ADSENSE_ACCOUNT_ID } = await import("@/lib/ads/config");
+    const adsTxt = readFileSync(
+      new URL("../../public/ads.txt", import.meta.url),
+      "utf8",
+    );
+    expect(adsTxt).toContain(ADSENSE_ACCOUNT_ID);
+  });
+
+  it("uses the account id for the loader when the env var is set", async () => {
+    store.clear();
+    // Read the constant, then reset so config.ts is re-evaluated AFTER both
+    // variables are stubbed — otherwise it captures whatever ambient value the
+    // developer's or CI's environment happens to hold.
+    const { ADSENSE_ACCOUNT_ID } = await import("@/lib/ads/config");
+    vi.resetModules();
+    vi.stubEnv("VITE_ADS_ENABLED", "true");
+    vi.stubEnv("VITE_ADSENSE_CLIENT", ADSENSE_ACCOUNT_ID);
+    const { setLocalConsent: set } = await import("@/lib/ads/consent");
+    const { loadAdSenseScript, adSenseRequested } = await import(
+      "@/lib/ads/adsense"
+    );
+    set("granted");
+    loadAdSenseScript();
+    expect(adSenseRequested()).toBe(true);
+    expect(appendedScripts.at(-1)?.src).toContain(ADSENSE_ACCOUNT_ID);
+  });
+});
+
 describe("placement registry", () => {
   it("contains every planned placement id", () => {
     const ids = Object.keys(PLACEMENTS);
@@ -291,6 +334,18 @@ describe("gate with advertising enabled", () => {
     );
     expect(tag!.async).toBe(true);
     expect(tag!.crossOrigin).toBe("anonymous");
+  });
+
+  it("still injects nothing when consent is denied, even with ads on", async () => {
+    appendedScripts.length = 0;
+    const { setLocalConsent: set } = await import("@/lib/ads/consent");
+    const { loadAdSenseScript, adSenseRequested } = await import(
+      "@/lib/ads/adsense"
+    );
+    set("denied");
+    loadAdSenseScript();
+    expect(adSenseRequested()).toBe(false);
+    expect(appendedScripts).toHaveLength(0);
   });
 
   it("injects nothing at all when consent is denied", async () => {
