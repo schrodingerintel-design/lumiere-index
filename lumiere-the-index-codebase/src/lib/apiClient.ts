@@ -11,6 +11,8 @@
  *    same host / same relative path Just Works without guessing a backend URL.
  */
 
+import { reportLovableError } from "@/lib/lovable-error-reporting";
+
 const DEFAULT_DEV_BASE = "http://localhost:8000";
 
 /** Production FastAPI backend (Railway). Used as the last-resort fallback in
@@ -55,21 +57,130 @@ export const TMDB_IMG = "https://image.tmdb.org/t/p";
  *  page paints fast regardless of backend health. */
 const API_TIMEOUT_MS = 4000;
 
+/**
+ * Structured API-call logging.
+ *
+ * Every call gets a short correlation id that is ALSO sent as X-Request-ID,
+ * so a failed client load can be tied to a specific backend request in the
+ * Vercel / Railway logs rather than guessed at. The record carries endpoint,
+ * HTTP status, duration, exception type and an ISO timestamp; failures are
+ * additionally forwarded to the app's error reporter so they surface in the
+ * dashboard, not just the console.
+ */
+type ApiOutcome = "ok" | "http_error" | "timeout" | "network_error" | "parse_error";
+
+interface ApiLogRecord {
+  requestId: string;
+  endpoint: string;
+  url: string;
+  status: number;
+  durationMs: number;
+  outcome: ApiOutcome;
+  exceptionType: string | null;
+  timestamp: string;
+  /** Present when the client itself aborted (navigation, unmount). */
+  aborted: boolean;
+}
+
+function newRequestId(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID().slice(0, 8);
+    }
+  } catch {
+    /* fall through */
+  }
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function exceptionTypeOf(e: unknown): string {
+  if (e instanceof Error) return e.name || e.constructor?.name || "Error";
+  if (typeof e === "string") return "String";
+  return e === null || e === undefined ? "nullish" : typeof e;
+}
+
+function emitApiLog(record: ApiLogRecord): void {
+  // Single-line JSON: greppable in raw platform logs, parseable by hand.
+  const line = `[api] ${JSON.stringify(record)}`;
+  if (record.outcome === "ok") {
+    // Successes stay at debug so a healthy page is not noisy.
+    console.debug(line);
+    return;
+  }
+  console.error(line);
+  try {
+    reportLovableError(
+      new Error(`API ${record.outcome}: ${record.endpoint} (${record.status || "no response"})`),
+      { ...record },
+    );
+  } catch {
+    /* reporting must never break a render */
+  }
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const base = getApiBase();
-  const res = await fetch(`${base.replace(/\/+$/, "")}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    signal: AbortSignal.any([
-      AbortSignal.timeout(API_TIMEOUT_MS),
-      ...(init?.signal ? [init.signal] : []),
-    ]),
-  });
+  const url = `${base.replace(/\/+$/, "")}${path}`;
+  const requestId = newRequestId();
+  const startedAt = Date.now();
+  const timestamp = new Date(startedAt).toISOString();
+
+  const log = (
+    outcome: ApiOutcome,
+    status: number,
+    exceptionType: string | null,
+  ) =>
+    emitApiLog({
+      requestId,
+      endpoint: path,
+      url,
+      status,
+      durationMs: Date.now() - startedAt,
+      outcome,
+      exceptionType,
+      timestamp,
+      aborted: init?.signal?.aborted === true,
+    });
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        // Correlates this client call with the backend request in platform logs.
+        "X-Request-ID": requestId,
+        ...(init?.headers ?? {}),
+      },
+      signal: AbortSignal.any([
+        AbortSignal.timeout(API_TIMEOUT_MS),
+        ...(init?.signal ? [init.signal] : []),
+      ]),
+    });
+  } catch (e) {
+    const type = exceptionTypeOf(e);
+    const outcome: ApiOutcome = type === "TimeoutError" ? "timeout" : "network_error";
+    log(outcome, 0, type);
+    throw e;
+  }
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+    log("http_error", res.status, `HttpError:${res.status}`);
     throw new Error(`API ${res.status}: ${text || res.statusText}`);
   }
-  return res.json() as Promise<T>;
+
+  try {
+    const data = (await res.json()) as T;
+    log("ok", res.status, null);
+    return data;
+  } catch (e) {
+    const type = exceptionTypeOf(e);
+    const outcome: ApiOutcome =
+      type === "AbortError" || type === "TimeoutError" ? "timeout" : "parse_error";
+    log(outcome, res.status, type);
+    throw e;
+  }
 }
 
 // ─── Backend Types ────────────────────────────────────────────────────────────
