@@ -3,18 +3,29 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 /**
  * Stale-deploy recovery.
  *
- * The four behaviours under contract:
- *  1. DETECT   — a chunk-load failure matches, an arbitrary exception does not.
- *  2. RECOVER  — exactly one cache-bypassing reload.
- *  3. NO LOOPS — a second failure in the same session must not reload again.
- *  4. FALLBACK — unmatched errors render the normal boundary (recover returns
- *                false and no navigation happens), so genuine bugs stay visible.
+ * Contract:
+ *  1. DETECT      — a chunk-load failure matches a known signature; an
+ *                   arbitrary application exception does not.
+ *  2. RECOVER     — one cache-bypassing reload per failure episode.
+ *  3. NO LOOPS    — repeated failures of the SAME signature within the
+ *                   recovery window stop reloading and render the boundary.
+ *  4. INDEPENDENT — a LATER deployment (different chunk signature) recovers
+ *                   on its own; loop prevention is scoped to the failed
+ *                   deployment, not the whole session.
+ *  5. FALLBACK    — when recovery is exhausted or the error is unrelated,
+ *                   the normal error boundary renders (recover returns false,
+ *                   no navigation), so genuine bugs stay visible.
+ *
+ * Loop prevention state: { attempts, firstAt, lastAt } per signature, capped
+ * at 3 attempts inside a 5-minute window. A new signature, or the window
+ * elapsing, resets the budget.
  */
 import {
   matchChunkFailure,
   matchChunkFailureDeep,
   recoverFromStaleDeploy,
   resetStaleDeployStateForTests,
+  setRecoveryWindowForTests,
   RECOVERY_TEST_KEY,
 } from "@/lib/staleDeploy";
 
@@ -29,31 +40,29 @@ const sessionStorageMock = {
 
 const replaceMock = vi.fn();
 
+const STALE_A = () => new TypeError("Failed to fetch dynamically imported module: /assets/index-AAA.js");
+const STALE_B = () => new TypeError("Failed to fetch dynamically imported module: /assets/index-BBB.js");
+
 beforeEach(() => {
   store.clear();
   resetStaleDeployStateForTests();
+  setRecoveryWindowForTests(null as unknown as number); // restore default
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-26T12:00:00Z"));
   replaceMock.mockClear();
   vi.stubGlobal("sessionStorage", sessionStorageMock);
-  vi.stubGlobal("window", {
-    sessionStorage: sessionStorageMock,
-    location: { href: "https://lumiereindex.com/top-100", pathname: "/top-100" },
-    // recoverFromStaleDeploy routes through window.location.replace — capture
-    // it instead of navigating.
-    ...({} as object),
-  });
-  // Stub window.location.replace, which jsdom-free tests cannot assign.
-  Object.defineProperty(window, "location", {
-    value: {
-      href: "https://lumiereindex.com/top-100",
-      pathname: "/top-100",
-      replace: replaceMock,
-    },
-    configurable: true,
-    writable: true,
-  });
+  // Define location FIRST, then stub window around it — the module reads
+  // window.location.replace to perform the cache-bypassing navigation.
+  const location = {
+    href: "https://lumiereindex.com/top-100",
+    pathname: "/top-100",
+    replace: replaceMock,
+  };
+  vi.stubGlobal("window", { sessionStorage: sessionStorageMock, location });
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -61,8 +70,14 @@ afterEach(() => {
 // ── 1. DETECT ────────────────────────────────────────────────────────────────
 
 describe("chunk-failure signatures", () => {
-  it("matches the Chrome/Edge dynamic-import failure", () => {
-    expect(matchChunkFailure(new TypeError("Failed to fetch dynamically imported module: /assets/index-abc.js"))).toBe(
+  it("matches the Chrome/Edge dynamic-import failure, keyed to the failing asset", () => {
+    expect(
+      matchChunkFailure(new TypeError("Failed to fetch dynamically imported module: /assets/index-abc.js")),
+    ).toBe("dynamic_import_fetch_failed#/assets/index-abc.js");
+  });
+
+  it("falls back to the bare family name when the message names no asset", () => {
+    expect(matchChunkFailure(new TypeError("Failed to fetch dynamically imported module"))).toBe(
       "dynamic_import_fetch_failed",
     );
   });
@@ -81,7 +96,9 @@ describe("chunk-failure signatures", () => {
 
   it("matches a MIME-type mismatch (cached HTML shell, asset now serves HTML 404)", () => {
     expect(
-      matchChunkFailure(new Error("Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of \"text/html\".")),
+      matchChunkFailure(
+        new Error('Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of "text/html".'),
+      ),
     ).toBe("mime_type_mismatch");
   });
 
@@ -97,7 +114,7 @@ describe("chunk-failure signatures", () => {
     const wrapped = new Error("Route render failed", {
       cause: new TypeError("Failed to fetch dynamically imported module: /assets/routes-x.js"),
     });
-    expect(matchChunkFailureDeep(wrapped)).toBe("dynamic_import_fetch_failed");
+    expect(matchChunkFailureDeep(wrapped)).toBe("dynamic_import_fetch_failed#/assets/routes-x.js");
   });
 });
 
@@ -106,76 +123,117 @@ describe("chunk-failure signatures", () => {
 describe("recovery reload", () => {
   it("performs exactly one cache-bypassing navigation and returns true", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const err = new TypeError("Failed to fetch dynamically imported module: /assets/index-abc.js");
-
-    const navigated = recoverFromStaleDeploy(err);
+    const navigated = recoverFromStaleDeploy(STALE_A());
 
     expect(navigated).toBe(true);
     expect(replaceMock).toHaveBeenCalledTimes(1);
     const target = String(replaceMock.mock.calls[0][0]);
     // Cache bypass: a fresh query parameter forces index.html revalidation.
     expect(target).toContain("staleDeployReload=");
-    // The structured record distinguishes recovery from genuine failure.
+    // Structured log separates recovery from genuine failure.
     const record = JSON.parse(String(warn.mock.calls.at(-1)?.[0]).replace("[stale-deploy] ", ""));
     expect(record.action).toBe("reload");
-    expect(record.signature).toBe("dynamic_import_fetch_failed");
+    expect(record.signature).toBe("dynamic_import_fetch_failed#/assets/index-AAA.js");
     expect(record.path).toBe("/top-100");
     expect(typeof record.timestamp).toBe("string");
   });
 
-  it("marks the session so a later failure cannot reload again", () => {
+  it("records the attempt so loop prevention is keyed to this deployment", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    recoverFromStaleDeploy(new TypeError("Failed to fetch dynamically imported module: /a.js"));
-    expect(store.get(RECOVERY_TEST_KEY)).toBe("1");
+    recoverFromStaleDeploy(STALE_A());
+    const raw = store.get(RECOVERY_TEST_KEY);
+    expect(raw).toBeTruthy();
+    const state = JSON.parse(raw!) as Record<string, { attempts: number }>;
+    expect(state["dynamic_import_fetch_failed#/assets/index-AAA.js"].attempts).toBe(1);
   });
 });
 
 // ── 3. NO LOOPS ──────────────────────────────────────────────────────────────
 
-describe("loop prevention", () => {
-  it("never navigates twice in one session — the boundary renders instead", () => {
+describe("reload-loop prevention", () => {
+  it("stops reloading after repeated failures of the SAME chunk in the window", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const chunkError = () => new TypeError("Failed to fetch dynamically imported module: /a.js");
 
-    expect(recoverFromStaleDeploy(chunkError())).toBe(true);
-    expect(replaceMock).toHaveBeenCalledTimes(1);
+    // Three attempts are permitted within the window.
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(replaceMock).toHaveBeenCalledTimes(3);
 
-    // Second failure — same session. Must NOT navigate again.
-    expect(recoverFromStaleDeploy(chunkError())).toBe(false);
-    expect(replaceMock).toHaveBeenCalledTimes(1);
-
-    // Third+ attempts: still blocked, and logged as blocked, not reload.
-    expect(recoverFromStaleDeploy(chunkError())).toBe(false);
-    expect(replaceMock).toHaveBeenCalledTimes(1);
+    // Fourth failure inside the window: blocked, boundary renders.
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(false);
+    expect(replaceMock).toHaveBeenCalledTimes(3);
     const blocked = JSON.parse(
       String(errorSpy.mock.calls.at(-1)?.[0]).replace("[stale-deploy] ", ""),
     );
     expect(blocked.action).toBe("blocked");
+    expect(blocked.reason).toMatch(/exhausted/i);
+
+    // ...and still blocked afterwards (same window, same signature).
+    vi.advanceTimersByTime(60_000);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(false);
+    expect(replaceMock).toHaveBeenCalledTimes(3);
   });
 
   it("survives sessionStorage being unavailable (private mode) without looping", () => {
-    // Re-stub window WITHOUT sessionStorage: claimRecovery falls back to the
-    // in-memory flag, which still permits exactly one attempt per page load.
     vi.stubGlobal("window", {
-      location: {
-        href: "https://lumiereindex.com/",
-        pathname: "/",
-        replace: replaceMock,
-      },
+      location: { href: "https://lumiereindex.com/", pathname: "/", replace: replaceMock },
     });
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const err = () => new TypeError("Failed to fetch dynamically imported module: /a.js");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
 
-    expect(recoverFromStaleDeploy(err())).toBe(true);
-    expect(replaceMock).toHaveBeenCalledTimes(1);
-    // Same page load, second failure: blocked by the in-memory flag.
-    expect(recoverFromStaleDeploy(err())).toBe(false);
-    expect(replaceMock).toHaveBeenCalledTimes(1);
+    // In-memory mirror: three attempts per window, then blocked.
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(false);
+    expect(replaceMock).toHaveBeenCalledTimes(3);
   });
 });
 
-// ── 4. FALLBACK ──────────────────────────────────────────────────────────────
+// ── 4. INDEPENDENT RECOVERY ──────────────────────────────────────────────────
+
+describe("a second independent stale deployment later in the session", () => {
+  it("recovers for a DIFFERENT chunk signature, even while the first is blocked", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // First deployment: exhausted.
+    recoverFromStaleDeploy(STALE_A());
+    recoverFromStaleDeploy(STALE_A());
+    recoverFromStaleDeploy(STALE_A());
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(false);
+    expect(replaceMock).toHaveBeenCalledTimes(3);
+    expect(errorSpy.mock.calls.some((c) => String(c[0]).includes('"action":"blocked"'))).toBe(true);
+
+    // Later the same session: a NEW deployment ships, this tab now fails on a
+    // different chunk. That is a new failure episode — it must recover.
+    vi.advanceTimersByTime(60_000);
+    warn.mockClear();
+    expect(recoverFromStaleDeploy(STALE_B())).toBe(true);
+    expect(replaceMock).toHaveBeenCalledTimes(4);
+    const rec = JSON.parse(String(warn.mock.calls.at(-1)?.[0]).replace("[stale-deploy] ", ""));
+    expect(rec.action).toBe("reload");
+  });
+
+  it("resets the budget once the recovery window has elapsed", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    recoverFromStaleDeploy(STALE_A());
+    recoverFromStaleDeploy(STALE_A());
+    recoverFromStaleDeploy(STALE_A());
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(false);
+    expect(replaceMock).toHaveBeenCalledTimes(3);
+
+    // Past the 5-minute window with no further failure: fresh budget.
+    vi.advanceTimersByTime(5 * 60_000 + 1);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(replaceMock).toHaveBeenCalledTimes(4);
+  });
+});
+
+// ── 5. FALLBACK ──────────────────────────────────────────────────────────────
 
 describe("unrelated exceptions", () => {
   it("returns false without navigating and logs the failure as genuine", () => {
@@ -191,12 +249,38 @@ describe("unrelated exceptions", () => {
     expect(record.message).toContain("Cannot read properties of null");
   });
 
-  it("leaves the loop guard untouched for unmatched errors", () => {
+  it("does not consume the recovery budget of a real chunk failure", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     recoverFromStaleDeploy(new Error("genuine bug"));
-    // A later real chunk failure must still be able to recover.
+    recoverFromStaleDeploy(new TypeError("Cannot read properties of undefined (reading 'id')"));
+
+    // A real chunk failure afterwards still gets the full budget.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(recoverFromStaleDeploy(new TypeError("Failed to fetch dynamically imported module: /a.js"))).toBe(true);
-    expect(replaceMock).toHaveBeenCalledTimes(1);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(recoverFromStaleDeploy(STALE_A())).toBe(true);
+    expect(replaceMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+// ── recovery failure → boundary ─────────────────────────────────────────────
+
+describe("failed recovery falls back to the error boundary", () => {
+  it("returns false after the cap so the boundary renders, with no further navigation", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    for (let i = 0; i < 3; i++) recoverFromStaleDeploy(STALE_A());
+    const navigationsAfterCap = replaceMock.mock.calls.length;
+
+    const stillBroken = recoverFromStaleDeploy(STALE_A());
+    expect(stillBroken).toBe(false);
+    expect(replaceMock.mock.calls.length).toBe(navigationsAfterCap);
+
+    const record = JSON.parse(
+      String(errorSpy.mock.calls.at(-1)?.[0]).replace("[stale-deploy] ", ""),
+    );
+    expect(record.action).toBe("blocked");
+    expect(record.signature).toBe("dynamic_import_fetch_failed#/assets/index-AAA.js");
   });
 });

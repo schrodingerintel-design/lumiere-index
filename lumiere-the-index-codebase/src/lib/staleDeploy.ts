@@ -15,15 +15,18 @@
  *      would reload the user while hiding the real bug.
  *   2. RECOVER — one cache-bypassing reload, so the browser re-fetches
  *      index.html and lands on the current deployment's assets.
- *   3. GUARD — a session-scoped flag prevents reload loops: if the fresh page
- *      also fails, the normal error boundary renders instead of refreshing
- *      again, and the failure is logged as genuine.
+ *   3. GUARD — loop prevention scoped to the FAILED DEPLOYMENT plus a short
+ *      recovery window, not the whole session. A second failure for the same
+ *      chunk within the window renders the error boundary (no loop); a LATER
+ *      deployment failing with a different chunk hash is a new situation and
+ *      recovers independently. Two limits hold the line: at most 3 recovery
+ *      attempts, and a 5-minute cooldown after the last one.
  *
  * Logging is structured so platform logs can distinguish the two:
  *
  *   [stale-deploy] {"action":"recovering", ...} → matched, reloading now
  *   [stale-deploy] {"action":"reload",     ...} → reload issued
- *   [stale-deploy] {"action":"blocked",    ...} → already tried this session
+ *   [stale-deploy] {"action":"blocked",    ...} → within cooldown/attempt cap
  *   [stale-deploy] {"action":"none",       ...} → not a chunk failure
  *
  * The previous implementation listened on `unhandledrejection`, but the router
@@ -32,9 +35,36 @@
  * happens at the error-boundary level, where the failure actually surfaces.
  */
 
-/** Mark that recovery was already attempted in this browser session. */
-export const RECOVERY_TEST_KEY = "lumiere.staleDeploy.recovered";
-const RECOVERY_KEY = RECOVERY_TEST_KEY;
+/**
+ * Loop prevention, scoped to the failed deployment rather than the session.
+ *
+ * Why not "once per session": deployments keep landing. A visitor hit by a
+ * stale chunk at 10:00 and by a different one at 15:00 has two independent
+ * problems; blocking the second recovery turns a fixable reload into a
+ * permanent dead tab. So the guard is a short-window, per-failure-state
+ * budget:
+ *
+ *   - `signature` of the failing chunk (the failure's identity)
+ *   - `attempts`   max recovery attempts inside the window (hard cap 3)
+ *   - `firstAt`    window start; resets only after a quiet period
+ *   - `lastAt`     last attempt time (drives the cooldown)
+ *
+ * If the SAME signature fails again inside the window after the cap, the
+ * boundary renders and recovery is genuinely abandoned for that deployment —
+ * a reload loop would otherwise fight a broken deploy for an hour. A new
+ * signature means a new deployment artifact set, so it gets a fresh budget.
+ */
+const RECOVERY_WINDOW_MS = 5 * 60 * 1000;
+const MAX_ATTEMPTS_PER_WINDOW = 3;
+
+interface RecoveryState {
+  attempts: number;
+  firstAt: number;
+  lastAt: number;
+}
+
+const RECOVERY_STATE_KEY = "lumiere.staleDeploy.state";
+export const RECOVERY_TEST_KEY = RECOVERY_STATE_KEY;
 
 /**
  * Known chunk-load failure signatures. Every pattern here means "the deployed
@@ -57,7 +87,16 @@ const CHUNK_FAILURE_SIGNATURES: ReadonlyArray<{ name: string; test: RegExp }> = 
   { name: "mime_type_mismatch", test: /disallowed MIME type|expected a JavaScript module script/i },
 ];
 
-/** Match an error (or string) against the known chunk-failure signatures. */
+/**
+ * Match an error against the known chunk-failure signatures.
+ *
+ * When the error message names the failing asset (it usually does — Vite and
+ * every major browser include the URL), the signature is refined with that
+ * asset path so the loop-prevention budget is keyed to the SPECIFIC failed
+ * deployment artifact, not just "some chunk failed". That is what lets a
+ * later deployment — different chunk hash, different message — recover
+ * independently while the budget for the earlier one is still exhausted.
+ */
 export function matchChunkFailure(error: unknown): string | null {
   if (error == null) return null;
   const message =
@@ -67,7 +106,10 @@ export function matchChunkFailure(error: unknown): string | null {
         ? error
         : String(error);
   for (const { name, test } of CHUNK_FAILURE_SIGNATURES) {
-    if (test.test(message)) return name;
+    if (!test.test(message)) continue;
+    // Refine with the failing asset path when present: /assets/index-abc.js
+    const asset = message.match(/\/assets\/[^'"\s:)]+/i);
+    return asset ? `${name}#${asset[0]}` : name;
   }
   return null;
 }
@@ -92,23 +134,80 @@ function logStaleDeploy(
   else console.error(line);
 }
 
-let recoveryAttemptedMemory = false;
+let recoveryStateMemory: Record<string, RecoveryState> = {};
 
-/** True once per browser session, false afterwards — the loop guard. */
-function claimRecovery(): boolean {
+function nowMs(): number {
+  return Date.now();
+}
+
+/** Read the persisted recovery state for one failure signature. */
+function readRecoveryState(signature: string): RecoveryState | null {
+  // In-memory mirror first: identical answer, but also correct when storage
+  // is unavailable (private mode) — then it lives exactly as long as the page.
+  const mirrored = recoveryStateMemory[signature];
+  if (mirrored) return mirrored;
   try {
-    const s = window.sessionStorage;
-    if (s.getItem(RECOVERY_KEY)) return false;
-    s.setItem(RECOVERY_KEY, "1");
-    return true;
+    const raw = window.sessionStorage.getItem(RECOVERY_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, RecoveryState>;
+    return parsed[signature] ?? null;
   } catch {
-    // Storage unavailable (private mode, blocked cookies). Fall back to an
-    // in-memory flag: still exactly one attempt per page load, and the
-    // reload itself resets it — same loop guarantee, shorter memory.
-    if (recoveryAttemptedMemory) return false;
-    recoveryAttemptedMemory = true;
+    return null;
+  }
+}
+
+function writeRecoveryState(signature: string, state: RecoveryState | null): void {
+  if (state === null) delete recoveryStateMemory[signature];
+  else recoveryStateMemory[signature] = state;
+  try {
+    if (Object.keys(recoveryStateMemory).length === 0 && state === null) {
+      window.sessionStorage.removeItem(RECOVERY_STATE_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(
+      RECOVERY_STATE_KEY,
+      JSON.stringify(recoveryStateMemory),
+    );
+  } catch {
+    // Storage unavailable — the in-memory mirror above still prevents loops
+    // for this page load; the reload itself clears it.
+  }
+}
+
+/**
+ * True when a recovery attempt is allowed for this signature. Consumes one
+ * attempt from the budget when it returns true.
+ */
+function claimRecovery(signature: string): boolean {
+  const now = nowMs();
+  const windowMs = RECOVERY_WINDOW_MS_OVERRIDE ?? RECOVERY_WINDOW_MS;
+  const prev = readRecoveryState(signature);
+
+  // No recent failure of this kind: fresh budget.
+  if (!prev) {
+    writeRecoveryState(signature, { attempts: 1, firstAt: now, lastAt: now });
     return true;
   }
+
+  // The window has expired — this is a NEW failure episode (e.g. a later
+  // deployment), so the budget resets and recovery may run again.
+  if (now - prev.lastAt > windowMs) {
+    writeRecoveryState(signature, { attempts: 1, firstAt: now, lastAt: now });
+    return true;
+  }
+
+  // Still inside the window: allowed only while under the attempt cap.
+  if (prev.attempts < MAX_ATTEMPTS_PER_WINDOW) {
+    writeRecoveryState(signature, {
+      ...prev,
+      attempts: prev.attempts + 1,
+      lastAt: now,
+    });
+    return true;
+  }
+
+  // Cap exhausted inside the window — render the boundary, stop reloading.
+  return false;
 }
 
 /**
@@ -132,12 +231,14 @@ export function recoverFromStaleDeploy(error: unknown): boolean {
     return false;
   }
 
-  if (!claimRecovery()) {
-    // Already tried once this session. Rendering the boundary and stopping is
-    // correct: repeated reloading while the deployment is broken helps nobody.
+  if (!claimRecovery(signature)) {
+    // Attempt cap reached inside the recovery window. Rendering the boundary
+    // and stopping is correct: repeated reloading while the deployment is
+    // broken helps nobody. A later deployment (new chunk hash → new
+    // signature) gets a fresh budget and can still recover.
     logStaleDeploy("blocked", {
       signature,
-      reason: "recovery already attempted this session",
+      reason: "recovery attempts exhausted within the window",
     });
     return false;
   }
@@ -155,10 +256,17 @@ export function recoverFromStaleDeploy(error: unknown): boolean {
   return true;
 }
 
-/** Test-only reset of the in-memory fallback flag. */
+/** Test-only reset of the in-memory recovery state. */
 export function resetStaleDeployStateForTests(): void {
-  recoveryAttemptedMemory = false;
+  recoveryStateMemory = {};
 }
+
+/** Test-only: override the recovery window length. */
+export function setRecoveryWindowForTests(ms: number): void {
+  RECOVERY_WINDOW_MS_OVERRIDE = ms;
+}
+
+let RECOVERY_WINDOW_MS_OVERRIDE: number | null = null;
 
 /** Expose the matcher on window for manual debugging in production. */
 export function installStaleDeployRecovery(): void {
@@ -166,6 +274,6 @@ export function installStaleDeployRecovery(): void {
   (window as unknown as { __staleDeploy?: object }).__staleDeploy = {
     match: matchChunkFailureDeep,
     recover: recoverFromStaleDeploy,
-    RECOVERY_KEY,
+    RECOVERY_STATE_KEY,
   };
 }
