@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SITE_URL, SITE_NAME, sitePath } from "@/lib/site";
 import { AdConsentBanner } from "@/components/lumiere/AdConsentBanner";
 import { ADSENSE_ACCOUNT_ID } from "@/lib/ads/config";
+import { recoverFromStaleDeploy } from "@/lib/staleDeploy";
 
 function NotFoundComponent() {
   return (
@@ -38,6 +39,12 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  // A chunk-load failure here means this tab is running HTML from a previous
+  // deployment whose hashed assets no longer exist. One cache-bypassing reload
+  // lands the visitor on the current deployment; a session-scoped guard means
+  // a second failure renders this boundary instead of looping.
+  if (recoverFromStaleDeploy(error)) return null;
+
   console.error(error);
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });

@@ -1,7 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Layout } from "@/components/lumiere/Layout";
+import { recoverFromStaleDeploy } from "@/lib/staleDeploy";
 
 export function RouteError({ error, reset }: { error: Error; reset: () => void }) {
+  // Route-level chunk-load failure = stale deployment (see staleDeploy.ts).
+  // One cache-bypassing reload per session; otherwise render this boundary.
+  if (recoverFromStaleDeploy(error)) return null;
+
   return (
     <Layout>
       <section className="flex flex-col items-center justify-center px-4 py-20 text-center">

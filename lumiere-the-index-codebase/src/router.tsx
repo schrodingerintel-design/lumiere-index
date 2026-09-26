@@ -1,37 +1,22 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { installStaleDeployRecovery } from "@/lib/staleDeploy";
 
 /**
  * Stale-deploy recovery.
  *
- * When a deploy lands, previously-served index.html keeps referencing hashed
- * JS chunks that no longer exist. A tab opened before the deploy then fails
- * its next lazy-chunk fetch (dynamic import rejection) and the route renders
- * blank. This listener catches that exact failure mode and reloads the page
- * once per session so the browser picks up the fresh bundle. The sessionStorage
- * guard prevents a reload loop if the new bundle is also missing something.
+ * Detection lives in `@/lib/staleDeploy` and runs at the ERROR-BOUNDARY level,
+ * not on `unhandledrejection`: TanStack Router catches chunk-load rejections
+ * internally and renders its error boundary, so an unhandledrejection listener
+ * never saw the failure and the old safety net was inoperative. The boundaries
+ * (root ErrorComponent + RouteError) now call recoverFromStaleDeploy(), which
+ * reloads once per session with a cache-bypassing query param and otherwise
+ * lets the normal boundary render.
+ *
+ * installStaleDeployRecovery() only exposes window.__staleDeploy for manual
+ * debugging in production.
  */
-function installStaleDeployRecovery() {
-  if (import.meta.env.PROD === false || typeof window === "undefined") return;
-  const STALE_KEY = "lumiere_stale_deploy_reload";
-  window.addEventListener("unhandledrejection", (e) => {
-    const reason: unknown = e?.reason;
-    const msg =
-      reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "";
-    if (
-      /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(
-        msg,
-      )
-    ) {
-      e.preventDefault?.();
-      if (!sessionStorage.getItem(STALE_KEY)) {
-        sessionStorage.setItem(STALE_KEY, "1");
-        window.location.reload();
-      }
-    }
-  });
-}
 
 export const getRouter = () => {
   const queryClient = new QueryClient({
