@@ -8,6 +8,7 @@ from .newsletter import NewsletterSub
 from .youtube import YouTubeSignal
 from .imdb import IMDbEnrichment, IMDbVoteSnapshot
 from .metric_snapshot import MetricSnapshot
+from .telemetry import ClientErrorReport
 
 __all__ = [
     "Film", "FilmAlias", "Source", "Mention",
@@ -15,4 +16,5 @@ __all__ = [
     "DailyIndexSnapshot", "WeeklyIndexSnapshot", "IndexDebut",
     "NewsletterSub", "YouTubeSignal", "IMDbEnrichment", "IMDbVoteSnapshot",
     "MetricSnapshot",
+    "ClientErrorReport",
 ]
