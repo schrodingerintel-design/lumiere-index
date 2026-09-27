@@ -15,6 +15,11 @@ import { SITE_URL, SITE_NAME, sitePath } from "@/lib/site";
 import { AdConsentBanner } from "@/components/lumiere/AdConsentBanner";
 import { ADSENSE_ACCOUNT_ID } from "@/lib/ads/config";
 import { recoverFromStaleDeploy } from "@/lib/staleDeploy";
+import {
+  reportRootBoundaryError,
+  recordRetryAction,
+  consumeRetryOutcome,
+} from "@/lib/diagnostics";
 
 function NotFoundComponent() {
   return (
@@ -39,6 +44,11 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  // TEMPORARY observability: report the failure (fire-and-forget, fail-silent)
+  // BEFORE recovery so the payload captures the recovery state as it was at
+  // failure time. No behaviour change — recovery below is untouched.
+  const incidentId = reportRootBoundaryError(error);
+
   // A chunk-load failure here means this tab is running HTML from a previous
   // deployment whose hashed assets no longer exist. One cache-bypassing reload
   // lands the visitor on the current deployment; a session-scoped guard means
@@ -59,9 +69,15 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+        <p className="mt-3 font-mono text-xs text-muted-foreground/70">
+          Reference: {incidentId}
+        </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
+              // Instrumented: record the action before it fires so the next
+              // load can report whether the retry attempt succeeded.
+              recordRetryAction(incidentId, "reload");
               reset();
               window.location.reload();
             }}
@@ -182,6 +198,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // If the previous page load ended with an instrumented Retry click, report
+  // that the retry SUCCEEDED (phase: "recovered", same incident id) once the
+  // app actually mounts. Fire-and-forget, once per load.
+  useEffect(() => {
+    consumeRetryOutcome();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
