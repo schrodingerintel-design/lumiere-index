@@ -54,6 +54,90 @@
 :root {
   --radius: 0.5rem;
 
+  /* ══════════════════════════════════════════════════════════════════════
+     BETA 2.0 — FOUNDATION TOKENS
+     Permanent identity: BLACK + WARM WHITE + ULTRAVIOLET #6857FF.
+     Living identity: the colours of whatever culture is doing right now
+     (see lib/adaptive.ts → --amb-* variables, applied as atmosphere only).
+
+     These tokens are ADDITIVE. The pre-2.0 palette below is untouched so
+     every not-yet-migrated route keeps rendering exactly as it did — the
+     homepage migrates first, then the system propagates route by route.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Canvas + type */
+  --b2-canvas:      #070708;   /* primary canvas */
+  --b2-paper:       #F5F4F0;   /* primary text — warm white */
+  --b2-violet:      #6857FF;   /* THE Index colour. Recognisable anchor. */
+  --b2-violet-lo:   #4B3BD6;   /* deeper violet for pressed/depth states */
+  --b2-violet-hi:   #8B7DFF;   /* lifted violet for glows and hover */
+  --b2-violet-wash: oklch(0.685 0.196 285 / 0.14); /* restrained ambient wash */
+
+  /* Neutrals derived from the warm-white family — WCAG-checked against the
+     canvas. --b2-text-2 is body-secondary, --b2-text-3 is metadata/legal. */
+  --b2-text-1:      var(--b2-paper);
+  --b2-text-2:      #A8A6A1;   /* 7.4:1 on canvas — body copy */
+  --b2-text-3:      #7C7A76;   /* 4.6:1 on canvas — metadata only, ≥12px */
+  --b2-line:        oklch(0.98 0 0 / 0.09);
+  --b2-line-strong: oklch(0.98 0 0 / 0.16);
+
+  /* Surfaces — depth steps for the cinematic layering. */
+  --b2-surface-1:   #0E0E11;   /* cards */
+  --b2-surface-2:   #15151A;   /* elevated / hover */
+  --b2-surface-3:   #1C1C22;   /* chips, inputs, rails */
+  --b2-scrim:       oklch(0.035 0 0 / 0.72);
+
+  /* Movement semantics. Colour is NEVER the only signal — every use is
+     paired with an arrow glyph or a word in the components. Kept from the
+     1.x tokens because they are an accessibility contract, not branding. */
+  --b2-up:          #4ADE80;
+  --b2-down:        #F87171;
+  --b2-hold:        var(--b2-text-3);
+  --b2-new:         var(--b2-violet-hi);
+
+  /* Chart hierarchy — the tier system that gives 100 positions distinct
+     visual weight instead of 100 identical rows. */
+  --b2-tier-hero:   1;   /* #1        — hero-level            */
+  --b2-tier-major:  2;   /* #2–#5     — large premium cards   */
+  --b2-tier-strong: 3;   /* #6–#10    — strong treatment      */
+  --b2-tier-medium: 4;   /* #11–#25   — medium density rows   */
+  --b2-tier-compact: 5;   /* #26–#100  — compact chart rows   */
+
+  /* Artwork ratios. */
+  --b2-poster:      2 / 3;
+  --b2-backdrop:    16 / 9;
+
+  /* Motion. Durations are short by design: motion communicates state, it
+     never performs. --b2-dur-* are referenced by the keyframes below. */
+  --b2-dur-fast:    160ms;
+  --b2-dur-base:    280ms;
+  --b2-dur-slow:    520ms;
+  --b2-ease-out:    cubic-bezier(0.22, 0.68, 0.24, 1);
+  --b2-ease-soft:   cubic-bezier(0.32, 0.08, 0.24, 1);
+
+  /* Spacing scale — a 4px base with cinematic section rhythm. */
+  --b2-gap-micro:   0.375rem;
+  --b2-gap-tight:   0.75rem;
+  --b2-gap-section: 4.5rem;
+
+  /* Radii — 2.0 softens 1.x's near-square editorial edges. */
+  --b2-radius-sm:   0.5rem;
+  --b2-radius-md:   0.875rem;
+  --b2-radius-lg:   1.25rem;
+  --b2-radius-xl:   1.75rem;
+
+  /* Readable-content discipline (§12): the canvas goes wide, the text
+     column does not. */
+  --b2-measure:     68ch;
+  --b2-canvas-max:  96rem;
+
+  /* Adaptive colour, written at runtime by lib/adaptive.ts. The fallbacks
+     below are the honest "no artwork colour yet" state: Index violet. */
+  --amb-1: var(--b2-violet);
+  --amb-2: var(--b2-violet);
+  --amb-strength: 0.34;   /* master intensity of the atmosphere */
+  --amb-ease: 900ms;      /* transition length for colour drift */
+
   --cream:       oklch(0.955 0.008 90);   /* warm ivory — #F4F1EA */
   --ink:         oklch(0.09 0 0);         /* deep black — #080808 */
   --surface:     oklch(0.155 0 0);        /* near-black — #111111 */
@@ -73,8 +157,14 @@
   --card-foreground:       var(--cream);
   --popover:               var(--surface-alt);
   --popover-foreground:    var(--cream);
-  --primary:               var(--forest);
-  --primary-foreground:    oklch(0.98 0.005 90);
+  /* Beta 2.0: the Index colour replaces red as the brand anchor. Red stays
+     available as --forest for the 1.x routes still being migrated; it is no
+     longer the product's dominant accent (§23). */
+  --primary:               var(--b2-violet);
+  --primary-foreground:    var(--b2-paper);
+  --ring:                  var(--b2-violet);
+  --b2-legacy-primary:     var(--forest);
+  --b2-legacy-primary-fg:  oklch(0.98 0.005 90);
   --secondary:             var(--surface-alt);
   --secondary-foreground:  var(--cream);
   --muted:                 var(--surface);
@@ -85,7 +175,6 @@
   --destructive-foreground: var(--cream);
   --border:                var(--border-col);
   --input:                 oklch(1 0 0 / 0.09);
-  --ring:                  var(--forest);
 }
 
 @layer base {
@@ -269,4 +358,341 @@
 ::selection {
   background: oklch(0.58 0.2 27 / 0.45);
   color: var(--cream);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BETA 2.0 — SYSTEM LAYER
+   Tokens above are data; the utilities below are the reusable visual
+   language every migrated surface composes from. Each module gets a
+   DISTINCT rhythm rather than another identical card row (§5).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --color-canvas: var(--b2-canvas);
+  --color-paper: var(--b2-paper);
+  --color-violet: var(--b2-violet);
+  --color-violet-lo: var(--b2-violet-lo);
+  --color-violet-hi: var(--b2-violet-hi);
+  --color-surface-1: var(--b2-surface-1);
+  --color-surface-2: var(--b2-surface-2);
+  --color-surface-3: var(--b2-surface-3);
+  --color-line: var(--b2-line);
+  --color-line-strong: var(--b2-line-strong);
+  --color-scrim: var(--b2-scrim);
+
+  /* Container scale — `max-w-canvas` / `max-w-measure`. Declared as theme
+     tokens rather than arbitrary values so Tailwind emits a real
+     `var(--b2-*)` reference (a bare `max-w-[--b2-...]` would resolve to the
+     literal token name and be dropped by the browser). */
+  --container-canvas: var(--b2-canvas-max);
+  --container-measure: var(--b2-measure);
+
+  /* Index corner radii. Prefixed so they never collide with the legacy
+     editorial radius scale declared in the first @theme block. */
+  --radius-b2-sm: var(--b2-radius-sm);
+  --radius-b2-md: var(--b2-radius-md);
+  --radius-b2-lg: var(--b2-radius-lg);
+  --radius-b2-xl: var(--b2-radius-xl);
+}
+
+/* ── Adaptive atmosphere ──────────────────────────────────────────────────
+   The extracted artwork colour is NEVER the background. It appears as
+   light: two wide radial washes, a halo behind the artwork, and a hairline
+   edge glow. Text always sits on the canvas or a surface, so contrast is
+   structurally independent of whatever colour the poster happens to be. */
+
+@utility amb-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 78% at 18% 8%,
+      color-mix(in oklab, var(--amb-1) calc(var(--amb-strength) * 100%), transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      96% 66% at 88% 26%,
+      color-mix(in oklab, var(--amb-2) calc(var(--amb-strength) * 74%), transparent) 0%,
+      transparent 58%
+    );
+  transition: background var(--amb-ease) linear;
+}
+
+/* Halo behind artwork — a tight, low-opacity bloom that makes the poster
+   feel lit rather than pasted on. */
+@utility amb-halo {
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--amb-1) 42%, transparent) 0%,
+    color-mix(in oklab, var(--amb-1) 14%, transparent) 42%,
+    transparent 72%
+  );
+  /* The gradient is already soft-edged, so this blur is finishing work the
+     gradient mostly did. On a phone the halo covers a large area and a wide
+     kernel is the single most expensive thing on the page, so below `sm` we
+     shrink the radius and let the gradient carry the falloff. Visually the
+     bloom is indistinguishable; the GPU cost is not. */
+  filter: blur(20px);
+  transition: background var(--amb-ease) linear;
+}
+
+@layer utilities {
+  @media (width >= 640px) {
+    .amb-halo {
+      filter: blur(34px);
+    }
+  }
+}
+
+/* A single edge-lit hairline that picks up the ambient colour. */
+@utility amb-edge {
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklab, var(--amb-1) 26%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--amb-1) 12%, transparent);
+}
+
+/* Atmospheric wash for a selected/hovered card — very low intensity. */
+@utility amb-surface {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--amb-1) 9%, transparent) 0%,
+      transparent 58%
+    ),
+    var(--b2-surface-1);
+  transition: background var(--amb-ease) linear, border-color var(--b2-dur-base) var(--b2-ease-out);
+}
+
+/* Violet focus ring used by every interactive element (§19). */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--b2-violet-hi);
+    outline-offset: 2px;
+    border-radius: var(--b2-radius-sm);
+  }
+}
+
+/* Focus ring for elements that live inside a scroll/overflow container. An
+   outer outline is clipped at the container edge, so those controls get an
+   inset ring instead — same violet, same 2px weight, never invisible. */
+@utility focus-ring-inset {
+  &:focus-visible {
+    outline: 2px solid var(--b2-violet-hi);
+    outline-offset: -2px;
+    border-radius: inherit;
+  }
+}
+
+/* ── Signature ranking numerals ───────────────────────────────────────────
+   Large ranks are a design element, not a label. Numerals are tabular so
+   the column never reflows as ranks change. */
+@utility rank-glyph {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  line-height: 0.82;
+  color: var(--b2-paper);
+}
+
+@utility rank-glyph-outline {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  line-height: 0.82;
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in oklab, var(--b2-paper) 34%, transparent);
+}
+
+/* ── Chart hierarchy tiers ──────────────────────────────────────────────── */
+@utility tier-major-card {
+  background: var(--b2-surface-1);
+  border: 1px solid var(--b2-line);
+  border-radius: var(--b2-radius-lg);
+  transition:
+    transform var(--b2-dur-base) var(--b2-ease-out),
+    border-color var(--b2-dur-base) var(--b2-ease-out),
+    background-color var(--b2-dur-base) var(--b2-ease-out);
+  &:hover {
+    transform: translateY(-4px);
+    border-color: var(--b2-line-strong);
+    background: var(--b2-surface-2);
+  }
+}
+
+@utility tier-row {
+  display: block;
+  border-radius: var(--b2-radius-md);
+  transition: background-color var(--b2-dur-fast) var(--b2-ease-out);
+  &:hover { background: var(--b2-surface-2); }
+}
+
+/* ── Motion vocabulary ─────────────────────────────────────────────────────
+   State-changing animations only. No parallax, no floating, no bounce. */
+
+@keyframes b2-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes b2-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes b2-pop-in {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes b2-sweep {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes b2-pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.86); }
+}
+@keyframes b2-shimmer {
+  from { background-position: -180% 0; }
+  to   { background-position: 180% 0; }
+}
+
+@utility anim-rise { animation: b2-rise var(--b2-dur-slow) var(--b2-ease-out) both; }
+@utility anim-fade { animation: b2-fade var(--b2-dur-base) var(--b2-ease-out) both; }
+@utility anim-pop { animation: b2-pop-in var(--b2-dur-base) var(--b2-ease-out) both; }
+
+/* New-entry reveal: a scale-in that reads as "arrived", used sparingly. */
+@utility anim-arrival {
+  animation: b2-pop-in 620ms var(--b2-ease-soft) both;
+}
+
+/* Live dot — the only looping animation in the system. */
+@utility anim-live {
+  animation: b2-pulse-live 2.4s var(--b2-ease-soft) infinite;
+}
+
+/* Movement bar sweep — communicates a change over time without any
+   stock-terminal feel. Origin is always the left edge. */
+@utility anim-sweep {
+  transform-origin: left center;
+  animation: b2-sweep var(--b2-dur-slow) var(--b2-ease-out) both;
+}
+
+/* ── Skeletons (§17) ───────────────────────────────────────────────────────
+   Loading must feel like The Index, not like a broken page. The shimmer is
+   a slow, low-contrast pass over the surface family. */
+@utility b2-skeleton {
+  background: linear-gradient(
+    100deg,
+    var(--b2-surface-1) 24%,
+    var(--b2-surface-2) 42%,
+    var(--b2-surface-1) 60%
+  );
+  background-size: 220% 100%;
+  animation: b2-shimmer 2.1s linear infinite;
+  border-radius: var(--b2-radius-sm);
+}
+
+/* Horizontal rails: snap so a swipe always lands exactly on a title, and
+   never show a chrome bar (§11). */
+@utility rail {
+  display: flex;
+  gap: var(--b2-gap-tight);
+  /* `position: relative` is load-bearing, not decoration. A horizontally
+     scrolling flex container that is statically positioned lets its
+     scrollable overflow escape into the document's scrollable-overflow region,
+     so the whole page can be panned sideways past the rail. Making the rail a
+     containing block keeps the overflow inside it. */
+  position: relative;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@utility rail-item { scroll-snap-align: start; flex: 0 0 auto; }
+
+/* Hide scroll-driven horizontal overflow bleed on the page root. */
+@utility no-bleed { overflow-x: clip; }
+
+/* ── Below-the-fold rendering gate ─────────────────────────────────────────
+   The homepage is nine sections long, but a phone shows roughly the first one.
+   `content-visibility: auto` lets the browser skip style, layout and paint for
+   any section that is off screen, and keep only the intrinsic size we
+   declare — so the scrollbar is honest and nothing below the fold competes
+   with the hero for the first few hundred milliseconds.
+
+   `contain-intrinsic-size` is set per breakpoint because the real sections
+   are responsive; a wrong guess shows up as a scrollbar that settles.
+
+   This is a rendering optimisation only: the markup is still in the document,
+   still crawlable, and still reachable by keyboard and screen reader. */
+@utility fold-defer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 520px;
+}
+
+/* Tailwind v4 forbids nesting `@utility` inside a media query, so the
+   breakpoint variants are declared as sibling utilities that share the base
+   behaviour via a plain class selector. */
+@layer utilities {
+  @media (width >= 640px) {
+    .fold-defer {
+      contain-intrinsic-size: auto 620px;
+    }
+  }
+
+  @media (width >= 1024px) {
+    .fold-defer {
+      contain-intrinsic-size: auto 560px;
+    }
+  }
+}
+
+/* ── Global reduced-motion contract (§10, §19) ────────────────────────────
+   One authoritative block: when a visitor asks for reduced motion, every
+   Beta 2.0 animation, transition, scroll-snap behaviour and ambient drift
+   stops. Nothing decorative is worth overriding that request. */
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise,
+  .anim-fade,
+  .anim-pop,
+  .anim-arrival,
+  .anim-sweep,
+  .anim-live,
+  .b2-skeleton {
+    animation: none !important;
+  }
+
+  .amb-field,
+  .amb-halo,
+  .amb-surface,
+  .amb-edge {
+    transition: none !important;
+  }
+
+  .rail {
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+
+  .tier-major-card:hover {
+    transform: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

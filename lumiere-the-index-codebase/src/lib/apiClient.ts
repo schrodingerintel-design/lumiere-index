@@ -632,3 +632,50 @@ export const tmdbBackdropUrl = (
   path: string | null | undefined,
   size: "w780" | "w1280" | "original" = "w1280",
 ) => (path ? `${TMDB_IMG}/${size}${path}` : null);
+
+/**
+ * Responsive image helpers (§18).
+ *
+ * The API hands us ONE fixed-size URL per artwork — a w500 poster and a w1280
+ * backdrop — and the old UI used that URL everywhere. That is correct for a
+ * 22rem desktop card and badly wrong for a 147px-wide poster in a horizontal
+ * rail on a phone: the browser downloads the largest available file and throws
+ * most of it away.
+ *
+ * TMDB serves any rendition from the same path, so we can rewrite the size
+ * segment and offer the browser a real choice. Non-TMDB URLs are returned
+ * untouched, which keeps this safe for any future CDN.
+ */
+
+const TMDB_SIZE_SEGMENT = /\/t\/p\/(w\d+|original)(\/.*)$/;
+
+/** Rewrite a TMDB URL to a specific rendition, or pass anything else through. */
+export const tmdbAtSize = (
+  url: string | null | undefined,
+  size: string,
+): string | null => {
+  if (!url) return null;
+  const match = TMDB_SIZE_SEGMENT.exec(url);
+  return match ? `${TMDB_IMG}/${size}${match[2]}` : url;
+};
+
+/** Poster renditions, ascending. w185 suits a rail card, w500 a hero card. */
+const POSTER_WIDTHS = ["w185", "w342", "w500"] as const;
+
+/** Backdrop renditions, ascending. w780 is a full-width phone at 2x. */
+const BACKDROP_WIDTHS = ["w780", "w1280"] as const;
+
+/**
+ * Build a `srcset` from any artwork URL. `kind` decides which rendition ladder
+ * applies; a poster asking for backdrop sizes (or the reverse) still degrades
+ * to a valid single-candidate srcset rather than a 404.
+ */
+export function tmdbSrcSet(
+  url: string | null | undefined,
+  kind: "poster" | "backdrop" = "poster",
+): string | undefined {
+  if (!url) return undefined;
+  if (!TMDB_SIZE_SEGMENT.test(url)) return undefined;
+  const widths = kind === "poster" ? POSTER_WIDTHS : BACKDROP_WIDTHS;
+  return widths.map((w) => `${tmdbAtSize(url, w)} ${w.slice(1)}w`).join(", ");
+}
