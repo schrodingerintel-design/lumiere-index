@@ -21,7 +21,6 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ADS_ENABLED } from "@/lib/ads/config";
 import { clearLocalConsent, getConsentState, setLocalConsent } from "@/lib/ads/consent";
-import { VOICE } from "@/lib/voice";
 
 /**
  * Renders only while consent is genuinely undecided. The check runs on the
@@ -63,7 +62,8 @@ export function AdConsentBanner() {
             personalized ads.
           </p>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            {VOICE.rankingIndependence}{" "}
+            Advertisers have no influence on any Index Score, rank, or chart
+            position.{" "}
             <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
               Privacy
             </Link>
