@@ -18,15 +18,6 @@ const PRIMARY_LINKS = [
   { to: "/genres", label: "Genres", exact: false },
 ] as const;
 
-function todayLabel(): string {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-ink/95 backdrop-blur-sm">
@@ -62,9 +53,6 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <span className="hidden font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground xl:inline">
-            {todayLabel()}
-          </span>
           <button
             type="button"
             onClick={onSearch}
