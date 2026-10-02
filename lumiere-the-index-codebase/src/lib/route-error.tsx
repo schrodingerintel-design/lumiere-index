@@ -1,8 +1,8 @@
-import { Link } from "@tanstack/react-router";
+import { Link, type ErrorComponentProps } from "@tanstack/react-router";
 import { Layout } from "@/components/lumiere/Layout";
 import { recoverFromStaleDeploy } from "@/lib/staleDeploy";
 
-export function RouteError({ error, reset }: { error: Error; reset: () => void }) {
+export function RouteError({ error, reset }: ErrorComponentProps) {
   // Route-level chunk-load failure = stale deployment (see staleDeploy.ts).
   // One cache-bypassing reload per session; otherwise render this boundary.
   if (recoverFromStaleDeploy(error)) return null;
