@@ -44,7 +44,11 @@ function List({ items }: { items: string[] }) {
 
 function Privacy() {
   return (
-    <StaticPage eyebrow="Legal" title="Privacy Policy">
+    <StaticPage
+      eyebrow="Legal"
+      title="Privacy Policy"
+      lede="What The Index stores, what it never stores, and what you can do about it."
+    >
       <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
         Effective Date: September 1st 2026
       </p>

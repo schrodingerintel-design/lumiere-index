@@ -3,6 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
+import { PagePlane } from "@/components/lumiere/PagePlane";
+import { PageHead } from "@/components/lumiere/PageHead";
 import {
   getTopFilms,
   searchFilms,
@@ -180,11 +182,11 @@ function FilmPicker({
         </div>
       ) : (
         /* Empty slot: the search input lives inside the placeholder card. */
-        <div className="relative mx-auto flex aspect-[2/3] w-36 flex-col items-center justify-center gap-3 border border-dashed border-foreground/15 bg-foreground/[0.03] text-muted-foreground">
-          <Scale className="h-6 w-6 opacity-40" />
-          <span className="px-2 text-center text-xs">Choose a film</span>
+        <div className="ix-pick__slot">
+          <Scale className="ix-pick__mark" aria-hidden />
+          <span className="ix-pick__hint">Choose a film</span>
           <div className="relative w-[80%]">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="ix-pick__search" aria-hidden />
             <input
               ref={inputRef}
               type="text"
@@ -195,7 +197,7 @@ function FilmPicker({
                 setQuery(e.target.value);
                 setOpen(true);
               }}
-              className="w-full rounded-lg border border-foreground/15 bg-background/80 py-1.5 pl-7 pr-2 text-xs outline-none transition placeholder:text-muted-foreground focus:border-primary"
+              className="ix-input"
             />
           </div>
         </div>
@@ -205,43 +207,30 @@ function FilmPicker({
           next card/section: each picker card uses backdrop-filter, which creates
           a stacking context that would hide an absolutely-positioned dropdown. */}
       {open && (
-        <div
-          ref={dropdownRef}
-          className="max-h-64 overflow-y-auto rounded-xl border border-foreground/15 bg-background shadow-2xl"
-        >
+        <div ref={dropdownRef} className="ix-menu">
           {filtered.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-muted-foreground">
+            <div className="ix-menu__empty">
               {serverSearching ? `No titles match “${debounced}”.` : "No films found"}
             </div>
           ) : (
             filtered.slice(0, 20).map((f) => (
-              <button
-                key={f.slug}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-foreground/5"
-                onClick={() => handleSelect(f)}
-              >
-                <div
-                  className="h-10 w-7 shrink-0 overflow-hidden rounded-md"
+              <button key={f.slug} className="ix-menu__row" onClick={() => handleSelect(f)}>
+                <span
+                  className="ix-menu__art"
                   style={{
-                    background: `linear-gradient(155deg, ${f.gradient_from ?? "#333"}, ${f.gradient_to ?? "#111"})`,
+                    background: `linear-gradient(155deg, ${f.gradient_from ?? "#2a3140"}, ${f.gradient_to ?? "#131720"})`,
                   }}
                 />
-                <div className="min-w-0">
-                  <div className="truncate font-serif">{f.title}</div>
-                  <div className="font-mono text-[10px] text-muted-foreground">
+                <span className="min-w-0">
+                  <span className="ix-menu__t">{f.title}</span>
+                  <span className="ix-menu__m">
                     {f.director ? `${f.director} · ${f.year}` : String(f.year)}
-                  </div>
-                </div>
-                <div className="ml-auto shrink-0 text-right">
-                  <div className="font-mono text-sm text-cream">
-                    {f.rank > 0 ? `#${f.rank}` : "-"}
-                  </div>
-                  {f.rank > 0 && (
-                    <div className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-                      on The Index
-                    </div>
-                  )}
-                </div>
+                  </span>
+                </span>
+                <span className="ml-auto shrink-0 text-right">
+                  <span className="ix-menu__rk">{f.rank > 0 ? `#${f.rank}` : "-"}</span>
+                  {f.rank > 0 ? <span className="ix-menu__m">on The Index</span> : null}
+                </span>
               </button>
             ))
           )}
@@ -271,21 +260,15 @@ function CompareRow({
   // Mobile stacks the label on top with the two values side-by-side below, so
   // long labels / values never get clipped; sm+ returns to the 3-column table.
   return (
-    <div className="grid grid-cols-2 items-center gap-x-4 gap-y-1 border-b border-foreground/5 py-3 last:border-0 sm:grid-cols-[1fr_auto_1fr] sm:gap-y-0">
-      <div className="col-span-2 text-center text-[10px] uppercase tracking-[0.15em] text-muted-foreground sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:whitespace-nowrap sm:px-2">
-        {label}
-      </div>
-      <div
-        className={`text-left font-mono text-lg tabular sm:col-start-1 sm:row-start-1 sm:text-right ${aWins ? "text-cream font-semibold" : "text-foreground/70"}`}
-      >
+    <div className="ix-vs__row">
+      <div className="ix-vs__label">{label}</div>
+      <div className={aWins ? "ix-vs__val is-win ix-vs__val--a" : "ix-vs__val ix-vs__val--a"}>
         {a !== null ? format(a) : "-"}
-        {aWins && <span className="ml-1.5 text-[10px] text-primary">▲</span>}
+        {aWins ? <span className="ix-vs__win">▲</span> : null}
       </div>
-      <div
-        className={`text-right font-mono text-lg tabular sm:col-start-3 sm:row-start-1 sm:text-left ${bWins ? "text-cream font-semibold" : "text-foreground/70"}`}
-      >
+      <div className={bWins ? "ix-vs__val is-win ix-vs__val--b" : "ix-vs__val ix-vs__val--b"}>
         {b !== null ? format(b) : "-"}
-        {bWins && <span className="ml-1.5 text-[10px] text-primary">▲</span>}
+        {bWins ? <span className="ix-vs__win">▲</span> : null}
       </div>
     </div>
   );
@@ -351,97 +334,77 @@ function ComparePage() {
 
   return (
     <Layout>
-      <section className="px-4 pt-6 lg:px-6">
-        <div className="flex items-center gap-3">
-          <Scale className="h-5 w-5 text-primary" />
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Head to Head
-          </div>
-        </div>
-        <h1 className="mt-2 font-serif text-5xl lg:text-6xl">Compare Films</h1>
-        <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Head-to-head analysis comparing chart positions, viewer sentiment, and box office.
-        </p>
+      <PagePlane lead={filmA} wide>
+        <PageHead
+          kicker="Head to Head"
+          title="Compare Films"
+          lede="Head-to-head analysis comparing chart positions, viewer sentiment, and box office."
+        >
+          <p className="ix-callout">
+            <ShieldCheck aria-hidden />
+            <span>
+              Chart positions come from measured audience attention; comparisons stay editorial.
+            </span>
+          </p>
+        </PageHead>
 
-        {/* Methodology note */}
-        <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-primary">
-          <ShieldCheck className="h-4 w-4 shrink-0" />
-          <span>
-            Chart positions come from measured audience attention; comparisons stay editorial.
-          </span>
-        </div>
-      </section>
-
-      {/* Film Pickers */}
-      <section className="mt-8 grid grid-cols-1 gap-6 px-4 sm:grid-cols-2 lg:px-6">
-        <div className="border border-foreground/10 p-5">
-          <div className="mb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Film A
-          </div>
-          {isLoading ? (
-            <Skeleton className="h-40 w-full rounded-xl" />
-          ) : (
-            <FilmPicker
-              value={filmA}
-              onSelect={setFilmA}
-              placeholder="Search films…"
-              films={allFilms}
-            />
-          )}
-        </div>
-        <div className="border border-foreground/10 p-5">
-          <div className="mb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Film B
-          </div>
-          {isLoading ? (
-            <Skeleton className="h-40 w-full rounded-xl" />
-          ) : (
-            <FilmPicker
-              value={filmB}
-              onSelect={setFilmB}
-              placeholder="Search films…"
-              films={allFilms}
-            />
-          )}
-        </div>
-      </section>
-
-      {/* Comparison Table */}
-      {!canCompare ? (
-        <section className="mt-8 px-4 lg:px-6">
-          <div className="border-y border-foreground/10 bg-surface p-12 text-center">
-            <Scale className="mx-auto h-12 w-12 opacity-20" />
-            <p className="mt-4 text-sm text-muted-foreground">
-              Select two films to compare. Search in either card above.
-            </p>
-          </div>
-        </section>
-      ) : (
-        <section className="mt-8 px-4 lg:px-6">
-          <div className="border border-foreground/10">
-            {/* Header row — two columns on mobile so full titles fit, the scale
-                icon is hidden; three columns with truncated titles on sm+. */}
-            <div className="grid grid-cols-2 items-center gap-2 border-b border-foreground/10 bg-foreground/[0.03] px-4 py-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-6">
-              <Link
-                to="/films/$slug"
-                params={{ slug: filmA!.slug }}
-                className="text-right font-serif text-lg leading-snug hover:text-primary transition sm:truncate sm:text-xl"
-              >
-                {filmA!.title}
-              </Link>
-              <div className="hidden px-2 text-center sm:block">
-                <Scale className="mx-auto h-5 w-5 text-muted-foreground" />
-              </div>
-              <Link
-                to="/films/$slug"
-                params={{ slug: filmB!.slug }}
-                className="text-left font-serif text-lg leading-snug hover:text-primary transition sm:truncate sm:text-xl"
-              >
-                {filmB!.title}
-              </Link>
+        {/* Film Pickers */}
+        <div className="ix-sec">
+          <div className="ix-picks">
+            <div className="ix-pick">
+              <div className="ix-pick__label">Film A</div>
+              {isLoading ? (
+                <Skeleton className="h-40 w-full" style={{ borderRadius: 12 }} />
+              ) : (
+                <FilmPicker
+                  value={filmA}
+                  onSelect={setFilmA}
+                  placeholder="Search films…"
+                  films={allFilms}
+                />
+              )}
             </div>
+            <div className="ix-pick">
+              <div className="ix-pick__label">Film B</div>
+              {isLoading ? (
+                <Skeleton className="h-40 w-full" style={{ borderRadius: 12 }} />
+              ) : (
+                <FilmPicker
+                  value={filmB}
+                  onSelect={setFilmB}
+                  placeholder="Search films…"
+                  films={allFilms}
+                />
+              )}
+            </div>
+          </div>
+        </div>
 
-            <div className="px-6 py-2">
+        {/* Comparison Table */}
+        {!canCompare ? (
+          <div className="ix-sec">
+            <div className="ix-note">
+              <Scale className="ix-note__mark" aria-hidden />
+              <p className="ix-note__title">Nothing to compare yet</p>
+              <p className="ix-note__body">
+                Select two films to compare. Search in either card above.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="ix-sec">
+            <div className="ix-vs">
+              <div className="ix-vs__hd">
+                <Link to="/films/$slug" params={{ slug: filmA!.slug }} className="ix-vs__title">
+                  {filmA!.title}
+                </Link>
+                <Scale className="ix-vs__scale" aria-hidden />
+                <Link to="/films/$slug" params={{ slug: filmB!.slug }} className="ix-vs__title">
+                  {filmB!.title}
+                </Link>
+              </div>
+
+              <div className="ix-vs__body">
               <CompareRow
                 label="Chart position"
                 a={filmA!.rank > 0 ? filmA!.rank : null}
@@ -498,26 +461,27 @@ function ComparePage() {
               />
             </div>
 
-            {/* Bottom CTA — stacks full-width on mobile, side-by-side on sm+. */}
-            <div className="flex flex-col gap-3 border-t border-foreground/10 bg-foreground/[0.02] px-4 py-4 sm:flex-row sm:px-6">
-              <Link
-                to="/films/$slug"
-                params={{ slug: filmA!.slug }}
-                className="flex-1 rounded-xl border border-foreground/10 py-2.5 text-center text-sm text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground font-mono"
-              >
-                {filmA!.title} Deep Dive →
-              </Link>
-              <Link
-                to="/films/$slug"
-                params={{ slug: filmB!.slug }}
-                className="flex-1 rounded-xl border border-foreground/10 py-2.5 text-center text-sm text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground font-mono"
-              >
-                {filmB!.title} Deep Dive →
-              </Link>
+              {/* Bottom CTA — stacks full-width on mobile, side-by-side on sm+. */}
+              <div className="ix-vs__foot">
+                <Link
+                  to="/films/$slug"
+                  params={{ slug: filmA!.slug }}
+                  className="ix-more ix-more--wide"
+                >
+                  {filmA!.title} Deep Dive →
+                </Link>
+                <Link
+                  to="/films/$slug"
+                  params={{ slug: filmB!.slug }}
+                  className="ix-more ix-more--wide"
+                >
+                  {filmB!.title} Deep Dive →
+                </Link>
+              </div>
             </div>
           </div>
-        </section>
-      )}
+        )}
+      </PagePlane>
     </Layout>
   );
 }

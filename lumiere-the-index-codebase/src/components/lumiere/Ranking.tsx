@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import type { ReactNode } from "react";
 import type { RankedFilm } from "@/lib/apiClient";
 import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
@@ -15,21 +15,15 @@ export function Movement({ film }: { film: RankedFilm }) {
   const change = film.movement ?? 0;
   if (film.prev_rank == null) {
     return (
-      <span
-        className="inline-block rounded-sm bg-foreground/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-foreground"
-        title="First appearance on The Index"
-      >
+      <span className="ix-delta ix-delta--new" title="First appearance on The Index">
         New
       </span>
     );
   }
   if (change > 0) {
     return (
-      <span
-        className="flex items-center gap-0.5 font-mono text-xs tabular text-up"
-        title={`Up ${change} since the previous chart`}
-      >
-        <ArrowUp className="h-3 w-3" aria-hidden />
+      <span className="ix-delta ix-delta--up" title={`Up ${change} since the previous chart`}>
+        <ArrowUp aria-hidden />
         {change}
       </span>
     );
@@ -37,17 +31,17 @@ export function Movement({ film }: { film: RankedFilm }) {
   if (change < 0) {
     return (
       <span
-        className="flex items-center gap-0.5 font-mono text-xs tabular text-down"
+        className="ix-delta ix-delta--down"
         title={`Down ${Math.abs(change)} since the previous chart`}
       >
-        <ArrowDown className="h-3 w-3" aria-hidden />
+        <ArrowDown aria-hidden />
         {Math.abs(change)}
       </span>
     );
   }
   return (
-    <span className="font-mono text-sm text-muted-foreground" title="Held its rank">
-      —
+    <span className="ix-delta ix-delta--flat" title="Held its rank">
+      <Minus aria-hidden />0
     </span>
   );
 }

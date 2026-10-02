@@ -50,22 +50,28 @@
   --font-serif: var(--font-display);
 }
 
-/* ── The only theme: black canvas, ivory type, red reserved for emphasis ── */
+/* ── The only theme ──────────────────────────────────────────────────────────
+   Black canvas, ivory type, and a single warm accent. The accent used to be a
+   cinematic red reserved for editorial emphasis; in this direction it is a
+   lantern amber — the same amber the home plane uses for a rising title — so
+   emphasis across the whole product reads as one colour, not two. Surfaces
+   carry a faint blue cast so the lit planes read as light rather than as grey
+   paint. */
 :root {
   --radius: 0.5rem;
 
   --cream:       oklch(0.955 0.008 90);   /* warm ivory — #F4F1EA */
   --ink:         oklch(0.09 0 0);         /* deep black — #080808 */
-  --surface:     oklch(0.155 0 0);        /* near-black — #111111 */
-  --surface-alt: oklch(0.2 0 0);          /* elevated — #1a1a1a */
-  --border-col:  oklch(1 0 0 / 0.08);     /* hairline dividers — #242424 on black */
+  --surface:     oklch(0.155 0.008 260);   /* near-black, cool cast — #101318 */
+  --surface-alt: oklch(0.2 0.008 260);     /* elevated — #171b21 */
+  --border-col:  oklch(1 0 0 / 0.09);      /* hairline dividers */
 
-  /* Cinematic red — branding and editorial emphasis only. */
-  --forest:      oklch(0.58 0.2 27);      /* #E52B2B */
-  --forest-deep: oklch(0.68 0.13 152);    /* positive green — #4CAF72 */
-  --live:        oklch(0.68 0.13 152);
-  --up:          oklch(0.68 0.13 152);
-  --down:        oklch(0.62 0.15 25);     /* negative red — #D95353 */
+  /* Lantern amber — the product's one accent. */
+  --forest:      oklch(0.74 0.13 68);      /* #d99441 */
+  --forest-deep: oklch(0.62 0.11 152);     /* positive, quiet — #4e9d74 */
+  --live:        oklch(0.66 0.14 152);
+  --up:          oklch(0.62 0.11 152);
+  --down:        oklch(0.58 0.13 26);      /* negative, muted — #c0564f */
 
   --background:            var(--ink);
   --foreground:            var(--cream);
@@ -74,17 +80,17 @@
   --popover:               var(--surface-alt);
   --popover-foreground:    var(--cream);
   --primary:               var(--forest);
-  --primary-foreground:    oklch(0.98 0.005 90);
+  --primary-foreground:    oklch(0.14 0.01 260);
   --secondary:             var(--surface-alt);
   --secondary-foreground:  var(--cream);
   --muted:                 var(--surface);
-  --muted-foreground:      oklch(0.72 0.008 90);  /* warm gray — #A6A29B */
+  --muted-foreground:      oklch(0.7 0.012 255);   /* cool grey — #9aa1ab */
   --accent:                var(--forest);
-  --accent-foreground:     oklch(0.98 0.005 90);
+  --accent-foreground:     oklch(0.14 0.01 260);
   --destructive:           var(--down);
   --destructive-foreground: var(--cream);
   --border:                var(--border-col);
-  --input:                 oklch(1 0 0 / 0.09);
+  --input:                 oklch(1 0 0 / 0.1);
   --ring:                  var(--forest);
 }
 
@@ -267,9 +273,701 @@
 ::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 0.22); }
 
 ::selection {
-  background: oklch(0.58 0.2 27 / 0.45);
+  background: oklch(0.74 0.13 68 / 0.4);
   color: var(--cream);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INTERIOR PAGES — the same composition as the home page, at page scale.
+
+   Every route below the front door opens on a lit plane inside an environment.
+   Where a page has a leading title, the plane is lit by that title's own
+   artwork colours; where it doesn't, a neutral cinematic base is used. The
+   plane dissolves into the page's black at its foot, and the footer sits on
+   that black, so no page ends on a hard edge.
+   ══════════════════════════════════════════════════════════════════════════ */
+.ix-page {
+  position: relative;
+  padding: clamp(14px, 2.2vw, 34px) clamp(10px, 2.2vw, 34px) 0;
+}
+
+.ix-page__env { position: absolute; inset: 0 0 auto 0; height: 78%; overflow: hidden; pointer-events: none; }
+.ix-page__env::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(174deg, #0b0c13 0%, #08090e 46%, var(--ix-ink) 100%);
+}
+.ix-page__bloom { position: absolute; inset: -14% 0 0 0; height: 92%; }
+.ix-page__bloom::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(46% 34% at 14% 0%, rgb(var(--ix-a1) / 0.5), transparent 66%),
+    radial-gradient(40% 30% at 82% 8%, rgb(var(--ix-a2) / 0.36), transparent 68%);
+}
+.ix-page__bloom::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(52% 32% at 50% 26%, rgb(var(--ix-a3) / 0.16), transparent 72%);
+}
+.ix-page__depth {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    rgb(8 8 8 / 0.2) 0%, rgb(8 8 8 / 0.44) 26%, rgb(8 8 8 / 0.74) 52%,
+    rgb(8 8 8 / 0.93) 72%, var(--ix-ink) 90%, var(--ix-ink) 100%);
+}
+.ix-page__grain {
+  position: absolute; inset: 0; opacity: 0.024; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* The plane. Same recipe as the home panel — thin, uneven, lit by the title. */
+.ix-plane {
+  position: relative; z-index: 2;
+  max-width: 72rem; margin-inline: auto;
+  border-radius: clamp(20px, 2.2vw, 32px);
+  background:
+    radial-gradient(118% 52% at 50% -10%, rgb(var(--ix-a3) / 0.46), transparent 66%),
+    radial-gradient(72% 38% at 2% 8%, rgb(var(--ix-a1) / 0.3), transparent 72%),
+    linear-gradient(178deg,
+      rgb(255 255 255 / 0.5) 0%,
+      rgb(255 255 255 / 0.62) 26%,
+      rgb(250 251 254 / 0.74) 62%,
+      rgb(242 245 250 / 0.85) 100%);
+  -webkit-backdrop-filter: blur(46px) saturate(1.55) brightness(1.06);
+  backdrop-filter: blur(46px) saturate(1.55) brightness(1.06);
+  border: 1px solid rgb(255 255 255 / 0.48);
+  box-shadow:
+    0 60px 120px -50px rgb(0 0 0 / 0.92),
+    0 0 120px -34px rgb(var(--ix-a1) / 0.38),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
+  color: var(--ix-panel-ink);
+  overflow: hidden;
+}
+.ix-plane--wide { max-width: 90rem; }
+.ix-plane::before {
+  content: ""; position: absolute; inset: 0; z-index: 6; padding: 1px;
+  border-radius: inherit; pointer-events: none;
+  background: linear-gradient(172deg, rgb(var(--ix-a3) / 0.75), rgb(var(--ix-a1) / 0.24) 30%, transparent 56%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* ── page head ────────────────────────────────────────────────────────────── */
+.ix-phead {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: clamp(16px, 3vw, 40px); flex-wrap: wrap;
+  padding: clamp(22px, 3vw, 40px) clamp(18px, 2.4vw, 38px) clamp(18px, 2.2vw, 30px);
+}
+.ix-phead__main { min-width: 0; max-width: 62ch; }
+.ix-phead__kicker {
+  display: block;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.46);
+}
+.ix-phead__title {
+  margin-top: 12px;
+  font-size: clamp(30px, 4.4vw, 56px); font-weight: 800;
+  letter-spacing: -0.032em; line-height: 1.02;
+  color: var(--ix-panel-ink);
+}
+.ix-phead__lede {
+  margin-top: 13px; max-width: 60ch;
+  font-size: clamp(14px, 1.1vw, 15.5px); line-height: 1.65;
+  color: rgb(16 24 34 / 0.66);
+}
+.ix-phead__aside { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ix-phead__count {
+  display: inline-flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.4);
+}
+.ix-phead__count b {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--ix-panel-ink);
+}
+.ix-live--plane { color: rgb(16 24 34 / 0.5); }
+
+/* The live #1 on TV 100 — the plane's one moment of scale. */
+.ix-champion {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: clamp(20px, 3vw, 40px);
+  padding: clamp(18px, 2.4vw, 30px);
+  border-radius: clamp(14px, 1.5vw, 20px);
+  background: rgb(255 255 255 / 0.5);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+.ix-champion__body { min-width: 0; }
+.ix-champion__title {
+  margin-top: 11px;
+  font-size: clamp(26px, 3.4vw, 44px); font-weight: 800;
+  letter-spacing: -0.03em; line-height: 1.04;
+  color: var(--ix-panel-ink);
+}
+.ix-champion__title a { transition: opacity 0.15s; }
+.ix-champion__title a:hover { opacity: 0.68; }
+.ix-champion__meta { margin-top: 7px; font-size: 13.5px; color: rgb(16 24 34 / 0.52); }
+.ix-champion__stats {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 18px;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 12px; color: rgb(16 24 34 / 0.52);
+}
+.ix-champion__art { display: block; }
+.ix-champion__poster {
+  display: block; width: clamp(120px, 13vw, 176px); aspect-ratio: 2 / 3;
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 26px 54px -26px rgb(6 12 22 / 0.95);
+}
+
+/* ── the plane's inner sections ───────────────────────────────────────────── */
+.ix-sec { padding: clamp(18px, 2.2vw, 30px) clamp(18px, 2.4vw, 38px); }
+.ix-sec + .ix-sec { border-top: 1px solid rgb(16 24 34 / 0.08); }
+
+/* a section heading inside the plane — its own name, because the home page's
+   band header is a different component with a different job */
+.ix-sec-hd {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: clamp(14px, 1.6vw, 22px);
+}
+.ix-sec-hd svg { width: 15px; height: 15px; flex: none; }
+.ix-sec-hd--up { color: var(--ix-rise); }
+.ix-sec-hd--down { color: var(--ix-fall); }
+.ix-empty { padding: 8px 0 2px; font-size: 14px; color: rgb(16 24 34 / 0.5); }
+
+/* ── the title page ──────────────────────────────────────────────────────────
+   The one page that is genuinely dark: a title deserves a dark room. Rather
+   than rewriting a thousand lines of a page whose whole subject is a piece of
+   cinema, its ink is re-bound locally — the same approach Tailwind's token
+   system is built for. Every `text-foreground`, `border-foreground/10` and
+   `bg-surface` inside `.ix-invert` resolves to plane-ink values, so the page
+   reads as part of the same product without being touched line by line.
+   The hero then re-binds to light type on a dark card, exactly like the home
+   page's number-one still. */
+.ix-invert {
+  --foreground: #101822;
+  --muted-foreground: rgb(16 24 34 / 0.55);
+  --cream: #101822;
+  --border: rgb(16 24 34 / 0.1);
+  --surface: rgb(255 255 255 / 0.5);
+  --surface-alt: rgb(255 255 255 / 0.72);
+  --background: transparent;
+  --primary: oklch(0.56 0.11 58);
+  --primary-foreground: oklch(0.98 0.005 90);
+  --up: oklch(0.5 0.1 152);
+  --down: oklch(0.55 0.14 26);
+  color: var(--foreground);
+}
+.ix-invert a { color: inherit; }
+
+/* the dark cinematic card at the top of a title page */
+.ix-film {
+  --foreground: #f4f1ea;
+  --muted-foreground: rgb(244 241 234 / 0.6);
+  --cream: #f4f1ea;
+  --border: rgb(255 255 255 / 0.14);
+  --background: #08090e;
+  --surface: rgb(255 255 255 / 0.05);
+  --primary: oklch(0.8 0.13 72);
+  --up: oklch(0.72 0.13 152);
+  --down: oklch(0.68 0.14 26);
+  background: #08090e;
+  color: var(--foreground);
+  border-bottom: 1px solid rgb(16 24 34 / 0.1);
+}
+
+.ix-toast {
+  position: fixed; right: 24px; bottom: 24px; z-index: 50;
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: 14px;
+  background: rgb(250 251 253 / 0.96);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid rgb(16 24 34 / 0.12);
+  box-shadow: 0 24px 50px -24px rgb(6 12 22 / 0.7);
+  animation: fadeUp 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.ix-toast > svg { width: 18px; height: 18px; flex: none; color: var(--primary); }
+.ix-toast a { color: var(--primary); }
+
+/* ── head-to-head ────────────────────────────────────────────────────────
+   Two films, one measurement table. The winner of each row is marked with the
+   same amber the rest of the product uses for a rising title. */
+.ix-vs {
+  border-radius: clamp(14px, 1.5vw, 20px);
+  background: rgb(255 255 255 / 0.46);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  overflow: hidden;
+}
+.ix-vs__hd {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px;
+  padding: clamp(14px, 1.8vw, 20px) clamp(16px, 2vw, 26px);
+  border-bottom: 1px solid rgb(16 24 34 / 0.1);
+  background: rgb(255 255 255 / 0.34);
+}
+.ix-vs__title {
+  font-size: clamp(16px, 1.7vw, 21px); font-weight: 800; letter-spacing: -0.022em;
+  color: var(--ix-panel-ink); line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ix-vs__title:last-child { text-align: right; }
+.ix-vs__title:hover { opacity: 0.7; }
+.ix-vs__scale { width: 18px; height: 18px; color: rgb(16 24 34 / 0.3); }
+.ix-vs__body { padding: 4px clamp(16px, 2vw, 26px) 10px; }
+.ix-vs__row {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgb(16 24 34 / 0.07);
+}
+.ix-vs__row:last-child { border-bottom: 0; }
+.ix-vs__label {
+  text-align: center;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.42);
+  grid-column: 2; grid-row: 1;
+}
+.ix-vs__val {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 16px; color: rgb(16 24 34 / 0.62);
+  display: inline-flex; align-items: baseline; gap: 5px;
+}
+.ix-vs__val--a { grid-column: 1; grid-row: 1; justify-self: start; }
+.ix-vs__val--b { grid-column: 3; grid-row: 1; justify-self: end; }
+.ix-vs__val.is-win { color: var(--ix-panel-ink); font-weight: 700; }
+.ix-vs__win { font-size: 9px; color: var(--ix-rise); }
+.ix-vs__foot {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  padding: clamp(12px, 1.6vw, 18px) clamp(16px, 2vw, 26px);
+  border-top: 1px solid rgb(16 24 34 / 0.1);
+  background: rgb(255 255 255 / 0.28);
+}
+.ix-more--wide { flex: 1; justify-content: center; text-align: center; }
+
+/* the two picker slots */
+.ix-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: clamp(10px, 1.2vw, 16px); }
+.ix-pick {
+  padding: clamp(14px, 1.8vw, 20px);
+  border-radius: clamp(14px, 1.5vw, 20px);
+  background: rgb(255 255 255 / 0.44);
+  border: 1px solid rgb(255 255 255 / 0.72);
+}
+.ix-pick__label {
+  margin-bottom: 14px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.42);
+}
+.ix-pick__slot {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; max-width: 9rem; aspect-ratio: 2 / 3; margin-inline: auto;
+  border-radius: 12px;
+  border: 1px dashed rgb(16 24 34 / 0.2);
+  background: rgb(255 255 255 / 0.3);
+}
+.ix-pick__mark { width: 22px; height: 22px; color: rgb(16 24 34 / 0.28); }
+.ix-pick__hint { font-size: 12px; color: rgb(16 24 34 / 0.5); }
+.ix-pick__search {
+  position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+  width: 13px; height: 13px; color: rgb(16 24 34 / 0.36);
+}
+.ix-input {
+  width: 100%; padding: 7px 8px 7px 27px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.8); border: 1px solid rgb(16 24 34 / 0.14);
+  font-size: 12px; color: var(--ix-panel-ink);
+  outline: none; transition: border-color 0.15s;
+}
+.ix-input::placeholder { color: rgb(16 24 34 / 0.38); }
+.ix-input:focus { border-color: rgb(16 24 34 / 0.42); }
+
+/* the picker's result list */
+.ix-menu {
+  max-height: 16rem; overflow-y: auto;
+  border-radius: 12px;
+  background: rgb(250 251 253 / 0.97);
+  border: 1px solid rgb(16 24 34 / 0.12);
+  box-shadow: 0 20px 44px -22px rgb(6 12 22 / 0.6);
+}
+.ix-menu__empty { padding: 12px 16px; font-size: 13px; color: rgb(16 24 34 / 0.5); }
+.ix-menu__row {
+  display: flex; width: 100%; align-items: center; gap: 12px;
+  padding: 10px 14px; text-align: left;
+  transition: background 0.15s;
+}
+.ix-menu__row:hover { background: rgb(16 24 34 / 0.05); }
+.ix-menu__art { width: 26px; height: 38px; flex: none; border-radius: 5px; overflow: hidden; }
+.ix-menu__t {
+  display: block; font-size: 13px; font-weight: 600; color: var(--ix-panel-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ix-menu__m {
+  display: block;
+  font-family: var(--font-mono); font-size: 10px; color: rgb(16 24 34 / 0.44);
+}
+.ix-menu__rk {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 13px; color: var(--ix-panel-ink);
+}
+
+/* a short editorial note on the plane */
+.ix-callout {
+  display: flex; align-items: center; gap: 9px;
+  max-width: 62ch; margin-top: 20px;
+  padding: 10px 14px; border-radius: 9999px;
+  background: rgb(255 255 255 / 0.5); border: 1px solid rgb(16 24 34 / 0.1);
+  font-size: 12.5px; color: rgb(16 24 34 / 0.62);
+}
+.ix-callout svg { width: 15px; height: 15px; flex: none; color: var(--ix-rise); }
+
+/* wide item tiles — release calendar, and anything with a thumbnail plus prose */
+.ix-tiles {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: clamp(10px, 1.2vw, 16px);
+}
+.ix-tile {
+  display: flex; gap: 14px; min-width: 0;
+  padding: 14px; border-radius: clamp(12px, 1.2vw, 16px);
+  background: rgb(255 255 255 / 0.46);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  box-shadow: 0 12px 26px -20px rgb(10 20 34 / 0.7);
+  transition: background 0.15s, transform 0.15s;
+}
+a.ix-tile:hover { background: rgb(255 255 255 / 0.78); }
+.ix-tile--static { background: rgb(255 255 255 / 0.4); }
+.ix-tile__art {
+  display: block; flex: none;
+  width: 74px; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden;
+  background: #1b2430; box-shadow: 0 12px 26px -16px rgb(6 12 22 / 0.9);
+}
+.ix-tile__art-skel { width: 74px; height: 111px; border-radius: 10px; flex: none; }
+.ix-tile__art img { width: 100%; height: 100%; object-fit: cover; }
+.ix-tile__body { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
+.ix-tile__t {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.014em; color: var(--ix-panel-ink);
+  line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+a.ix-tile__t:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ix-tile__l {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: rgb(16 24 34 / 0.5);
+}
+.ix-tile__l svg { width: 12px; height: 12px; flex: none; }
+.ix-tile__l--clamp {
+  display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; line-clamp: 3; line-height: 1.5;
+}
+.ix-tile__foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-top: auto; padding-top: 10px;
+  border-top: 1px solid rgb(16 24 34 / 0.08);
+}
+.ix-tile__go {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.06em; color: rgb(16 24 34 / 0.6);
+  white-space: nowrap; transition: color 0.15s;
+}
+.ix-tile__go:hover { color: var(--ix-panel-ink); }
+.ix-tag--live { border-color: rgb(var(--ix-a1) / 0.5); color: var(--ix-panel-ink); }
+
+/* genre / category selector, on the plane */
+.ix-pills {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  margin-top: 22px;
+}
+.ix-pill {
+  display: inline-flex; align-items: baseline; gap: 7px;
+  padding: 8px 14px; border-radius: 9999px;
+  background: rgb(255 255 255 / 0.5); border: 1px solid rgb(16 24 34 / 0.1);
+  font-size: 13px; font-weight: 600; color: rgb(16 24 34 / 0.66);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ix-pills > svg {
+  width: 15px; height: 15px; align-self: center;
+  color: rgb(16 24 34 / 0.34);
+}
+.ix-pill span {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 11px; color: rgb(16 24 34 / 0.4);
+}
+.ix-pill:hover { background: rgb(255 255 255 / 0.8); color: var(--ix-panel-ink); }
+.ix-pill.is-active {
+  background: var(--ix-panel-ink); border-color: var(--ix-panel-ink); color: var(--cream);
+}
+.ix-pill.is-active span { color: rgb(244 241 234 / 0.6); }
+
+/* a shelf heading inside the plane */
+.ix-shelf {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding-bottom: 12px; margin-bottom: clamp(16px, 1.8vw, 24px);
+  border-bottom: 1px solid rgb(16 24 34 / 0.1);
+}
+.ix-shelf h2 {
+  font-size: clamp(17px, 1.8vw, 23px); font-weight: 800; letter-spacing: -0.024em;
+  color: var(--ix-panel-ink);
+}
+
+/* ── chart rows ──────────────────────────────────────────────────────────────
+   The scan table. Hairlines instead of boxes, tabular numerals, and a rank
+   large enough to read at a glance. The mobile layout is the same row with
+   columns dropped, never a second design. */
+.ix-thead {
+  display: grid; align-items: center; gap: 14px;
+  grid-template-columns: 58px 58px minmax(0, 1fr) 92px 132px;
+  padding: 12px clamp(16px, 2vw, 26px);
+  border-bottom: 1px solid rgb(16 24 34 / 0.1);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.42);
+}
+.ix-thead__r { text-align: right; }
+.ix-rows { display: block; }
+.ix-row {
+  display: grid; align-items: center; gap: 14px;
+  grid-template-columns: 58px 58px minmax(0, 1fr) 92px 132px;
+  padding: 11px clamp(16px, 2vw, 26px);
+  border-bottom: 1px solid rgb(16 24 34 / 0.07);
+  transition: background-color 0.15s;
+}
+.ix-rows > .ix-row:last-child { border-bottom: 0; }
+a.ix-row:hover { background: rgb(255 255 255 / 0.55); }
+.ix-row__rk {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 19px; font-weight: 700; letter-spacing: -0.03em; color: var(--ix-panel-ink);
+}
+.ix-row__title {
+  font-size: 15.5px; font-weight: 700; letter-spacing: -0.012em; color: var(--ix-panel-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ix-row__meta {
+  margin-top: 3px; font-size: 12px; color: rgb(16 24 34 / 0.5);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ix-row__meta--clamp {
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.45;
+}
+.ix-row__num {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 12px; color: rgb(16 24 34 / 0.58);
+}
+.ix-row__r { text-align: right; }
+.ix-row__art {
+  position: relative; overflow: hidden; flex: none;
+  width: 38px; height: 54px; border-radius: 7px;
+  background: #1b2430; box-shadow: 0 8px 18px -12px rgb(6 12 22 / 0.9);
+}
+.ix-row__art img { width: 100%; height: 100%; object-fit: cover; }
+.ix-row__main { display: flex; align-items: center; gap: 13px; min-width: 0; }
+
+/* movement, on the plane */
+.ix-delta {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 12px; font-weight: 600;
+}
+.ix-delta svg { width: 0.72em; height: 0.72em; flex: none; }
+.ix-delta--up { color: var(--ix-rise); }
+.ix-delta--down { color: var(--ix-fall); }
+.ix-delta--flat { color: var(--ix-flat); }
+.ix-delta--new {
+  font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ix-panel-ink);
+}
+.ix-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 9999px;
+  background: rgb(255 255 255 / 0.66); border: 1px solid rgb(16 24 34 / 0.12);
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.62);
+}
+.ix-tag svg { width: 11px; height: 11px; flex: none; }
+
+/* Momentum, in the plane's movement language. */
+.ix-mom {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap;
+}
+.ix-mom svg { width: 12px; height: 12px; flex: none; stroke-width: 2.4; }
+.ix-mom--icon { gap: 0; }
+.ix-mom--icon svg { width: 13px; height: 13px; }
+.ix-mom--up { color: var(--ix-rise); }
+.ix-mom--down { color: var(--ix-fall); }
+.ix-mom--flat { color: var(--ix-flat); }
+
+/* Loading, on the plane: a slow light sweep rather than a grey block. */
+.ix-skel {
+  border-radius: 6px;
+  background: linear-gradient(90deg,
+    rgb(16 24 34 / 0.06) 0%, rgb(16 24 34 / 0.11) 50%, rgb(16 24 34 / 0.06) 100%);
+  background-size: 200% 100%;
+  animation: ixSweep 1.4s ease-in-out infinite;
+}
+@keyframes ixSweep {
+  from { background-position: 120% 0; }
+  to   { background-position: -20% 0; }
+}
+
+/* empty / error states, on the plane */
+.ix-note {
+  padding: clamp(30px, 5vw, 56px) clamp(18px, 3vw, 34px);
+  text-align: center;
+}
+.ix-note__title { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; color: var(--ix-panel-ink); }
+.ix-note__body { margin: 9px auto 0; max-width: 48ch; font-size: 14px; line-height: 1.65; color: rgb(16 24 34 / 0.56); }
+.ix-note__mark {
+  width: 30px; height: 30px; margin: 0 auto;
+  color: rgb(16 24 34 / 0.28);
+}
+.ix-note__cta { margin-top: 20px; }
+.ix-note__cta:hover { color: var(--cream); background: var(--ix-panel-ink); }
+
+/* the remove affordance on a saved row */
+.ix-row__remove {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9999px;
+  color: rgb(16 24 34 / 0.34); opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.ix-row__remove svg { width: 15px; height: 15px; }
+li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
+.ix-row__remove:hover { background: rgb(16 24 34 / 0.07); color: var(--ix-fall); }
+/* touch pointers have no hover: the control is simply always there */
+@media (hover: none) {
+  .ix-row__remove { opacity: 1; }
+}
+
+/* ── written pages ──────────────────────────────────────────────────────────
+   One reading measure on the plane. Not a document stylesheet: the same ink,
+   the same leading, the same hairlines as the rest of the product. */
+.ix-prose {
+  padding: 0 clamp(18px, 2.4vw, 38px) clamp(28px, 4vw, 52px);
+  max-width: 68ch;
+  color: rgb(16 24 34 / 0.74);
+  font-size: 15.5px; line-height: 1.75;
+}
+.ix-prose > * + * { margin-top: 1.15em; }
+.ix-prose h2 {
+  margin-top: 2em; font-size: clamp(19px, 1.8vw, 24px); font-weight: 800;
+  letter-spacing: -0.024em; color: var(--ix-panel-ink);
+}
+.ix-prose h3 {
+  margin-top: 1.6em; font-size: 16px; font-weight: 700; letter-spacing: -0.012em;
+  color: var(--ix-panel-ink);
+}
+.ix-prose strong { color: var(--ix-panel-ink); font-weight: 700; }
+.ix-prose a {
+  color: var(--ix-panel-ink); text-decoration: underline;
+  text-decoration-color: rgb(16 24 34 / 0.28); text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s;
+}
+.ix-prose a:hover { text-decoration-color: currentColor; }
+.ix-prose ul, .ix-prose ol { padding-left: 1.15em; }
+.ix-prose li + li { margin-top: 0.4em; }
+.ix-prose ul { list-style: disc; }
+.ix-prose ol { list-style: decimal; }
+.ix-prose li::marker { color: rgb(16 24 34 / 0.34); }
+.ix-prose hr { margin: 2.2em 0; border: 0; border-top: 1px solid rgb(16 24 34 / 0.1); }
+.ix-prose code {
+  font-family: var(--font-mono); font-size: 0.9em;
+  padding: 1px 5px; border-radius: 5px;
+  background: rgb(16 24 34 / 0.06);
+}
+.ix-prose table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ix-prose th, .ix-prose td {
+  padding: 9px 12px; text-align: left;
+  border-bottom: 1px solid rgb(16 24 34 / 0.08);
+}
+.ix-prose th {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.44);
+}
+
+/* ── poster cards, off the front door ───────────────────────────────────────
+   The same card the home page uses for every band, so a genre grid, a
+   watchlist and the home page are unmistakably the same product. */
+.ix-card { display: block; }
+.ix-card__art {
+  position: relative; display: block; overflow: hidden;
+  border-radius: clamp(11px, 1.1vw, 15px); aspect-ratio: 2 / 3;
+  background: #1b2430; box-shadow: 0 18px 36px -22px rgb(6 12 22 / 0.9);
+}
+.ix-card__art img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.ix-card:hover .ix-card__art img { transform: scale(1.05); }
+.ix-card__fallback {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  padding: 14px; text-align: center;
+  font-size: 12.5px; font-weight: 700; line-height: 1.35;
+  color: rgb(255 255 255 / 0.82);
+}
+.ix-card__rk, .ix-card__new {
+  position: absolute; top: 7px; left: 7px; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 27px; height: 23px; padding: 0 7px; border-radius: 8px;
+  background: rgb(6 10 17 / 0.66); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid rgb(255 255 255 / 0.2);
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 11.5px; font-weight: 800; color: #fff;
+}
+.ix-card__new {
+  font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase;
+  background: rgb(255 255 255 / 0.9); color: var(--ix-panel-ink);
+}
+.ix-card__mom {
+  position: absolute; top: 7px; right: 7px; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 23px; border-radius: 8px;
+  background: rgb(6 10 17 / 0.66); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid rgb(255 255 255 / 0.18);
+}
+.ix-card__mom .ix-mom { color: #fff; }
+.ix-card__mom--num {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 11.5px; font-weight: 800; color: #fff;
+}
+.ix-card__plate {
+  position: absolute; inset: auto 0 0 0; z-index: 2;
+  padding: 26px 11px 11px;
+  background: linear-gradient(to top, rgb(6 9 15 / 0.9) 0%, rgb(6 9 15 / 0.55) 55%, transparent 100%);
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.ix-card:hover .ix-card__plate, .ix-card:focus-visible .ix-card__plate {
+  opacity: 1; transform: translateY(0);
+}
+.ix-card__plate-t {
+  font-size: 12.5px; font-weight: 700; color: #fff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ix-card__plate-l {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 3px;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 11px; color: rgb(255 255 255 / 0.78);
+}
+
+.ix-card__cap { margin-top: 9px; }
+.ix-card__t {
+  font-size: 12.5px; font-weight: 700; color: var(--ix-panel-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ix-card__line {
+  margin-top: 4px; font-size: 11px; color: rgb(16 24 34 / 0.5);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ix-card__line--dim { color: rgb(16 24 34 / 0.36); font-style: italic; }
+
+/* the small quiet link used for "see all" inside the plane */
+.ix-more {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 9999px; white-space: nowrap;
+  background: rgb(255 255 255 / 0.6); border: 1px solid rgb(16 24 34 / 0.1);
+  font-size: 11.5px; font-weight: 600; color: rgb(16 24 34 / 0.72);
+  transition: background 0.15s, color 0.15s;
+}
+.ix-more:hover { background: rgb(255 255 255 / 0.88); color: var(--ix-panel-ink); }
+.ix-more svg { width: 13px; height: 13px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    HOME — the current visual direction.
@@ -290,56 +988,91 @@
   --ix-flat: #8b929c;
 }
 
-/* ── top bar ──────────────────────────────────────────────────────────────── */
-.ix-topbar { position: relative; z-index: 30; }
+/* ── the one header ───────────────────────────────────────────────────────
+   One component, two tones. `ink` sits on the site's black (every page);
+   `panel` is drawn on the luminous plane at the top of the home composition.
+   Both tones read from the same four custom properties, so the two can never
+   drift apart. */
+.ix-topbar {
+  --ix-h-fg: var(--cream);
+  --ix-h-dim: rgb(244 241 234 / 0.56);
+  --ix-h-line: rgb(255 255 255 / 0.16);
+  --ix-h-btn: rgb(255 255 255 / 0.07);
+  position: relative; z-index: 7;
+}
+.ix-topbar--panel {
+  --ix-h-fg: var(--ix-panel-ink);
+  --ix-h-dim: rgb(16 24 34 / 0.66);
+  --ix-h-line: rgb(16 24 34 / 0.14);
+  --ix-h-btn: rgb(255 255 255 / 0.5);
+}
+
 .ix-topbar__d,
 .ix-topbar__m {
-  display: flex; align-items: center; gap: 16px;
-  padding: 14px clamp(16px, 1.9vw, 26px);
+  display: flex; align-items: center; gap: clamp(12px, 1.6vw, 22px);
+  padding: clamp(13px, 1.5vw, 18px) clamp(16px, 1.9vw, 26px);
 }
 .ix-topbar__d { margin: 0 auto; max-width: 90rem; }
-.ix-wordmark { color: var(--cream); }
+.ix-topbar__m { display: none; }
 
-.ix-switch {
-  display: flex; align-items: center; gap: 2px;
-  margin: 0 auto; padding: 4px; border-radius: 9999px;
-  background: rgb(8 10 14 / 0.93);
-  box-shadow: 0 8px 22px -10px rgb(0 0 0 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.1);
+.ix-wordmark { color: var(--ix-h-fg); }
+/* The wordmark is a Tailwind-coloured component; on the plane it must read as
+   dark ink on glass, with the brand period dimmed rather than red. */
+.ix-topbar--panel .ix-wordmark .text-foreground { color: currentColor; }
+.ix-topbar--panel .ix-wordmark .text-primary { color: rgb(16 24 34 / 0.34); }
+.ix-topbar--panel .ix-wordmark .text-muted-foreground { color: rgb(16 24 34 / 0.46); }
+
+/* Destinations are plain type. No capsule, no switch, no control chrome —
+   the active page is a single hairline under its own label. */
+.ix-nav { display: flex; align-items: center; gap: 1px; margin: 0 auto; }
+.ix-nav__link {
+  position: relative;
+  padding: 6px 11px; border-radius: 9999px;
+  font-size: 12.5px; font-weight: 600; letter-spacing: -0.004em;
+  color: var(--ix-h-dim); white-space: nowrap;
+  transition: color 0.16s, background-color 0.16s;
 }
-.ix-switch__link {
-  padding: 7px 14px; border-radius: 9999px;
-  font-size: 12px; font-weight: 600; color: rgb(255 255 255 / 0.64);
-  white-space: nowrap; transition: color 0.15s, background 0.15s;
+.ix-nav__link:hover { color: var(--ix-h-fg); background: var(--ix-h-btn); }
+.ix-nav__link.is-active { color: var(--ix-h-fg); }
+.ix-nav__link.is-active::after {
+  content: ""; position: absolute; left: 11px; right: 11px; bottom: -1px;
+  height: 1.5px; border-radius: 2px; background: currentColor; opacity: 0.8;
 }
-.ix-switch__link:hover { color: var(--cream); }
-.ix-switch__link.is-active { background: #fff; color: var(--ix-panel-ink); }
-.ix-switch__search {
+.ix-nav__search {
   display: inline-grid; place-items: center;
-  width: 30px; height: 30px; margin-left: 2px; border-radius: 9999px;
-  color: rgb(255 255 255 / 0.64); transition: color 0.15s, background 0.15s;
+  width: 30px; height: 30px; margin-left: 6px; border-radius: 9999px;
+  color: var(--ix-h-dim); transition: color 0.16s, background-color 0.16s;
 }
-.ix-switch__search:hover { color: var(--cream); background: rgb(255 255 255 / 0.08); }
-.ix-switch__search svg { width: 15px; height: 15px; }
+.ix-nav__search:hover { color: var(--ix-h-fg); background: var(--ix-h-btn); }
+.ix-nav__search svg { width: 15px; height: 15px; }
 
 .ix-live {
   display: inline-flex; align-items: center; gap: 7px;
-  font-size: 11px; font-weight: 600; color: var(--muted-foreground);
-  white-space: nowrap;
+  font-size: 11px; font-weight: 600; color: var(--ix-h-dim); white-space: nowrap;
 }
-.ix-live i { width: 6px; height: 6px; border-radius: 9999px; background: #12a15c;
-  box-shadow: 0 0 0 3px rgb(18 161 92 / 0.18); }
+.ix-live i {
+  width: 6px; height: 6px; border-radius: 9999px; background: #12a15c;
+  box-shadow: 0 0 0 3px rgb(18 161 92 / 0.18);
+}
 
 .ix-menu-btn {
   display: none;
-  align-items: center; gap: 7px;
-  height: 36px; padding: 0 13px; border-radius: 9999px;
-  background: rgb(11 17 26 / 0.9); color: #fff;
-  font-size: 11.5px; font-weight: 600;
+  align-items: center; gap: 7px; margin-left: auto;
+  height: 34px; padding: 0 13px; border-radius: 9999px;
+  background: var(--ix-h-btn); border: 1px solid var(--ix-h-line);
+  color: var(--ix-h-fg); font-size: 11.5px; font-weight: 600;
 }
 .ix-menu-btn svg { width: 14px; height: 14px; }
 
-/* ── stage + environment ──────────────────────────────────────────────────── */
-.ix-stage { position: relative; padding: clamp(14px, 1.9vw, 28px); }
+/* ── stage + environment ──────────────────────────────────────────────────────
+   The margin around the plane is the environment made visible: the atmosphere
+   is not only behind the glass, it is what the glass sits in. Generous enough
+   that the plane reads as a lit object floating inside a room, not as a full
+   width card with a hairline of colour above it. */
+.ix-stage {
+  position: relative;
+  padding: clamp(12px, 1.5vw, 22px) clamp(14px, 2.4vw, 40px) clamp(14px, 1.9vw, 28px);
+}
 
 .ix-env { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
 .ix-env::before {
@@ -384,26 +1117,42 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* ── the frosted plane ────────────────────────────────────────────────────── */
+/* ── the frosted plane ──────────────────────────────────────────────────────
+   Glass, not a card. The white is thin and uneven on purpose: it is densest
+   where the ranked bands need it for legibility and thinnest at the top, where
+   the environment behind is brightest and the leading title's own light should
+   read straight through. Two radial washes carry the leading title's colour
+   across the surface, so the plane is lit BY the film rather than painted
+   grey. The heavy blur plus saturation is what turns the backdrop wash behind
+   into light inside the glass. */
 .ix-panel {
   position: relative; z-index: 2;
-  border-radius: clamp(20px, 2.2vw, 30px);
-  background: linear-gradient(176deg,
-    rgb(255 255 255 / 0.82) 0%, rgb(255 255 255 / 0.54) 38%, rgb(255 255 255 / 0.62) 100%);
-  -webkit-backdrop-filter: blur(30px) saturate(1.32);
-  backdrop-filter: blur(30px) saturate(1.32);
-  border: 1px solid rgb(255 255 255 / 0.66);
+  border-radius: clamp(22px, 2.4vw, 34px);
+  background:
+    radial-gradient(120% 54% at 50% -8%, rgb(var(--ix-a3) / 0.5), transparent 64%),
+    radial-gradient(74% 40% at 4% 14%, rgb(var(--ix-a1) / 0.34), transparent 72%),
+    radial-gradient(70% 46% at 96% 34%, rgb(var(--ix-a2) / 0.22), transparent 74%),
+    linear-gradient(178deg,
+      rgb(255 255 255 / 0.5) 0%,
+      rgb(255 255 255 / 0.6) 22%,
+      rgb(250 251 254 / 0.72) 56%,
+      rgb(242 245 250 / 0.83) 100%);
+  -webkit-backdrop-filter: blur(48px) saturate(1.6) brightness(1.06);
+  backdrop-filter: blur(48px) saturate(1.6) brightness(1.06);
+  border: 1px solid rgb(255 255 255 / 0.46);
   box-shadow:
-    0 50px 110px -46px rgb(0 0 0 / 0.94),
-    0 0 90px -28px rgb(var(--ix-a1) / 0.4),
-    inset 0 1px 0 rgb(255 255 255 / 0.95);
+    0 64px 130px -52px rgb(0 0 0 / 0.94),
+    0 0 130px -34px rgb(var(--ix-a1) / 0.46),
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 -80px 110px -80px rgb(255 255 255 / 0.7);
   overflow: hidden;
   color: var(--ix-panel-ink);
 }
+/* the lit rim: a specular edge that catches the leading title's colour */
 .ix-panel::before {
   content: ""; position: absolute; inset: 0; z-index: 6; padding: 1px;
   border-radius: inherit; pointer-events: none;
-  background: linear-gradient(172deg, rgb(var(--ix-a3) / 0.7), rgb(var(--ix-a1) / 0.22) 30%, transparent 56%);
+  background: linear-gradient(172deg, rgb(var(--ix-a3) / 0.8), rgb(var(--ix-a1) / 0.26) 30%, transparent 56%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
@@ -434,6 +1183,10 @@
   position: relative; display: flex; align-items: flex-end; overflow: hidden;
   border-radius: clamp(16px, 1.6vw, 22px);
   min-height: clamp(280px, 34vw, 440px);
+  /* The still casts its own colour onto the glass it sits on. */
+  box-shadow:
+    0 34px 84px -34px rgb(var(--ix-a1) / 0.6),
+    0 0 0 1px rgb(255 255 255 / 0.14);
 }
 .ix-hero__img {
   position: absolute; inset: 0; width: 100%; height: 100%;
@@ -477,23 +1230,26 @@
 }
 .ix-hero__chip svg { width: 10px; height: 10px; fill: #fff; }
 
-/* ── destination chips ────────────────────────────────────────────────────── */
-.ix-chips {
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: clamp(7px, 0.8vw, 11px);
-  padding: clamp(12px, 1.3vw, 18px) clamp(16px, 1.9vw, 26px);
+/* ── discovery rail ──────────────────────────────────────────────────────────
+   One line of type under the hero. It carries the secondary destinations
+   without giving them the weight of a control panel. */
+.ix-rail {
+  display: flex; align-items: baseline; gap: clamp(10px, 1.3vw, 18px);
+  padding: clamp(6px, 0.7vw, 10px) clamp(16px, 1.9vw, 26px) clamp(15px, 1.7vw, 22px);
 }
-.ix-chip {
-  display: flex; align-items: center; gap: 9px;
-  padding: 11px 13px; border-radius: 13px;
-  background: rgb(255 255 255 / 0.6); border: 1px solid rgb(255 255 255 / 0.8);
-  box-shadow: 0 10px 22px -16px rgb(10 20 34 / 0.8), inset 0 1px 0 rgb(255 255 255 / 0.92);
-  font-size: 12px; font-weight: 600; color: #22303f;
-  transition: background 0.15s, border-color 0.15s;
-  text-align: left;
+.ix-rail__label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgb(16 24 34 / 0.46); white-space: nowrap;
 }
-.ix-chip:hover { background: rgb(255 255 255 / 0.82); border-color: rgb(255 255 255 / 0.95); }
-.ix-chip svg { width: 15px; height: 15px; flex: none; opacity: 0.6; }
+.ix-rail__list {
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 4px clamp(12px, 1.4vw, 22px);
+}
+.ix-rail__link {
+  font-size: 13px; font-weight: 600; color: rgb(16 24 34 / 0.7);
+  transition: color 0.15s;
+}
+.ix-rail__link:hover { color: var(--ix-panel-ink); }
 
 /* ── bands + cards ────────────────────────────────────────────────────────── */
 .ix-band { padding: clamp(14px, 1.6vw, 22px) clamp(16px, 1.9vw, 26px); }
@@ -621,13 +1377,61 @@
   font-size: 10.5px; color: rgb(244 241 234 / 0.34);
 }
 
+/* ── footer ─────────────────────────────────────────────────────────────────
+   A continuation of the page, not a separate editorial object. The hairline
+   fades in from the edges so the seam reads as the light running out rather
+   than as a rule laid across the layout. */
+.ix-foot {
+  position: relative; z-index: 4;
+  padding: clamp(30px, 4vw, 56px) clamp(16px, 1.9vw, 26px) clamp(22px, 2.6vw, 38px);
+  background: var(--ix-ink);
+}
+.ix-foot::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgb(255 255 255 / 0.13) 24%, rgb(255 255 255 / 0.13) 76%, transparent);
+}
+.ix-foot__inner { margin: 0 auto; max-width: 90rem; }
+.ix-foot__top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: clamp(22px, 4vw, 64px); flex-wrap: wrap;
+}
+.ix-foot__brand { max-width: 30ch; }
+.ix-foot__brand .ix-wordmark { color: var(--cream); }
+.ix-foot__lede {
+  margin-top: 14px;
+  font-size: 13.5px; line-height: 1.7; color: rgb(244 241 234 / 0.48);
+}
+.ix-foot__links {
+  display: flex; flex-wrap: wrap;
+  gap: 7px clamp(14px, 1.7vw, 26px);
+  max-width: 48rem;
+}
+.ix-foot__link {
+  font-size: 13px; font-weight: 500; color: rgb(244 241 234 / 0.56);
+  transition: color 0.15s;
+}
+.ix-foot__link:hover, .ix-foot__link.is-active { color: var(--cream); }
+.ix-foot__base {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px 20px; flex-wrap: wrap;
+  margin-top: clamp(24px, 3vw, 42px); padding-top: 15px;
+  border-top: 1px solid rgb(255 255 255 / 0.07);
+  font-size: 11.5px; color: rgb(244 241 234 / 0.38);
+}
+.ix-foot__stamp { display: inline-flex; align-items: center; gap: 14px; }
+.ix-foot__base button { color: rgb(244 241 234 / 0.52); }
+.ix-foot__base button:hover { color: var(--cream); }
+
 /* ── responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
+  /* Exactly one header row: the desktop row retires, the phone row takes over.
+     (The phone row used to stay in flow on desktop, which rendered two
+     headers stacked.) */
   .ix-topbar__d { display: none; }
   .ix-topbar__m { display: flex; }
   .ix-menu-btn { display: inline-flex; }
   .ix-grid, .ix-grid--4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .ix-chips { grid-auto-flow: column; grid-auto-columns: 47%; overflow-x: auto; scrollbar-width: none; }
   .ix-hero__body { max-width: 100%; }
   .ix-env__wash { opacity: 0.6; filter: saturate(1.3) blur(40px); inset: -8% 0 0 0; }
   .ix-env__bloom::before {
@@ -642,8 +1446,11 @@
 }
 @media (max-width: 639px) {
   .ix-hero__title { font-size: 32px; }
-  .ix-band, .ix-hero, .ix-chips { padding-left: 14px; padding-right: 14px; }
+  .ix-band, .ix-hero, .ix-rail { padding-left: 14px; padding-right: 14px; }
   .ix-grid, .ix-grid--4 { gap: 9px; }
+  .ix-rail { flex-wrap: wrap; gap: 8px 14px; }
+  .ix-foot__top { gap: 22px; }
+  .ix-foot__base { align-items: flex-start; flex-direction: column; }
 }
 
 /* Desktop never shows the phone chrome. */
@@ -652,9 +1459,36 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ix-pcard__art img, .ix-chip, .ix-switch__link { transition: none; }
+  .ix-pcard__art img, .ix-rail__link, .ix-nav__link, .ix-row { transition: none; }
+  .ix-skel { animation: none; }
+}
+
+/* ── interior pages, responsive ──────────────────────────────────────────────
+   The scan table sheds columns rather than becoming a different component:
+   the rank, the movement and the title survive; the tenure and momentum
+   columns fold into the title's own meta line. */
+@media (max-width: 900px) {
+  .ix-thead { display: none; }
+  .ix-row { grid-template-columns: 46px minmax(0, 1fr); row-gap: 4px; }
+  .ix-row__rk { font-size: 17px; }
+  .ix-row__r { grid-column: 2; text-align: left; }
+  .ix-row__num { display: none; }
+}
+@media (max-width: 639px) {
+  .ix-page { padding: 8px 8px 0; }
+  .ix-phead { padding: 20px 16px 16px; }
+  .ix-sec { padding: 16px; }
+  .ix-row { padding: 11px 14px; }
+  .ix-row__art { width: 34px; height: 48px; }
+  .ix-champion { grid-template-columns: minmax(0, 1fr); }
+  .ix-champion__art { display: none; }
 }
 @media (prefers-contrast: more) {
-  .ix-panel { background: rgb(246 247 249 / 0.97); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* Contrast preferences win over translucency: the planes go solid, but the
+     composition, radii and type are untouched. */
+  .ix-panel, .ix-plane {
+    background: rgb(246 247 249 / 0.97);
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
   .ix-pcard__rk { background: #080808; }
 }

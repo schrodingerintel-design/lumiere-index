@@ -33,7 +33,11 @@ function Section({ num, title, children }: { num: string; title: string; childre
 
 function Terms() {
   return (
-    <StaticPage eyebrow="Legal" title="Terms & Conditions">
+    <StaticPage
+      eyebrow="Legal"
+      title="Terms & Conditions"
+      lede="The terms that come with using The Index, in plain language."
+    >
       <p>
         Welcome to The Index. These Terms & Conditions (“Terms”) govern your access to and
         use of The Index products, websites, applications, and services (collectively, the “Service”).

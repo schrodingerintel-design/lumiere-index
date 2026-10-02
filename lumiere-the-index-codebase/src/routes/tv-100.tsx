@@ -3,6 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
+import { PagePlane } from "@/components/lumiere/PagePlane";
+import { PageHead, LiveStamp } from "@/components/lumiere/PageHead";
 import { getTopFilms, getMetaRefresh, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
@@ -74,48 +76,34 @@ function ChampionSeries({ film }: { film: RankedFilm }) {
     film.director && film.director !== "Unknown" ? film.director : null;
 
   return (
-    <div className="border-y border-foreground/10 bg-surface p-6 sm:p-8">
-      <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-[1fr_auto]">
-        <div className="min-w-0">
-          <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
-            #1 TV 100
-          </div>
-          <h2 className="mt-2 truncate font-display text-4xl font-medium leading-tight sm:text-5xl">
-            <Link
-              to="/films/$slug"
-              params={{ slug: film.slug }}
-              className="transition-colors hover:text-primary"
-            >
-              {film.title}
-            </Link>
-          </h2>
-          <div className="mt-1.5 text-sm text-muted-foreground">
-            {[director, film.year].filter(Boolean).join(" · ")}
-          </div>
-
-          {/* The state of change is the headline */}
-          <div className="mt-5 flex items-center gap-4">
-            <MomentumMark state={film.momentum} className="!text-[13px]" />
-            {film.peak_rank ? (
-              <span className="font-mono text-xs tabular text-muted-foreground">
-                Peak #{film.peak_rank}
-              </span>
-            ) : null}
-            <span className="font-mono text-xs tabular text-muted-foreground">
-              {film.days_on_chart ?? 1}d on chart
-            </span>
-          </div>
+    <div className="ix-champion">
+      <div className="ix-champion__body">
+        <span className="ix-phead__kicker">#1 TV 100</span>
+        <h2 className="ix-champion__title">
+          <Link to="/films/$slug" params={{ slug: film.slug }}>
+            {film.title}
+          </Link>
+        </h2>
+        <div className="ix-champion__meta">
+          {[director, film.year].filter(Boolean).join(" · ")}
         </div>
 
-        <Link
-          to="/films/$slug"
-          params={{ slug: film.slug }}
-          aria-label={`Open ${film.title}`}
-          className="hidden sm:block"
-        >
-          <FilmPosterThumbnail film={film} className="h-64 w-44" />
-        </Link>
+        {/* The state of change is the headline */}
+        <div className="ix-champion__stats">
+          <MomentumMark state={film.momentum} />
+          {film.peak_rank ? <span>Peak #{film.peak_rank}</span> : null}
+          <span>{film.days_on_chart ?? 1}d on chart</span>
+        </div>
       </div>
+
+      <Link
+        to="/films/$slug"
+        params={{ slug: film.slug }}
+        aria-label={`Open ${film.title}`}
+        className="ix-champion__art"
+      >
+        <FilmPosterThumbnail film={film} className="ix-champion__poster" />
+      </Link>
     </div>
   );
 }
@@ -170,70 +158,58 @@ function TV100() {
 
   return (
     <Layout>
-      <section className="px-4 pt-10 sm:px-6">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-6 gap-y-2">
-          <div>
-            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
-              The Index · TV 100 · Live
-            </div>
-            <h1 className="mt-2 font-display text-4xl font-medium leading-tight sm:text-5xl">
-              TV 100
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              The TV shows getting the most attention right now. Updated every
-              15 minutes.{snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
-            </p>
-          </div>
-          <div className="flex items-end gap-6">
-            {countdown && (
-              <div className="text-right">
-                <div className="font-mono text-2xl tabular text-foreground">{countdown}</div>
-                <div className="mt-0.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+      <PagePlane lead={champion} wide>
+        <PageHead
+          kicker="The Index · TV 100"
+          title="TV 100"
+          lede={`The TV shows getting the most attention right now. Updated every 15 minutes.${snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}`}
+          meta={
+            <>
+              {countdown ? (
+                <span className="ix-phead__count">
+                  <b>{countdown}</b>
                   Next refresh
-                </div>
-              </div>
-            )}
-            <ShareCardButton
-              variant="chart"
-              card={{
-                title: "TV 100",
-                subtitle: "The TV shows getting the most attention right now.",
-                films: entries.slice(0, 5),
-                rankOf: (_f, i) => i + 1,
-              }}
-              className="mb-1"
-            />
-          </div>
-        </div>
-      </section>
+                </span>
+              ) : null}
+              <ShareCardButton
+                variant="chart"
+                card={{
+                  title: "TV 100",
+                  subtitle: "The TV shows getting the most attention right now.",
+                  films: entries.slice(0, 5),
+                  rankOf: (_f, i) => i + 1,
+                }}
+              />
+              <LiveStamp>Live</LiveStamp>
+            </>
+          }
+        />
 
-      {champion && (
-        <section className="mt-8 px-4 sm:px-6">
-          <div className="mx-auto max-w-6xl">
-            <ChampionSeries
-              film={champion}
-            />
+        {champion ? (
+          <div className="ix-sec !pt-0">
+            <ChampionSeries film={champion} />
           </div>
-        </section>
-      )}
+        ) : null}
 
-      <section className="mt-10 px-4 pb-16 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          {error && (
-            <div className="border-y border-foreground/10 bg-surface p-8 text-center text-sm text-muted-foreground">
-              Unable to load the TV 100 right now. Please try again later.
+        {error ? (
+          <div className="ix-sec">
+            <div className="ix-note">
+              <p className="ix-note__title">Unable to load the TV 100</p>
+              <p className="ix-note__body">
+                The chart engine did not answer. Please try again shortly.
+              </p>
             </div>
-          )}
-          <div className="border-t-2 border-foreground/20">
-            {/* Desktop header row */}
-            <div className="hidden grid-cols-[64px_64px_1fr_80px_110px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
+          </div>
+        ) : (
+          <div className="ix-sec !pt-0">
+            <div className="ix-thead">
               <div>Rank</div>
               <div>Mvmt</div>
               <div>Series</div>
               <div>Days</div>
-              <div className="text-right">Momentum</div>
+              <div className="ix-thead__r">Momentum</div>
             </div>
-            <ul>
+            <ul className="ix-rows">
               {isLoading
                 ? [...Array(20)].map((_, i) => <FilmRowSkeleton key={i} />)
                 : rows.map((row) => {
@@ -254,60 +230,47 @@ function TV100() {
                         <Link
                           to="/films/$slug"
                           params={{ slug: f.slug }}
-                          /* Mobile: stacked card — rank/movement/title/score, meta underneath.
-                             Desktop: full scan table. No horizontal overflow anywhere. */
-                          className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.03] sm:grid-cols-[64px_64px_1fr_80px_110px] sm:px-5"
+                          className="ix-row"
                         >
-                          <div className="flex flex-col items-start gap-0.5">
-                            <span className="index-score text-2xl font-semibold sm:text-xl">
-                              {String(f.rank).padStart(2, "0")}
-                            </span>
-                            <span className="sm:hidden">
-                              <Movement film={f} />
-                            </span>
-                          </div>
-                          <div className="hidden sm:block">
-                            <Movement film={f} />
-                          </div>
-                          <div className="min-w-0 flex items-center gap-3">
-                            <FilmPosterThumbnail
-                              film={f}
-                              className="h-14 w-10 sm:h-12 sm:w-9"
-                            />
-                            <div className="min-w-0">
-                              <div className="truncate text-[15px] font-medium sm:text-lg">
-                                {f.title}
-                              </div>
-                              <div className="truncate text-xs text-muted-foreground">
+                          <span className="ix-row__rk">
+                            {String(f.rank).padStart(2, "0")}
+                          </span>
+
+                          <Movement film={f} />
+
+                          <span className="ix-row__main">
+                            <FilmPosterThumbnail film={f} className="ix-row__art" />
+                            <span className="min-w-0">
+                              <span className="ix-row__title block">{f.title}</span>
+                              <span className="ix-row__meta block">
                                 {[director, filmYear(f)].filter(Boolean).join(" · ")}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="hidden font-mono text-xs tabular text-muted-foreground sm:block">
-                            {tenureLabel(f)}
-                          </div>
-                          <div className="text-right">
-                            <div className="flex items-center justify-end">
-                              <MomentumMark state={f.momentum} />
-                            </div>
-                            <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
-                              {f.peak_rank ? `Peak #${f.peak_rank}` : ""}
-                            </div>
-                          </div>
+                              </span>
+                            </span>
+                          </span>
+
+                          <span className="ix-row__num">{tenureLabel(f)}</span>
+                          <span className="ix-row__r">
+                            <MomentumMark state={f.momentum} />
+                          </span>
                         </Link>
                       </li>
                     );
                   })}
             </ul>
           </div>
+        )}
 
-          {!isLoading && !error && entries.length === 0 && (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              The TV 100 is being prepared. Rankings appear after the next refresh cycle.
+        {!isLoading && !error && entries.length === 0 ? (
+          <div className="ix-sec">
+            <div className="ix-note">
+              <p className="ix-note__title">The TV 100 is being prepared</p>
+              <p className="ix-note__body">
+                Rankings appear after the next refresh cycle.
+              </p>
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        ) : null}
+      </PagePlane>
     </Layout>
   );
 }

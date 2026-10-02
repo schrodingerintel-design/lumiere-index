@@ -42,7 +42,11 @@ function List({ items }: { items: string[] }) {
 
 function Methodology() {
   return (
-    <StaticPage eyebrow="Index Methodology" title="How The Index Measures Cultural Momentum">
+    <StaticPage
+      eyebrow="Index Methodology"
+      title="How The Index Measures Cultural Momentum"
+      lede="Every number The Index publishes comes from a measurement you can inspect. This is how those measurements are taken."
+    >
       <p className="font-serif text-xl text-foreground/90">
         The Index is a real-time ranking system designed to measure the cultural impact and
         momentum of movies and television shows.

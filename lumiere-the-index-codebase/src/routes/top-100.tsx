@@ -2,14 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
+import { PagePlane } from "@/components/lumiere/PagePlane";
+import { PageHead, LiveStamp } from "@/components/lumiere/PageHead";
 import { getTopFilms, type RankedFilm } from "@/lib/apiClient";
 import { AdSlot, isAdSlotActive } from "@/components/lumiere/AdSlot";
 import { isNewRelease, tenureLabel } from "@/lib/filmUtils";
 import { RouteError } from "@/lib/route-error";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
-import { MomentumMark, MomentumInline } from "@/components/lumiere/Momentum";
+import { MomentumMark } from "@/components/lumiere/Momentum";
 
 /** Render-order row: a ranked film, or a future non-ranked ad separator. */
 type ChartRow = { kind: "film"; film: RankedFilm } | { kind: "ad"; placement: string };
@@ -64,153 +66,114 @@ function Top100() {
     });
   }
 
+  const lead = films?.[0] ?? null;
+
   return (
     <Layout>
-      <section className="px-4 pt-6 lg:px-6">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          The Index · Movie 100 · Updated every 15 minutes ·{" "}
-          {new Date().toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })}
-        </div>
-        <h1 className="mt-2 font-display text-5xl lg:text-6xl">Movie 100</h1>
-        <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          The movies getting the most attention right now. Updated every 15
-          minutes. A public rank only exists between #1 and #100; titles beyond
-          the chart are simply not currently ranked.
-        </p>
-      </section>
+      <PagePlane lead={lead} wide>
+        <PageHead
+          kicker={
+            <>
+              The Index · Movie 100 ·{" "}
+              {new Date().toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </>
+          }
+          title="Movie 100"
+          lede="The movies getting the most attention right now. Updated every 15 minutes. A public rank only exists between #1 and #100; titles beyond the chart are simply not currently ranked."
+          meta={<LiveStamp>Updated every 15 minutes</LiveStamp>}
+        />
 
-      <section className="mt-10 px-4 lg:px-6">
-        {error && (
-          <div className="border border-foreground/10 bg-surface p-6 text-center text-sm text-muted-foreground">
-            Unable to load rankings right now. Please try again later.
+        {error ? (
+          <div className="ix-sec">
+            <div className="ix-note">
+              <p className="ix-note__title">Unable to load rankings</p>
+              <p className="ix-note__body">
+                The chart engine did not answer. Please try again shortly.
+              </p>
+            </div>
           </div>
-        )}
-        <div className="border-t-2 border-foreground/20">
-          {/* Desktop header row */}
-          <div className="hidden grid-cols-[64px_64px_1fr_90px_130px] items-center gap-3 border-b border-foreground/10 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid">
-            <div>Rank</div>
-            <div>Mvmt</div>
-            <div>Title</div>
-            <div>Days</div>
-            <div className="text-right">Momentum</div>
-          </div>
-          <ul>
-            {isLoading
-              ? [...Array(20)].map((_, i) => <FilmRowSkeleton key={i} />)
-              : rows.map((row) => {
-                  if (row.kind === "ad") {
-                    // Ad separator — deliberately NOT a ranked row: no rank
-                    // number, no movement, no score, no poster, no title
-                    // typography. Occupies zero space while ads are disabled.
+        ) : (
+          <div className="ix-sec !pt-0">
+            <div className="ix-thead">
+              <div>Rank</div>
+              <div>Mvmt</div>
+              <div>Title</div>
+              <div>Days</div>
+              <div className="ix-thead__r">Momentum</div>
+            </div>
+            <ul className="ix-rows">
+              {isLoading
+                ? [...Array(20)].map((_, i) => <FilmRowSkeleton key={i} />)
+                : rows.map((row) => {
+                    if (row.kind === "ad") {
+                      // Ad separator — deliberately NOT a ranked row: no rank
+                      // number, no movement, no score, no poster, no title
+                      // typography. Occupies zero space while ads are disabled.
+                      return (
+                        <li key={row.placement}>
+                          <AdSlot placement={row.placement} />
+                        </li>
+                      );
+                    }
+                    const f = row.film;
+                    const change = f.movement ?? null;
+                    const director =
+                      f.director && f.director !== "Unknown" ? f.director : null;
+                    const isNew = f.prev_rank == null && isNewRelease(f);
+
                     return (
-                      <li key={row.placement}>
-                        <AdSlot placement={row.placement} />
-                      </li>
-                    );
-                  }
-                  const f = row.film;
-                  const change = f.movement ?? null;
-                  const director =
-                    f.director && f.director !== "Unknown" ? f.director : null;
-                  const isNew = f.prev_rank == null && isNewRelease(f);
-
-                  return (
-                    <li key={f.slug}>
-                      <Link
-                        to="/films/$slug"
-                        params={{ slug: f.slug }}
-                        /* Mobile: stacked card — rank/movement/title/score, meta underneath.
-                           Desktop: full 6-column scan table. No horizontal overflow anywhere. */
-                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_130px] sm:px-5"
-                      >
-                        <div className="flex flex-col items-start gap-0.5">
-                          <span className="index-score text-2xl font-semibold sm:text-xl">
+                      <li key={f.slug}>
+                        <Link
+                          to="/films/$slug"
+                          params={{ slug: f.slug }}
+                          className="ix-row"
+                        >
+                          <span className="ix-row__rk">
                             {String(f.rank).padStart(2, "0")}
                           </span>
-                          <span className="sm:hidden">
-                            {isNew ? (
-                              <span className="rounded bg-cream px-1 py-0.5 font-mono text-[8px] font-bold uppercase text-ink">
-                                New
-                              </span>
-                            ) : change !== null && change !== 0 ? (
-                              <span
-                                className={`flex items-center font-mono text-[10px] tabular ${change > 0 ? "text-forest-deep" : "text-down"}`}
-                              >
-                                {change > 0 ? (
-                                  <ArrowUp className="h-2.5 w-2.5" />
-                                ) : (
-                                  <ArrowDown className="h-2.5 w-2.5" />
-                                )}
-                                {Math.abs(change)}
-                              </span>
-                            ) : (
-                              <span className="font-mono text-[11px] text-muted-foreground" title="Held its rank">
-                                -
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="hidden sm:block">
+
                           {isNew ? (
-                            <span className="rounded bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-ink">
-                              New
-                            </span>
-                          ) : change !== null && change !== 0 ? (
+                            <span className="ix-delta ix-delta--new">New</span>
+                          ) : change ? (
                             <span
-                              className={`flex items-center gap-0.5 font-mono text-xs tabular ${change > 0 ? "text-forest-deep" : "text-down"}`}
+                              className={`ix-delta ${change > 0 ? "ix-delta--up" : "ix-delta--down"}`}
+                              title={change > 0 ? "Climbed" : "Fell"}
                             >
-                              {change > 0 ? (
-                                <ArrowUp className="h-3 w-3" />
-                              ) : (
-                                <ArrowDown className="h-3 w-3" />
-                              )}
+                              {change > 0 ? <ArrowUp aria-hidden /> : <ArrowDown aria-hidden />}
                               {Math.abs(change)}
                             </span>
                           ) : (
-                            <span
-                              className="font-mono text-sm text-muted-foreground"
-                              title="Held its rank"
-                            >
-                              -
+                            <span className="ix-delta ix-delta--flat" title="Held its rank">
+                              <Minus aria-hidden />0
                             </span>
                           )}
-                        </div>
-                        <div className="min-w-0 flex items-center gap-3">
-                          <FilmPosterThumbnail film={f} className="h-14 w-10 sm:h-12 sm:w-9" />
-                          <div className="min-w-0">
-                            <div className="truncate font-display text-[15px] font-medium sm:text-lg">
-                              {f.title}
-                            </div>
-                            <div className="truncate text-xs text-muted-foreground">
-                              {director ? `${director} · ${f.year}` : f.year}
-                              <span className="sm:hidden">
-                                {' '}&middot; <MomentumInline state={f.momentum} />
+
+                          <span className="ix-row__main">
+                            <FilmPosterThumbnail film={f} className="ix-row__art" />
+                            <span className="min-w-0">
+                              <span className="ix-row__title block">{f.title}</span>
+                              <span className="ix-row__meta block">
+                                {director ? `${director} · ${f.year}` : f.year}
                               </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="hidden font-mono text-xs tabular text-muted-foreground sm:block">
-                          {tenureLabel(f)}
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center justify-end sm:justify-end">
+                            </span>
+                          </span>
+
+                          <span className="ix-row__num">{tenureLabel(f)}</span>
+                          <span className="ix-row__r">
                             <MomentumMark state={f.momentum} />
-                          </div>
-                          <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground sm:hidden">
-                            {f.peak_rank ? `Peak #${f.peak_rank}` : ""}
-                          </div>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-          </ul>
-        </div>
-      </section>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+            </ul>
+          </div>
+        )}
+      </PagePlane>
     </Layout>
   );
 }

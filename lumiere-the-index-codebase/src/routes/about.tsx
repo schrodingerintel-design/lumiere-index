@@ -33,6 +33,7 @@ function About() {
           shaping culture.
         </>
       }
+      lede="The Index is a live measurement of what film and television culture is paying attention to, and how that attention is moving."
     >
       <p className="font-serif text-xl text-foreground/90">
         Lumière: The Index is a real-time cultural ranking platform built to track the movies and

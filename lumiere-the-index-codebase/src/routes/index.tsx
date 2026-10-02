@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { Layout } from "@/components/lumiere/Layout";
+import { TopNav } from "@/components/lumiere/TopNav";
 import { RouteError } from "@/lib/route-error";
 import { HomeEnvironment } from "@/components/home/HomeEnvironment";
 import { HomeHero } from "@/components/home/HomeHero";
-import { HomeDestinationChips } from "@/components/home/HomeDestinationChips";
+import { HomeRail } from "@/components/home/HomeRail";
 import { HomeBand, type HomeCardFilm } from "@/components/home/HomeBand";
 import { AdSlot } from "@/components/lumiere/AdSlot";
 import { getTopFilms, getBiggestMovers, getIndexNewEntries } from "@/lib/apiClient";
@@ -92,15 +93,19 @@ function Home() {
   }));
 
   return (
-    <Layout>
+    // Home places the one header itself, inside the luminous plane, so the
+    // composition is a single lit surface rather than a page with a chrome bar
+    // bolted above it. See TopNav's `tone`.
+    <Layout header={false}>
       <div className="ix-stage">
         <HomeEnvironment lead={lead} />
 
         <div className="ix-panel">
+          <TopNav tone="panel" />
           {lead ? (
             <>
               <HomeHero film={lead} />
-              <HomeDestinationChips />
+              <HomeRail />
 
               <HomeBand
                 title="Movie 100"
