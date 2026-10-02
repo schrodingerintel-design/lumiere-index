@@ -453,7 +453,6 @@ function FilmDetailView() {
     return (
       <Layout>
         <PagePlane>
-          <div className="ix-invert">
         <section className="grid grid-cols-1 gap-6 px-4 pt-6 lg:grid-cols-12 lg:px-6">
           <div className="lg:col-span-8 space-y-4">
             <Skeleton className="h-6 w-32" />
@@ -471,7 +470,6 @@ function FilmDetailView() {
             <Skeleton className="h-52 w-full" />
           </aside>
         </section>
-          </div>
         </PagePlane>
       </Layout>
     );
@@ -481,7 +479,6 @@ function FilmDetailView() {
     return (
       <Layout>
         <PagePlane>
-          <div className="ix-invert">
         <section className="flex flex-col items-center justify-center px-6 py-24 text-center">
           <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
             The Index · 404
@@ -509,7 +506,6 @@ function FilmDetailView() {
             </Link>
           </div>
         </section>
-          </div>
         </PagePlane>
       </Layout>
     );
@@ -585,7 +581,6 @@ function FilmDetailView() {
   return (
     <Layout>
       <PagePlane lead={film}>
-      <div className="ix-invert">
       {/* ── Hero: the title's own cinematic card, seated on the plane ── */}
       <section className="ix-film relative overflow-hidden">
         {/* Backdrop — full-bleed still, fading down into the page canvas */}
@@ -1082,7 +1077,6 @@ function FilmDetailView() {
           </button>
         </div>
       )}
-      </div>
       </PagePlane>
     </Layout>
   );

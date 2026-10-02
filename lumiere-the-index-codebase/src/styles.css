@@ -1,3 +1,22 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   THE INDEX — design system
+
+   One stylesheet, read top to bottom. Sections in file order:
+
+     1  Tokens        the theme: one canvas, one accent, two typefaces
+     2  Base          element defaults, overlays, scrollbars
+     3  Planes        the lit page surface, its ink, and the page head
+     4  Components    rows, cards, tiles, pickers, prose, written-page boxes
+     5  Home          the front-door composition: header, environment, plane,
+                      hero, rail, bands, phone chrome, footer
+     6  Responsive    three breakpoints and three preference queries
+
+   Two naming systems live here on purpose. `ix-*` is this direction. The
+   Tailwind tokens (`--foreground`, `--surface`, …) are re-bound per subtree by
+   a plane, so components written before this direction still read correctly
+   inside one. Nothing else should be added to the token layer.
+   ══════════════════════════════════════════════════════════════════════════ */
+
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -45,9 +64,6 @@
   --font-display: "Fraunces", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
-  /* Legacy `font-serif` usages resolve to the display face so the type system
-     stays coherent everywhere. */
-  --font-serif: var(--font-display);
 }
 
 /* ── The only theme ──────────────────────────────────────────────────────────
@@ -106,7 +122,7 @@
     -webkit-font-smoothing: antialiased;
     text-wrap: pretty;
   }
-  h1, h2, h3, h4, .font-display, .font-serif {
+  h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
@@ -121,42 +137,12 @@
   }
 }
 
-/* ── Surfaces — flat, quiet tonal steps. No blur, no glow, no glass. ─────── */
-@utility glass {
-  background-color: var(--surface);
-  border: 1px solid oklch(1 0 0 / 0.09);
-}
-@utility glass-soft {
-  background-color: var(--surface);
-  border: 1px solid oklch(1 0 0 / 0.08);
-}
-@utility glass-tint {
-  background-color: oklch(1 0 0 / 0.03);
-  border: 1px solid oklch(1 0 0 / 0.06);
-}
-/* Kept for markup compatibility with older panels — resolves to a solid card. */
-@utility glass-dark {
-  background-color: var(--surface);
-  border: 1px solid oklch(1 0 0 / 0.1);
-}
-@utility glass-solid {
-  background-color: var(--surface);
-  border: 1px solid oklch(1 0 0 / 0.1);
-}
-@utility glass-flat {
-  background-color: var(--surface);
-  border: 1px solid oklch(1 0 0 / 0.09);
-}
+/* Surfaces.
 
-/* Index Score — the product's signature number. Ivory, tabular, tight. */
-@utility index-score {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--cream);
-  line-height: 1;
-}
+   Six `glass-*` utilities used to live here, every one of them resolving to the
+   same solid near-black card with a different hairline. All six are gone: the
+   lit planes and the white-wash surfaces (`.ix-box`, `.ix-pick`, `.ix-tile`,
+   `.ix-vs`) carry every panel in the product, and they carry one recipe. */
 
 /* 44px minimum tap targets on coarse pointers. */
 @media (pointer: coarse) {
@@ -172,98 +158,14 @@
   }
 }
 
-/* Hover — a quiet tonal shift, nothing more. */
-@utility card-lift {
-  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
-  &:hover {
-    border-color: oklch(1 0 0 / 0.18);
-  }
-}
-
-/* Hero backdrop masks — the still is fully visible at the top, then dissolves
-   continuously into blur and the page canvas toward the bottom. Two copies of
-   the image with opposing vertical masks create the sharp→blur crossfade. */
-@utility hero-fade-sharp {
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 48%, transparent 96%);
-  mask-image: linear-gradient(to bottom, black 0%, black 48%, transparent 96%);
-}
-@utility hero-fade-blur {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 35%, black 88%, black 100%);
-  mask-image: linear-gradient(to bottom, transparent 35%, black 88%, black 100%);
-}
-/* Desktop hero boundary — a slight backdrop blur that strengthens toward the
-   bottom edge, so the still melts into the page with no visible seam. */
-@utility hero-boundary-blur {
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
-  -webkit-mask-image: linear-gradient(to top, black 15%, transparent 100%);
-  mask-image: linear-gradient(to top, black 15%, transparent 100%);
-}
-
-/* Subtle entrance — fast, almost invisible. */
+/* Entrance — used by the overlay surfaces (search, beta notice, toast). */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-up { animation: fadeUp .3s cubic-bezier(.2,.7,.2,1) both; }
-.delay-100 { animation-delay: .06s }
-.delay-200 { animation-delay: .12s }
-.delay-300 { animation-delay: .18s }
-
-/* The homepage's desktop composition: a wide live chart with a narrow,
-   editorial intelligence rail. It stays a single canvas rather than a set of
-   floating cards. The mobile version remains the original vertical flow. */
-@media (min-width: 1024px) {
-  .home-desktop-composition {
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(17.5rem, 0.7fr);
-    column-gap: 3.5rem;
-    align-items: start;
-    width: 100%;
-    max-width: 90rem;
-    margin-inline: auto;
-  }
-
-  .home-desktop-composition > section {
-    min-width: 0;
-    padding-inline: 2rem;
-  }
-
-  .home-desktop-composition > section:first-child {
-    padding-top: 2.5rem;
-  }
-
-  .home-desktop-composition > .home-pulse-rail {
-    margin-top: 0;
-    padding-top: 2.5rem;
-  }
-
-  .home-desktop-composition > section > .mx-auto {
-    max-width: none;
-  }
-
-  .home-pulse-grid {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-}
-
-/* A new #1 should feel like a page turning, not a carousel advancing. */
-@keyframes heroLeaderIn {
-  from { opacity: 0; transform: translateY(7px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.hero-leader-transition {
-  animation: heroLeaderIn 560ms cubic-bezier(.2,.7,.2,1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-leader-transition { animation: none; }
-}
 
 /* Scrollbars */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { scrollbar-width: none; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -316,6 +218,30 @@
 .ix-page__grain {
   position: absolute; inset: 0; opacity: 0.024; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* The plane's own ink.
+
+   Every page in the product predates the plane and is set in the Tailwind token
+   system, so the plane re-binds that system for its whole subtree: one rule, and
+   `text-foreground`, `text-muted-foreground`, `border-foreground/10`,
+   `bg-surface` and `bg-background` all resolve to values that are legible on
+   light. That is what keeps shared components — ad slots, share buttons, pickers
+   — correct inside a plane without any of them knowing a plane exists. */
+.ix-plane,
+.ix-invert {
+  --foreground: #101822;
+  --muted-foreground: rgb(16 24 34 / 0.55);
+  --cream: #101822;
+  --border: rgb(16 24 34 / 0.1);
+  --surface: rgb(255 255 255 / 0.5);
+  --surface-alt: rgb(255 255 255 / 0.72);
+  --background: transparent;
+  --primary: oklch(0.56 0.11 58);
+  --primary-foreground: oklch(0.98 0.005 90);
+  --up: oklch(0.5 0.1 152);
+  --down: oklch(0.55 0.14 26);
+  color: var(--foreground);
 }
 
 /* The plane. Same recipe as the home panel — thin, uneven, lit by the title. */
@@ -435,29 +361,10 @@
 .ix-empty { padding: 8px 0 2px; font-size: 14px; color: rgb(16 24 34 / 0.5); }
 
 /* ── the title page ──────────────────────────────────────────────────────────
-   The one page that is genuinely dark: a title deserves a dark room. Rather
-   than rewriting a thousand lines of a page whose whole subject is a piece of
-   cinema, its ink is re-bound locally — the same approach Tailwind's token
-   system is built for. Every `text-foreground`, `border-foreground/10` and
-   `bg-surface` inside `.ix-invert` resolves to plane-ink values, so the page
-   reads as part of the same product without being touched line by line.
-   The hero then re-binds to light type on a dark card, exactly like the home
-   page's number-one still. */
-.ix-invert {
-  --foreground: #101822;
-  --muted-foreground: rgb(16 24 34 / 0.55);
-  --cream: #101822;
-  --border: rgb(16 24 34 / 0.1);
-  --surface: rgb(255 255 255 / 0.5);
-  --surface-alt: rgb(255 255 255 / 0.72);
-  --background: transparent;
-  --primary: oklch(0.56 0.11 58);
-  --primary-foreground: oklch(0.98 0.005 90);
-  --up: oklch(0.5 0.1 152);
-  --down: oklch(0.55 0.14 26);
-  color: var(--foreground);
-}
-.ix-invert a { color: inherit; }
+   The one page that is genuinely dark: a title deserves a dark room. Its hero
+   re-binds the tokens to light type on a dark card, exactly like the home page's
+   number-one still. */
+.ix-film a { color: inherit; }
 
 /* the dark cinematic card at the top of a title page */
 .ix-film {
@@ -835,6 +742,65 @@ li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
   .ix-row__remove { opacity: 1; }
 }
 
+/* ── written-page cards ─────────────────────────────────────────────────────
+   The same white-wash surface as the picker and calendar cards, so a box of
+   copy and a box of data are visibly the same material. */
+.ix-box {
+  padding: clamp(16px, 1.8vw, 22px);
+  border-radius: clamp(12px, 1.2vw, 16px);
+  background: rgb(255 255 255 / 0.46);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  box-shadow: 0 12px 26px -20px rgb(10 20 34 / 0.7);
+}
+.ix-box > svg { width: 22px; height: 22px; color: var(--ix-rise); }
+.ix-box hr, .ix-box + .ix-box { margin-top: clamp(14px, 1.6vw, 20px); }
+.ix-box h3, .ix-box h4 {
+  margin-top: 10px;
+  font-size: 16px; font-weight: 700; letter-spacing: -0.014em;
+  color: var(--ix-panel-ink);
+}
+.ix-box p { margin-top: 6px; font-size: 13px; line-height: 1.6; color: rgb(16 24 34 / 0.62); }
+.ix-box__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: clamp(10px, 1.2vw, 16px); }
+.ix-box--accent { border-color: rgb(var(--ix-a1) / 0.34); }
+.ix-box__hd {
+  display: flex; align-items: center; gap: 9px;
+  font-size: clamp(16px, 1.5vw, 19px); font-weight: 700; letter-spacing: -0.018em;
+  color: var(--ix-panel-ink);
+}
+.ix-box__hd svg { width: 18px; height: 18px; flex: none; color: var(--ix-rise); }
+
+/* the pipeline spec list — mono, because it names things, not prose */
+.ix-spec { margin-top: 14px; }
+.ix-spec li {
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.65;
+  color: rgb(16 24 34 / 0.7);
+}
+.ix-spec li + li { margin-top: 8px; }
+.ix-spec strong { color: var(--ix-panel-ink); font-weight: 700; }
+
+/* the changelog: a dated column per release */
+.ix-log { margin-top: 22px; }
+.ix-log__item {
+  padding-left: 16px;
+  border-left: 2px solid rgb(var(--ix-a1) / 0.4);
+}
+.ix-log__item + .ix-log__item { margin-top: 24px; }
+.ix-log__when {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgb(16 24 34 / 0.46);
+}
+.ix-log__t { margin-top: 4px; font-size: 15px; font-weight: 700; color: var(--ix-panel-ink); }
+.ix-log__list { margin-top: 9px; }
+.ix-log__list li {
+  display: flex; gap: 9px;
+  font-size: 13.5px; line-height: 1.6; color: rgb(16 24 34 / 0.62);
+}
+.ix-log__list li + li { margin-top: 6px; }
+.ix-log__list i {
+  margin-top: 8px; width: 4px; height: 4px; border-radius: 9999px;
+  flex: none; background: rgb(var(--ix-a1) / 0.7);
+}
+
 /* ── written pages ──────────────────────────────────────────────────────────
    One reading measure on the plane. Not a document stylesheet: the same ink,
    the same leading, the same hairlines as the rest of the product. */
@@ -845,6 +811,13 @@ li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
   font-size: 15.5px; line-height: 1.75;
 }
 .ix-prose > * + * { margin-top: 1.15em; }
+.ix-prose > * + .ix-lede { margin-top: 1.5em; }
+/* the standfirst: one size up, one step darker, still the plane's own voice */
+.ix-lede {
+  font-family: var(--font-display);
+  font-size: clamp(17px, 1.6vw, 21px); line-height: 1.5;
+  letter-spacing: -0.016em; color: var(--ix-panel-ink);
+}
 .ix-prose h2 {
   margin-top: 2em; font-size: clamp(19px, 1.8vw, 24px); font-weight: 800;
   letter-spacing: -0.024em; color: var(--ix-panel-ink);
@@ -879,6 +852,12 @@ li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
 .ix-prose th {
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
   color: rgb(16 24 34 / 0.44);
+}
+/* a numbered clause heading: the number is metadata, the title is the heading */
+.ix-num {
+  margin-right: 9px;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--ix-rise);
 }
 
 /* ── poster cards, off the front door ───────────────────────────────────────
@@ -1423,7 +1402,19 @@ li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
 .ix-foot__base button { color: rgb(244 241 234 / 0.52); }
 .ix-foot__base button:hover { color: var(--cream); }
 
-/* ── responsive ───────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE AND ADAPTATION
+
+   Three width breakpoints and three preference queries, each declared once.
+
+     1023px and down   desktop chrome retires, phone chrome takes over
+      900px and down   the scan table sheds columns
+      639px and down   padding and type tighten
+     pointer: coarse   tap targets grow
+     reduce motion     every transition and animation switches off
+     more contrast     the planes go solid; composition is untouched
+   ══════════════════════════════════════════════════════════════════════════ */
+
 @media (max-width: 1023px) {
   /* Exactly one header row: the desktop row retires, the phone row takes over.
      (The phone row used to stay in flow on desktop, which rendered two
@@ -1444,29 +1435,9 @@ li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
   .ix-hero__card { min-height: 340px; }
   .ix-hero__img { object-position: 58% 24%; }
 }
-@media (max-width: 639px) {
-  .ix-hero__title { font-size: 32px; }
-  .ix-band, .ix-hero, .ix-rail { padding-left: 14px; padding-right: 14px; }
-  .ix-grid, .ix-grid--4 { gap: 9px; }
-  .ix-rail { flex-wrap: wrap; gap: 8px 14px; }
-  .ix-foot__top { gap: 22px; }
-  .ix-foot__base { align-items: flex-start; flex-direction: column; }
-}
 
-/* Desktop never shows the phone chrome. */
-@media (min-width: 1024px) {
-  .ix-tabbar { display: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ix-pcard__art img, .ix-rail__link, .ix-nav__link, .ix-row { transition: none; }
-  .ix-skel { animation: none; }
-}
-
-/* ── interior pages, responsive ──────────────────────────────────────────────
-   The scan table sheds columns rather than becoming a different component:
-   the rank, the movement and the title survive; the tenure and momentum
-   columns fold into the title's own meta line. */
+/* The scan table sheds columns rather than becoming a different component: the
+   rank, the movement and the title survive; tenure and momentum fold away. */
 @media (max-width: 900px) {
   .ix-thead { display: none; }
   .ix-row { grid-template-columns: 46px minmax(0, 1fr); row-gap: 4px; }
@@ -1474,15 +1445,38 @@ li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
   .ix-row__r { grid-column: 2; text-align: left; }
   .ix-row__num { display: none; }
 }
+
+/* Desktop never shows the phone chrome. */
+@media (min-width: 1024px) {
+  .ix-tabbar { display: none; }
+}
+
 @media (max-width: 639px) {
   .ix-page { padding: 8px 8px 0; }
   .ix-phead { padding: 20px 16px 16px; }
   .ix-sec { padding: 16px; }
+  .ix-hero__title { font-size: 32px; }
+  .ix-band, .ix-hero, .ix-rail { padding-left: 14px; padding-right: 14px; }
+  .ix-grid, .ix-grid--4 { gap: 9px; }
+  .ix-rail { flex-wrap: wrap; gap: 8px 14px; }
   .ix-row { padding: 11px 14px; }
   .ix-row__art { width: 34px; height: 48px; }
   .ix-champion { grid-template-columns: minmax(0, 1fr); }
   .ix-champion__art { display: none; }
+  .ix-foot__top { gap: 22px; }
+  .ix-foot__base { align-items: flex-start; flex-direction: column; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .ix-pcard__art img,
+  .ix-card__art img,
+  .ix-rail__link,
+  .ix-nav__link,
+  .ix-row,
+  .ix-tile { transition: none; }
+  .ix-skel { animation: none; }
+}
+
 @media (prefers-contrast: more) {
   /* Contrast preferences win over translucency: the planes go solid, but the
      composition, radii and type are untouched. */
@@ -1490,5 +1484,5 @@ li:hover .ix-row__remove, .ix-row__remove:focus-visible { opacity: 1; }
     background: rgb(246 247 249 / 0.97);
     -webkit-backdrop-filter: none; backdrop-filter: none;
   }
-  .ix-pcard__rk { background: #080808; }
+  .ix-pcard__rk, .ix-card__rk { background: #080808; }
 }

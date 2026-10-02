@@ -25,10 +25,7 @@ export function StaticPage({
     <Layout>
       <PagePlane>
         <PageHead kicker={eyebrow} title={title} lede={lede} />
-        {/* The written pages predate the plane and are set in the product's
-            Tailwind tokens; `ix-invert` re-binds those tokens to plane ink so
-            the copy is dark-on-light without being rewritten. */}
-        <div className="ix-prose ix-invert">{children}</div>
+        <div className="ix-prose">{children}</div>
       </PagePlane>
     </Layout>
   );

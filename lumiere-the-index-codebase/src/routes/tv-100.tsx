@@ -8,7 +8,7 @@ import { PageHead, LiveStamp } from "@/components/lumiere/PageHead";
 import { getTopFilms, getMetaRefresh, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { FilmRowSkeleton } from "@/components/lumiere/Skeletons";
-import { Movement } from "@/components/lumiere/Ranking";
+import { Movement } from "@/components/lumiere/ChartMovement";
 import { MomentumMark } from "@/components/lumiere/Momentum";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
 import { tenureLabel } from "@/lib/filmUtils";

@@ -30,7 +30,7 @@ export function Brand({ bylineClassName = "" }: { bylineClassName?: string }) {
         The Index<span className="text-primary">.</span>
       </span>
       <span
-        className={`ml-2 hidden font-serif text-[11px] italic leading-none text-muted-foreground sm:inline ${bylineClassName}`}
+        className={`ml-2 hidden font-display text-[11px] italic leading-none text-muted-foreground sm:inline ${bylineClassName}`}
       >
         by Lumière
       </span>

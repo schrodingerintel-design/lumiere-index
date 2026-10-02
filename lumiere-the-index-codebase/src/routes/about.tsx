@@ -35,7 +35,7 @@ function About() {
       }
       lede="The Index is a live measurement of what film and television culture is paying attention to, and how that attention is moving."
     >
-      <p className="font-serif text-xl text-foreground/90">
+      <p className="ix-lede">
         Lumière: The Index is a real-time cultural ranking platform built to track the movies and
         series capturing global attention.
       </p>
@@ -47,7 +47,7 @@ function About() {
       </p>
 
       <div>
-        <h2 className="font-serif text-2xl text-foreground">What is The Index?</h2>
+        <h2>What is The Index?</h2>
         <p className="mt-3">
           The Index is a ranking system designed to measure cultural momentum. Rather than focusing
           on a single metric, Lumière looks at the full picture surrounding movies and shows to
@@ -60,7 +60,7 @@ function About() {
       </div>
 
       <div>
-        <h2 className="font-serif text-2xl text-foreground">Why The Index?</h2>
+        <h2>Why The Index?</h2>
         <p className="mt-3">Traditional entertainment rankings often focus on one area:</p>
         <ul className="mt-2 list-inside list-disc space-y-1 font-mono text-sm">
           <li>Box office performance.</li>
@@ -75,32 +75,30 @@ function About() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="border border-foreground/10 bg-surface p-5">
-          <Compass className="mb-2 h-6 w-6 text-primary" />
-          <h3 className="font-serif text-lg font-medium text-foreground">For Audiences</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+      <div className="ix-box__grid">
+        <div className="ix-box">
+          <Compass aria-hidden />
+          <h3>For Audiences</h3>
+          <p>
             See which films the world is talking about, ranked by real attention, not promotion.
           </p>
         </div>
-        <div className="border border-foreground/10 bg-surface p-5">
-          <TrendingUp className="mb-2 h-6 w-6 text-primary" />
-          <h3 className="font-serif text-lg font-medium text-foreground">For Creators</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        <div className="ix-box">
+          <TrendingUp aria-hidden />
+          <h3>For Creators</h3>
+          <p>
             Follow how your work is landing across search, social, and community, as it happens.
           </p>
         </div>
-        <div className="border border-foreground/10 bg-surface p-5">
-          <Eye className="mb-2 h-6 w-6 text-primary" />
-          <h3 className="font-serif text-lg font-medium text-foreground">For The Industry</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Track cultural momentum before it shows up at the box office.
-          </p>
+        <div className="ix-box">
+          <Eye aria-hidden />
+          <h3>For The Industry</h3>
+          <p>Track cultural momentum before it shows up at the box office.</p>
         </div>
       </div>
 
       <div>
-        <h2 className="font-serif text-2xl text-foreground">Our Vision</h2>
+        <h2>Our Vision</h2>
         <p className="mt-3">
           We believe entertainment deserves a modern cultural index. From movies and television to
           creators, books, games, and the wider world of entertainment, Lumière aims to become the
@@ -113,23 +111,23 @@ function About() {
       </div>
 
       <div>
-        <h2 className="font-serif text-2xl text-foreground">Beta changelog</h2>
-        <p className="mt-3">
+        <h2>Beta changelog</h2>
+        <p>
           The Index is in public beta: new signals, charts and fixes ship
           continuously. Every version is announced in the β chip beside the logo
           and summarized here, newest first.
         </p>
-        <div className="mt-5 space-y-6">
+        <div className="ix-log">
           {BETA_RELEASES.map((release) => (
-            <div key={release.version} className="border-l-2 border-primary/30 pl-4">
-              <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            <div key={release.version} className="ix-log__item">
+              <p className="ix-log__when">
                 Beta v{release.version} · {release.date}
               </p>
-              <h3 className="mt-1 text-[15px] font-semibold text-foreground">{release.headline}</h3>
-              <ul className="mt-2 space-y-1.5">
+              <h3 className="ix-log__t">{release.headline}</h3>
+              <ul className="ix-log__list">
                 {release.changes.map((change, i) => (
-                  <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
-                    <span aria-hidden className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />
+                  <li key={i}>
+                    <i aria-hidden />
                     <span>{change}</span>
                   </li>
                 ))}
@@ -139,10 +137,10 @@ function About() {
         </div>
       </div>
 
-      <div className="border border-foreground/10 bg-surface p-6">
-        <p className="text-sm text-foreground/80">
+      <div className="ix-box">
+        <p>
           Want to know exactly how the ranking is calculated?{" "}
-          <Link to="/methodology" className="font-medium text-primary hover:underline">
+          <Link to="/methodology" className="font-medium">
             Read the Lumière Index Methodology →
           </Link>
         </p>

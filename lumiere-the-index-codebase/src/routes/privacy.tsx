@@ -23,8 +23,8 @@ export const Route = createFileRoute("/privacy")({
 function Section({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="font-serif text-xl text-foreground">
-        <span className="mr-2 font-mono text-sm text-primary">{num}</span>
+      <h2>
+        <span className="ix-num">{num}</span>
         {title}
       </h2>
       <div className="mt-3 space-y-3">{children}</div>

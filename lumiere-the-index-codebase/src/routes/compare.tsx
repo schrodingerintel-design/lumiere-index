@@ -174,7 +174,7 @@ function FilmPicker({
           </button>
 
           <div className="absolute inset-x-2 bottom-2 text-white">
-            <div className="font-serif text-sm leading-tight">{value.title}</div>
+            <div className="font-display text-sm leading-tight">{value.title}</div>
             <div className="font-mono text-[10px] text-white/70">
               {value.director ? `${value.director} · ${value.year}` : String(value.year)}
             </div>
