@@ -1,136 +1,61 @@
 import { Link } from "@tanstack/react-router";
 import { Menu, Search } from "lucide-react";
-import { Brand, BrandLink } from "@/components/lumiere/Brand";
-import { BetaBadge } from "@/components/lumiere/BetaBadge";
+import { BrandLink } from "@/components/lumiere/Brand";
 
 /**
- * Primary navigation — the product surface. Secondary destinations
- * (Watchlist, Compare, About) live in the footer and mobile menu.
+ * Primary navigation.
+ *
+ * Desktop is a single inline pill switch — there is no hamburger on a wide
+ * screen. On a phone the bar collapses to the wordmark plus a menu trigger;
+ * the primary destinations move to the bottom tab bar and the secondary ones
+ * into the side drawer, both rendered by Layout.
+ *
+ * Every entry is an existing route in The Index. Nothing is invented here.
  */
-const PRIMARY_LINKS = [
-  { to: "/", label: "The Index", exact: true },
-  { to: "/top-100", label: "Movie 100", exact: false },
-  { to: "/tv-100", label: "TV 100", exact: false },
-  { to: "/weekly-100", label: "Weekly 100", exact: false },
-  { to: "/rising", label: "Biggest Movers", exact: false },
-  { to: "/new-entries", label: "New Entries", exact: false },
-  { to: "/trending", label: "Trending", exact: false },
-  { to: "/genres", label: "Genres", exact: false },
+const PILL_LINKS = [
+  { to: "/top-100", label: "Movie 100" },
+  { to: "/tv-100", label: "TV 100" },
+  { to: "/weekly-100", label: "Weekly 100" },
+  { to: "/rising", label: "Biggest Movers" },
 ] as const;
 
-export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
+function LiveMark() {
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-ink/95 backdrop-blur-sm">
-      <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-6">
-          {/* Mobile: compact Apple-style header — logo + menu + search */}
-          <button
-            onClick={onMenu}
-            aria-label="Open navigation menu"
-            className="-ml-1.5 flex h-10 w-10 items-center justify-center text-foreground/80 transition hover:text-foreground lg:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
-          <BrandLink />
-
-          {/* Public-beta pill: obvious but quiet; opens the release notes. */}
-          <BetaBadge className="hidden sm:inline-flex" />
-
-          <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
-            {PRIMARY_LINKS.map((l) => (
-              <Link
-                key={l.label}
-                to={l.to}
-                activeOptions={{ exact: l.exact ?? false }}
-                activeProps={{ className: "text-foreground" }}
-                className="text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onSearch}
-            className="flex h-9 items-center gap-2 border border-foreground/10 bg-foreground/[0.04] px-3.5 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground"
-          >
-            <Search className="h-4 w-4" />
-            <span className="hidden sm:inline">Search</span>
-          </button>
-        </div>
-      </div>
-    </header>
+    <span className="ix-live">
+      <i aria-hidden />
+      Live
+    </span>
   );
 }
 
-export function MobileMenu({
-  open,
-  onClose,
-  onSearch,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onSearch: () => void;
-}) {
-  // Mounted only while open — unmounting guarantees no invisible layer traps taps.
-  if (!open) return null;
+export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 lg:hidden">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
-      <div className="animate-fade-up absolute inset-x-0 top-0 border-b border-border bg-ink shadow-2xl shadow-black/60">
-        <div className="flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Brand />
-            <BetaBadge />
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close navigation menu"
-            className="flex h-10 w-10 items-center justify-center text-foreground/80 transition hover:text-foreground"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
-        <nav className="flex flex-col px-4 pb-6" aria-label="Mobile">
-          {PRIMARY_LINKS.map((l) => (
-            <Link
-              key={l.label}
-              to={l.to}
-              onClick={onClose}
-              activeOptions={{ exact: l.exact ?? false }}
-              activeProps={{ className: "text-foreground" }}
-              className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition last:border-0 hover:text-foreground"
-            >
-              {l.label}
+    <header className="ix-topbar">
+      {/* Phone: wordmark + live state + drawer trigger */}
+      <div className="ix-topbar__m">
+        <BrandLink className="ix-wordmark" />
+        <LiveMark />
+        <button type="button" onClick={onMenu} className="ix-menu-btn">
+          <Menu aria-hidden />
+          Menu
+        </button>
+      </div>
+
+      {/* Desktop: inline pill switch */}
+      <div className="ix-topbar__d">
+        <BrandLink className="ix-wordmark" />
+        <nav className="ix-switch" aria-label="Primary">
+          {PILL_LINKS.map((link) => (
+            <Link key={link.to} to={link.to} className="ix-switch__link" activeProps={{ className: "is-active" }}>
+              {link.label}
             </Link>
           ))}
-          <Link
-            to="/watchlist"
-            onClick={onClose}
-            className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition hover:text-foreground"
-          >
-            Watchlist
-          </Link>
-          <Link
-            to="/compare"
-            onClick={onClose}
-            className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition hover:text-foreground"
-          >
-            Compare
-          </Link>
-          <Link
-            to="/about"
-            onClick={onClose}
-            className="flex min-h-12 items-center text-[15px] text-muted-foreground transition hover:text-foreground"
-          >
-            About
-          </Link>
+          <button type="button" onClick={onSearch} className="ix-switch__search" aria-label="Search">
+            <Search aria-hidden />
+          </button>
         </nav>
+        <LiveMark />
       </div>
-    </div>
+    </header>
   );
 }
