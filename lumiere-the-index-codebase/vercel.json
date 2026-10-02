@@ -1,6 +1,6 @@
 {
   "buildCommand": "vite build",
-  "installCommand": "npm ci",
+  "installCommand": "bun install --frozen-lockfile",
   "framework": null,
   "trailingSlash": false,
   "redirects": [
