@@ -5,20 +5,15 @@ import {
   searchTmdbMovie,
   tmdbPosterUrl,
 } from "@/lib/apiClient";
-import { posterAt } from "@/lib/tmdbImage";
 import { MomentumInline } from "./Momentum";
 
 function gradientStyle(from: string | null, to: string | null) {
-  return `linear-gradient(155deg, ${from ?? "#2a3140"}, ${to ?? "#131720"})`;
+  return `linear-gradient(155deg, ${from ?? "#333"}, ${to ?? "#111"})`;
 }
 
 /**
- * The title card, as it appears anywhere off the front door.
- *
- * Identical to the home page's poster card: real artwork as the anchor, the
- * title in the plane's type, and the title's own colours as the placeholder
- * when artwork is missing. Rank is the chart's own value and only appears on an
- * official chart; an unranked title says so rather than inventing a state.
+ * The title card — poster as visual anchor, the way physical film artwork
+ * deserves. Poster + title + rank context. No public score.
  */
 export function PosterCard({
   film,
@@ -42,59 +37,69 @@ export function PosterCard({
     retry: false,
   });
 
-  const posterUrl =
-    posterAt(film.poster_url, "w342") || tmdbPosterUrl(tmdb?.results?.[0]?.poster_path, "w342");
+  const posterUrl = film.poster_url || tmdbPosterUrl(tmdb?.results?.[0]?.poster_path, "w342");
 
   // Rank only exists on an official chart (1–100). rank 0 / chart null ⇒ the
   // title is catalogue-only — render "Not currently ranked" semantics, never
   // a fake 0.0 score or a false "New" chart badge.
   const isRanked = (film.rank ?? 0) > 0;
 
-  const meta = [
-    film.genre_tag ?? null,
-    film.country_origin ?? null,
-    film.year ?? null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <Link
       to="/films/$slug"
       params={{ slug: film.slug }}
-      className="ix-card"
+      className="group block shrink-0"
       style={{ width }}
     >
-      <div className="ix-card__art" style={{ background: gradientStyle(film.gradient_from, film.gradient_to) }}>
+      <div
+        className="relative aspect-[2/3] overflow-hidden bg-ink"
+        style={{ background: gradientStyle(film.gradient_from, film.gradient_to) }}
+      >
         {posterUrl ? (
-          <img src={posterUrl} alt={`${film.title} poster`} loading="lazy" decoding="async" />
+          <img
+            src={posterUrl}
+            alt={film.title}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
-          <div className="ix-card__fallback">{film.title}</div>
+          <div className="absolute inset-0 flex items-center justify-center p-3 text-center text-xs font-display text-cream/80">
+            {film.title}
+          </div>
         )}
-
-        {/* Rank, or NEW. Unranked titles get neither — they are simply not
-            currently ranked. */}
-        {isRanked ? (
-          film.prev_rank == null ? (
-            <span className="ix-card__new">New</span>
-          ) : showRank ? (
-            <span className="ix-card__rk">{String(film.rank).padStart(2, "0")}</span>
-          ) : null
-        ) : null}
-
-        {isRanked ? (
-          <span className="ix-card__mom">
-            <MomentumInline state={film.momentum} />
-          </span>
-        ) : null}
+        {/* Momentum mark — quiet, top-right of the artwork. Ranked titles
+            only; unranked catalogue titles show nothing (no invented state). */}
+        {isRanked && (
+          <div className="absolute right-1.5 top-1.5 bg-black/70 px-1.5 py-1 leading-none">
+            <MomentumInline state={film.momentum} className="text-cream" />
+          </div>
+        )}
+        {/* NEW badge takes the corner; the rank badge yields to it. Unranked
+            titles get neither — they are simply not currently ranked. */}
+        {!isRanked ? null : film.prev_rank == null ? (
+          <div className="absolute left-1.5 top-1.5 bg-cream px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none text-ink">
+            New
+          </div>
+        ) : (
+          showRank && (
+            <div className="absolute left-1.5 top-1.5 bg-black/70 px-1.5 py-1 font-mono text-[11px] font-semibold leading-none text-cream/90">
+              {String(film.rank).padStart(2, "0")}
+            </div>
+          )
+        )}
       </div>
 
-      <div className="ix-card__cap">
-        <div className="ix-card__t">{film.title}</div>
-        <div className="ix-card__line">{meta}</div>
-        {!isRanked ? (
-          <div className="ix-card__line ix-card__line--dim">Not currently ranked</div>
-        ) : null}
+      <div className="mt-2">
+        <div className="truncate text-sm font-medium leading-snug">{film.title}</div>
+        <div
+          className={`truncate font-mono text-[11px] tabular ${
+            isRanked ? "text-muted-foreground" : "text-muted-foreground/70"
+          }`}
+          title={isRanked ? undefined : "Not currently ranked"}
+        >
+          {isRanked ? (film.year ?? "") : [film.year, "Not currently ranked"].filter(Boolean).join(" · ")}
+        </div>
       </div>
     </Link>
   );

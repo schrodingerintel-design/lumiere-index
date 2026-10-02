@@ -3,8 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import { PagePlane } from "@/components/lumiere/PagePlane";
-import { PageHead } from "@/components/lumiere/PageHead";
 import { getGenreFilms, getGenres, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { FilmCardSkeleton } from "@/components/lumiere/Skeletons";
@@ -80,14 +78,22 @@ function GenresPage() {
 
   return (
     <Layout>
-      <PagePlane lead={firstGroup[0] ?? null} wide>
-        <PageHead
-          kicker="Categories"
-          title="Genres"
-          lede="Every title in the catalogue, grouped by its canonical genre, ranked or not. Chart membership and catalogue membership are independent: a title needs conversation signals to rank, not to belong."
-        >
-          {/* Genre selector — the plane's own quiet pills */}
-          <div className="ix-pills">
+      <section className="px-4 pt-10 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
+            Categories
+          </div>
+          <h1 className="mt-2 font-display text-4xl font-medium leading-tight sm:text-5xl">
+            Genres
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            Every title in the catalogue, grouped by its canonical genre, ranked or not. Chart
+            membership and catalogue membership are independent: a title needs conversation signals
+            to rank, not to belong.
+          </p>
+
+          {/* Genre selector — quiet pills, red marks the active shelf */}
+          <div className="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {availableGenres.map((g) => {
               const matchingDef = GENRES.find(
                 (def) => def.tag.toLowerCase() === g.tag.toLowerCase(),
@@ -101,58 +107,68 @@ function GenresPage() {
                     const def = GENRES.find((d) => d.tag.toLowerCase() === g.tag.toLowerCase());
                     if (def) setSelectedGenre(def);
                   }}
-                  className={isSelected ? "ix-pill is-active" : "ix-pill"}
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] font-medium transition ${
+                    isSelected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-foreground/10 bg-foreground/[0.03] text-muted-foreground hover:border-foreground/25 hover:text-foreground"
+                  }`}
                 >
                   {g.label}
-                  <span>{g.count}</span>
+                  <span className={`ml-1.5 font-mono text-[11px] ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    {g.count}
+                  </span>
                 </button>
               );
             })}
           </div>
-        </PageHead>
+        </div>
+      </section>
 
-        {/* Selected genre shelf */}
-        <div className="ix-sec">
-          <div className="ix-shelf">
-            <h2>{selectedGenre.name} in the catalogue</h2>
-            <span className="ix-row__num">
-              {displayFilms.length} {displayFilms.length === 1 ? "title" : "titles"} · ranked
-              titles first
-            </span>
+      {/* Selected genre shelf */}
+      <section className="mt-8 px-4 pb-16 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-end justify-between border-b border-foreground/10 pb-3">
+          <h2 className="font-display text-2xl font-medium">
+            {selectedGenre.name} in the catalogue
+          </h2>
+          <span className="font-mono text-xs tabular text-muted-foreground">
+            {displayFilms.length} {displayFilms.length === 1 ? "title" : "titles"} · ranked titles first
+          </span>
           </div>
 
-          {isLoading ? (
-            <div className="ix-grid">
-              {[...Array(10)].map((_, i) => (
-                <FilmCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : displayFilms.length > 0 ? (
-            <>
-              <div className="ix-grid">
-                {firstGroup.map((film: RankedFilm) => (
-                  <PosterCard key={film.slug} film={film} width="100%" showRank />
+          <div className="mt-6">
+            {isLoading ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {[...Array(10)].map((_, i) => (
+                  <FilmCardSkeleton key={i} />
                 ))}
               </div>
-              {splitShelf && <AdSlot placement="genre-inline" />}
-              {splitShelf && (
-                <div className="ix-grid">
-                  {secondGroup.map((film: RankedFilm) => (
+            ) : displayFilms.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {firstGroup.map((film: RankedFilm) => (
                     <PosterCard key={film.slug} film={film} width="100%" showRank />
                   ))}
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="ix-note">
-              <p className="ix-note__title">Nothing here yet</p>
-              <p className="ix-note__body">
+                {splitShelf && (
+                  <AdSlot placement="genre-inline" />
+                )}
+                {splitShelf && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {secondGroup.map((film: RankedFilm) => (
+                      <PosterCard key={film.slug} film={film} width="100%" showRank />
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="border-y border-foreground/10 bg-surface p-12 text-center text-sm text-muted-foreground">
                 No titles found for {selectedGenre.name} yet.
-              </p>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      </PagePlane>
+      </section>
     </Layout>
   );
 }

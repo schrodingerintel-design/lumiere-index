@@ -23,8 +23,8 @@ export const Route = createFileRoute("/privacy")({
 function Section({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2>
-        <span className="ix-num">{num}</span>
+      <h2 className="font-serif text-xl text-foreground">
+        <span className="mr-2 font-mono text-sm text-primary">{num}</span>
         {title}
       </h2>
       <div className="mt-3 space-y-3">{children}</div>
@@ -44,11 +44,7 @@ function List({ items }: { items: string[] }) {
 
 function Privacy() {
   return (
-    <StaticPage
-      eyebrow="Legal"
-      title="Privacy Policy"
-      lede="What The Index stores, what it never stores, and what you can do about it."
-    >
+    <StaticPage eyebrow="Legal" title="Privacy Policy">
       <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
         Effective Date: September 1st 2026
       </p>

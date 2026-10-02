@@ -3,9 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import { PagePlane } from "@/components/lumiere/PagePlane";
-import { PageHead } from "@/components/lumiere/PageHead";
-import { Skeleton } from "@/components/lumiere/Skeletons";
 import { getNewReleaseFilms, getTopFilms, type RankedFilm } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { Bookmark, BookmarkX } from "lucide-react";
@@ -79,54 +76,63 @@ function WatchlistPage() {
 
   return (
     <Layout>
-      <PagePlane lead={savedFilms[0] ?? null}>
-        <PageHead
-          kicker="Following"
-          title="My Watchlist"
-          lede="Titles you're tracking. Follow their rank and momentum as the Index updates."
-          meta={
-            savedFilms.length > 0 ? (
-              <button type="button" onClick={clearAll} className="ix-more">
-                <BookmarkX aria-hidden />
-                Clear all ({savedFilms.length})
-              </button>
-            ) : null
-          }
-        />
+      <section className="px-4 pt-10 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
+              Following
+            </div>
+            <h1 className="mt-2 font-display text-4xl font-medium leading-tight sm:text-5xl">
+              My Watchlist
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Titles you're tracking. Follow their rank and momentum as the Index updates.
+            </p>
+          </div>
 
-        <div className="ix-sec !pt-0">
+          {savedFilms.length > 0 && (
+            <button
+              onClick={clearAll}
+              className="flex items-center gap-1.5 rounded-full border border-foreground/10 bg-foreground/[0.03] px-4 py-2 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground"
+            >
+              <BookmarkX className="h-3.5 w-3.5" />
+              Clear all ({savedFilms.length})
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-10 px-4 pb-16 sm:px-6">
+        <div className="mx-auto max-w-6xl">
           {isLoading ? (
-            <ul className="ix-rows">
+            <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/10">
               {[...Array(4)].map((_, i) => (
-                <li key={i} className="ix-row">
-                  <span />
-                  <span className="ix-row__main">
-                    <Skeleton className="ix-row__art" />
-                    <span className="min-w-0 flex-1 space-y-2">
-                      <Skeleton className="h-4 w-40 max-w-full" />
-                      <Skeleton className="h-3 w-28" />
-                    </span>
-                  </span>
-                  <span />
-                  <span className="ix-row__r">
-                    <Skeleton className="h-3 w-16" />
-                  </span>
+                <li key={i} className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-5">
+                  <div className="h-16 w-11 animate-pulse bg-foreground/10 sm:h-[72px] sm:w-12" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-40 animate-pulse bg-foreground/10" />
+                    <div className="h-3 w-28 animate-pulse bg-foreground/10" />
+                  </div>
+                  <div className="h-6 w-10 animate-pulse bg-foreground/10" />
                 </li>
               ))}
             </ul>
           ) : savedFilms.length === 0 ? (
-            <div className="ix-note">
-              <Bookmark className="ix-note__mark" aria-hidden />
-              <p className="ix-note__title">Your watchlist is empty</p>
-              <p className="ix-note__body">
+            <div className="border-y border-foreground/10 bg-surface p-12 text-center">
+              <Bookmark className="mx-auto h-8 w-8 text-muted-foreground/40" />
+              <h2 className="mt-4 font-display text-2xl">Your watchlist is empty</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
                 Save titles with the bookmark button on any film page to follow them here.
               </p>
-              <Link to="/top-100" className="ix-more ix-note__cta">
+              <Link
+                to="/top-100"
+                className="mt-6 inline-block rounded-full bg-foreground px-5 py-2.5 text-[13px] font-medium text-background transition hover:bg-foreground/85"
+              >
                 Browse the Movie 100
               </Link>
             </div>
           ) : (
-            <ul className="ix-rows">
+            <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/10">
               {savedFilms.map((film) => {
                 const director =
                   film.director && film.director !== "Unknown" ? film.director : null;
@@ -135,32 +141,38 @@ function WatchlistPage() {
                     <Link
                       to="/films/$slug"
                       params={{ slug: film.slug }}
-                      className="ix-row"
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:px-5"
                     >
-                      <span />
-                      <span className="ix-row__main">
-                        <FilmPosterThumbnail film={film} className="ix-row__art" />
-                        <span className="min-w-0">
-                          <span className="ix-row__title block">{film.title}</span>
-                          <span className="ix-row__meta block">
-                            {[director, film.year, `${tenureLabel(film)} on chart`]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                        </span>
-                      </span>
-                      <span className="ix-row__num">{film.rank > 0 ? `#${film.rank}` : ""}</span>
-                      <span className="ix-row__r">
+                      <FilmPosterThumbnail
+                        film={film}
+                        className="h-16 w-11 sm:h-[72px] sm:w-12"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base">
+                          {film.title}
+                        </div>
+                        <div className="mt-0.5 truncate text-xs text-muted-foreground sm:text-[13px]">
+                          {[director, film.year, `${tenureLabel(film)} on chart`]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
                         <MomentumMark state={film.momentum} />
-                      </span>
+                        {film.rank > 0 && (
+                          <div className="mt-1 font-mono text-[10px] tabular text-muted-foreground">
+                            #{film.rank}
+                          </div>
+                        )}
+                      </div>
                     </Link>
                     <button
                       onClick={() => removeSlug(film.slug)}
                       title="Remove from watchlist"
                       aria-label={`Remove ${film.title} from watchlist`}
-                      className="ix-row__remove"
+                      className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full p-2 text-muted-foreground/60 transition hover:bg-foreground/10 hover:text-down group-hover:block"
                     >
-                      <BookmarkX aria-hidden />
+                      <BookmarkX className="h-4 w-4" />
                     </button>
                   </li>
                 );
@@ -168,7 +180,7 @@ function WatchlistPage() {
             </ul>
           )}
         </div>
-      </PagePlane>
+      </section>
     </Layout>
   );
 }

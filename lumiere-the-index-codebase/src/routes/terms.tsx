@@ -22,8 +22,8 @@ export const Route = createFileRoute("/terms")({
 function Section({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2>
-        <span className="ix-num">{num}</span>
+      <h2 className="font-serif text-xl text-foreground">
+        <span className="mr-2 font-mono text-sm text-primary">{num}</span>
         {title}
       </h2>
       <div className="mt-3 space-y-3">{children}</div>
@@ -33,11 +33,7 @@ function Section({ num, title, children }: { num: string; title: string; childre
 
 function Terms() {
   return (
-    <StaticPage
-      eyebrow="Legal"
-      title="Terms & Conditions"
-      lede="The terms that come with using The Index, in plain language."
-    >
+    <StaticPage eyebrow="Legal" title="Terms & Conditions">
       <p>
         Welcome to The Index. These Terms & Conditions (“Terms”) govern your access to and
         use of The Index products, websites, applications, and services (collectively, the “Service”).

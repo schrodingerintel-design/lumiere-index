@@ -24,7 +24,7 @@ export const Route = createFileRoute("/methodology")({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2>{title}</h2>
+      <h2 className="font-serif text-2xl text-foreground">{title}</h2>
       <div className="mt-3 space-y-3">{children}</div>
     </div>
   );
@@ -42,12 +42,8 @@ function List({ items }: { items: string[] }) {
 
 function Methodology() {
   return (
-    <StaticPage
-      eyebrow="Index Methodology"
-      title="How The Index Measures Cultural Momentum"
-      lede="Every number The Index publishes comes from a measurement you can inspect. This is how those measurements are taken."
-    >
-      <p className="ix-lede">
+    <StaticPage eyebrow="Index Methodology" title="How The Index Measures Cultural Momentum">
+      <p className="font-serif text-xl text-foreground/90">
         The Index is a real-time ranking system designed to measure the cultural impact and
         momentum of movies and television shows.
       </p>
@@ -86,23 +82,24 @@ function Methodology() {
       <Section title="What Goes Into a Ranking">
         <p>The Index looks at four dimensions of cultural attention.</p>
 
-        <div className="ix-box__grid">
-          <div className="ix-box">
-            <h3>Audience Interest</h3>
-            <p>How actively audiences are discovering and engaging with a title.</p>
-          </div>
-          <div className="ix-box">
-            <h3>Social Conversation</h3>
-            <p>The level and momentum of public discussion.</p>
-          </div>
-          <div className="ix-box">
-            <h3>Media Presence</h3>
-            <p>How strongly a title is appearing across entertainment coverage.</p>
-          </div>
-          <div className="ix-box">
-            <h3>Availability &amp; Visibility</h3>
-            <p>How accessible and discoverable a title is.</p>
-          </div>
+        <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
+          <h3 className="font-serif text-lg text-foreground">Audience Interest</h3>
+          <p className="mt-1 text-sm">How actively audiences are discovering and engaging with a title.</p>
+        </div>
+
+        <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
+          <h3 className="font-serif text-lg text-foreground">Social Conversation</h3>
+          <p className="mt-1 text-sm">The level and momentum of public discussion.</p>
+        </div>
+
+        <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
+          <h3 className="font-serif text-lg text-foreground">Media Presence</h3>
+          <p className="mt-1 text-sm">How strongly a title is appearing across entertainment coverage.</p>
+        </div>
+
+        <div className="rounded-xl border border-foreground/10 bg-background/40 p-4">
+          <h3 className="font-serif text-lg text-foreground">Availability &amp; Visibility</h3>
+          <p className="mt-1 text-sm">How accessible and discoverable a title is.</p>
         </div>
       </Section>
 
@@ -184,16 +181,16 @@ function Methodology() {
         </p>
       </Section>
 
-      <div className="ix-box ix-box--accent">
-        <div className="ix-box__hd">
-          <Lock aria-hidden />
+      <div className="glass rounded-2xl border border-primary/20 bg-primary/5 p-6">
+        <div className="flex items-center gap-2 font-serif text-xl font-medium text-primary">
+          <Lock className="h-5 w-5" />
           <span>How the Ranking is Calculated</span>
         </div>
-        <p>
+        <p className="mt-3 text-xs text-foreground/70">
           The pipeline runs in one direction: raw data is never edited to change a
           score, and no number is ever synthesized.
         </p>
-        <ul className="ix-spec">
+        <ul className="mt-3 space-y-2 font-mono text-xs text-foreground/80">
           <li>
             • <strong>Raw data:</strong> real audience activity is ingested from across the web,
             deduped and verified.
@@ -227,10 +224,10 @@ function Methodology() {
           influence. Titles cannot purchase higher rankings. Sponsored content, partnerships, or
           promotional placements, when available, will always be clearly identified.
         </p>
-        <p className="ix-callout">
-          <ShieldCheck aria-hidden />
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <ShieldCheck className="h-4 w-4 text-primary" />
           <span>0% critic weight: rankings are driven entirely by audience attention.</span>
-        </p>
+        </div>
       </Section>
 
       <Section title="Continuous Improvement">

@@ -1,32 +1,24 @@
 import type { ReactNode } from "react";
 import { Layout } from "./Layout";
-import { PagePlane } from "./PagePlane";
-import { PageHead } from "./PageHead";
 
-/**
- * A written page — About, Methodology, Privacy, Terms.
- *
- * Same plane, same head, same type as every chart. The copy is set in the
- * product's own reading language rather than in a document stylesheet: one
- * measure, generous leading, quiet rules between sections.
- */
 export function StaticPage({
   eyebrow,
   title,
-  lede,
   children,
 }: {
   eyebrow: string;
   title: ReactNode;
-  lede?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <Layout>
-      <PagePlane>
-        <PageHead kicker={eyebrow} title={title} lede={lede} />
-        <div className="ix-prose">{children}</div>
-      </PagePlane>
+      <section className="mx-auto max-w-3xl px-4 pb-8 pt-10 lg:px-6">
+        <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
+          {eyebrow}
+        </div>
+        <h1 className="mt-2 font-display text-4xl font-medium leading-tight sm:text-5xl">{title}</h1>
+        <div className="mt-8 space-y-6 leading-relaxed text-foreground/80">{children}</div>
+      </section>
     </Layout>
   );
 }

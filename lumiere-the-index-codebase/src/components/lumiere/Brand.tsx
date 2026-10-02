@@ -30,7 +30,7 @@ export function Brand({ bylineClassName = "" }: { bylineClassName?: string }) {
         The Index<span className="text-primary">.</span>
       </span>
       <span
-        className={`ml-2 hidden font-display text-[11px] italic leading-none text-muted-foreground sm:inline ${bylineClassName}`}
+        className={`ml-2 hidden font-serif text-[11px] italic leading-none text-muted-foreground sm:inline ${bylineClassName}`}
       >
         by Lumière
       </span>
@@ -39,13 +39,9 @@ export function Brand({ bylineClassName = "" }: { bylineClassName?: string }) {
 }
 
 /** Brand lockup wrapped in a link to the homepage. */
-export function BrandLink({ className = "" }: { className?: string }) {
+export function BrandLink() {
   return (
-    <Link
-      to="/"
-      className={`shrink-0 transition-opacity hover:opacity-80 ${className}`.trim()}
-      aria-label="The Index, home"
-    >
+    <Link to="/" className="shrink-0 transition-opacity hover:opacity-80" aria-label="The Index, home">
       <Brand />
     </Link>
   );

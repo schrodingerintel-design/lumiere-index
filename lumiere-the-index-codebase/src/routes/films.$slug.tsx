@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Layout } from "@/components/lumiere/Layout";
-import { PagePlane } from "@/components/lumiere/PagePlane";
 import {
   getFilmDetail,
   getGenreFilms,
@@ -452,7 +451,6 @@ function FilmDetailView() {
   if (filmLoading) {
     return (
       <Layout>
-        <PagePlane>
         <section className="grid grid-cols-1 gap-6 px-4 pt-6 lg:grid-cols-12 lg:px-6">
           <div className="lg:col-span-8 space-y-4">
             <Skeleton className="h-6 w-32" />
@@ -470,7 +468,6 @@ function FilmDetailView() {
             <Skeleton className="h-52 w-full" />
           </aside>
         </section>
-        </PagePlane>
       </Layout>
     );
   }
@@ -478,7 +475,6 @@ function FilmDetailView() {
   if (filmError || !film) {
     return (
       <Layout>
-        <PagePlane>
         <section className="flex flex-col items-center justify-center px-6 py-24 text-center">
           <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
             The Index · 404
@@ -506,7 +502,6 @@ function FilmDetailView() {
             </Link>
           </div>
         </section>
-        </PagePlane>
       </Layout>
     );
   }
@@ -580,9 +575,8 @@ function FilmDetailView() {
 
   return (
     <Layout>
-      <PagePlane lead={film}>
-      {/* ── Hero: the title's own cinematic card, seated on the plane ── */}
-      <section className="ix-film relative overflow-hidden">
+      {/* ── Hero: backdrop wash + poster left + identity right ── */}
+      <section className="relative overflow-hidden">
         {/* Backdrop — full-bleed still, fading down into the page canvas */}
         {backdropUrl && (
           <div className="pointer-events-none absolute inset-0" aria-hidden>
@@ -1064,11 +1058,11 @@ function FilmDetailView() {
 
       {/* Floating Save/Watchlist Toast Notification */}
       {toast && (
-        <div className="ix-toast">
-          <BookmarkCheck aria-hidden />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 border border-primary/30 bg-background p-4 shadow-2xl animate-fade-up">
+          <BookmarkCheck className="h-5 w-5 shrink-0 text-primary" />
           <div className="text-xs">
             <span className="font-medium text-foreground">{toast}</span>
-            <Link to="/watchlist" className="ml-2 font-mono underline">
+            <Link to="/watchlist" className="ml-2 font-mono text-primary underline">
               View Watchlist →
             </Link>
           </div>
@@ -1077,7 +1071,6 @@ function FilmDetailView() {
           </button>
         </div>
       )}
-      </PagePlane>
     </Layout>
   );
 }

@@ -1,13 +1,10 @@
 /**
  * Momentum — the public state of change.
  *
- * Derived by the backend from each title's rank trajectory across recent chart
- * snapshots (deterministic thresholds, never the score's value).
- *
- * Rendered in the plane's movement language: the same arrows and the same
- * amber/blue pair the home page uses for a rising or falling title, so a chart
- * row and a poster card say the same thing with the same marks. No status
- * pills, no red.
+ * Derived by the backend from each title's rank trajectory across recent
+ * chart snapshots (deterministic thresholds, never the score's value).
+ * SURGING gets slightly more visual weight than STEADY; everything stays
+ * within the existing typography and token system — no status pills.
  */
 import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 
@@ -15,13 +12,13 @@ export type MomentumState = "SURGING" | "RISING" | "STEADY" | "COOLING" | "FALLI
 
 const STYLES: Record<
   MomentumState,
-  { label: string; icon: typeof ArrowUp; tone: string; strong: boolean }
+  { label: string; icon: typeof ArrowUp; className: string; strong: boolean }
 > = {
-  SURGING: { label: "Surging", icon: ArrowUp, tone: "ix-mom--up", strong: true },
-  RISING: { label: "Rising", icon: ArrowUp, tone: "ix-mom--up", strong: false },
-  STEADY: { label: "Steady", icon: Minus, tone: "ix-mom--flat", strong: false },
-  COOLING: { label: "Cooling", icon: ArrowDown, tone: "ix-mom--flat", strong: false },
-  FALLING: { label: "Falling", icon: ArrowDown, tone: "ix-mom--down", strong: false },
+  SURGING: { label: "Surging", icon: ArrowUp, className: "text-primary", strong: true },
+  RISING: { label: "Rising", icon: ArrowUp, className: "text-foreground/80", strong: false },
+  STEADY: { label: "Steady", icon: Minus, className: "text-muted-foreground", strong: false },
+  COOLING: { label: "Cooling", icon: ArrowDown, className: "text-muted-foreground", strong: false },
+  FALLING: { label: "Falling", icon: ArrowDown, className: "text-muted-foreground/70", strong: false },
 };
 
 export function momentumState(value: string | null | undefined): MomentumState {
@@ -29,7 +26,11 @@ export function momentumState(value: string | null | undefined): MomentumState {
   return (s in STYLES ? s : "STEADY") as MomentumState;
 }
 
-/** Word plus glyph. SURGING earns weight; everything else stays quiet. */
+/**
+ * Editorial momentum mark — small caps word + directional glyph.
+ * `strong` (SURGING) earns the accent color and a touch more weight;
+ * everything else stays quiet.
+ */
 export function MomentumMark({
   state,
   className = "",
@@ -40,14 +41,22 @@ export function MomentumMark({
   const m = STYLES[momentumState(state)];
   const Icon = m.icon;
   return (
-    <span className={`ix-mom ${m.tone} ${className}`.trim()} title={`Momentum: ${m.label}`}>
-      <Icon aria-hidden />
+    <span
+      className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] ${m.className} ${className}`}
+      title={`Momentum: ${m.label}`}
+    >
+      <Icon
+        className={`h-3 w-3 ${m.strong ? "stroke-[2.5]" : ""}`}
+        aria-hidden
+      />
       {m.label}
     </span>
   );
 }
 
-/** Glyph only, for dense rows and cards. */
+/**
+ * Compact inline form for dense rows and cards: "↑ SURGING".
+ */
 export function MomentumInline({
   state,
   className = "",
@@ -59,10 +68,10 @@ export function MomentumInline({
   const Icon = m.icon;
   return (
     <span
-      className={`ix-mom ix-mom--icon ${m.tone} ${className}`.trim()}
+      className={`inline-flex items-center gap-0.5 font-mono text-[10px] uppercase tracking-[0.14em] ${m.className} ${className}`}
       title={`Momentum: ${m.label}`}
     >
-      <Icon aria-hidden />
+      <Icon className={`h-3 w-3 ${m.strong ? "stroke-[2.5]" : ""}`} aria-hidden />
     </span>
   );
 }

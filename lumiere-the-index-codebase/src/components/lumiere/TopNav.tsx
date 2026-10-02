@@ -1,86 +1,136 @@
 import { Link } from "@tanstack/react-router";
 import { Menu, Search } from "lucide-react";
-import { BrandLink } from "@/components/lumiere/Brand";
-import { useChrome } from "@/components/lumiere/chrome-context";
+import { Brand, BrandLink } from "@/components/lumiere/Brand";
+import { BetaBadge } from "@/components/lumiere/BetaBadge";
 
 /**
- * The one header.
- *
- * There is no second bar anywhere in the product: this component renders the
- * whole of it, and it renders as a single element with a single desktop row and
- * a single phone row (CSS shows exactly one of the two).
- *
- * `tone` is the only thing that changes between pages:
- *
- *   ink    — every page, on the site's own black. Light type.
- *   panel  — Home, drawn on the luminous plane at the top of the composition.
- *            Dark ink type on glass.
- *
- * Both tones share the same geometry and the same destinations, so the header
- * belongs to one product rather than two. Nothing here is a pill switch, a
- * capsule, a tab strip or a dashboard control: plain type, one hairline of
- * active state, one search affordance, one live stamp.
- *
- * Desktop shows the destinations inline; on a phone the wordmark, the live
- * state and a menu trigger remain, and the destinations live in the bottom tab
- * bar and the side drawer.
+ * Primary navigation — the product surface. Secondary destinations
+ * (Watchlist, Compare, About) live in the footer and mobile menu.
  */
-const NAV_LINKS = [
-  { to: "/top-100", label: "Movie 100" },
-  { to: "/tv-100", label: "TV 100" },
-  { to: "/weekly-100", label: "Weekly 100" },
-  { to: "/rising", label: "Biggest Movers" },
+const PRIMARY_LINKS = [
+  { to: "/", label: "The Index", exact: true },
+  { to: "/top-100", label: "Movie 100", exact: false },
+  { to: "/tv-100", label: "TV 100", exact: false },
+  { to: "/weekly-100", label: "Weekly 100", exact: false },
+  { to: "/rising", label: "Biggest Movers", exact: false },
+  { to: "/new-entries", label: "New Entries", exact: false },
+  { to: "/trending", label: "Trending", exact: false },
+  { to: "/genres", label: "Genres", exact: false },
 ] as const;
 
-function LiveMark() {
+export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
   return (
-    <span className="ix-live">
-      <i aria-hidden />
-      Live
-    </span>
+    <header className="sticky top-0 z-30 border-b border-border bg-ink/95 backdrop-blur-sm">
+      <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-6">
+          {/* Mobile: compact Apple-style header — logo + menu + search */}
+          <button
+            onClick={onMenu}
+            aria-label="Open navigation menu"
+            className="-ml-1.5 flex h-10 w-10 items-center justify-center text-foreground/80 transition hover:text-foreground lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <BrandLink />
+
+          {/* Public-beta pill: obvious but quiet; opens the release notes. */}
+          <BetaBadge className="hidden sm:inline-flex" />
+
+          <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
+            {PRIMARY_LINKS.map((l) => (
+              <Link
+                key={l.label}
+                to={l.to}
+                activeOptions={{ exact: l.exact ?? false }}
+                activeProps={{ className: "text-foreground" }}
+                className="text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onSearch}
+            className="flex h-9 items-center gap-2 border border-foreground/10 bg-foreground/[0.04] px-3.5 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground"
+          >
+            <Search className="h-4 w-4" />
+            <span className="hidden sm:inline">Search</span>
+          </button>
+        </div>
+      </div>
+    </header>
   );
 }
 
-export function TopNav({ tone = "ink" }: { tone?: "ink" | "panel" }) {
-  const { openMenu, openSearch } = useChrome();
-
+export function MobileMenu({
+  open,
+  onClose,
+  onSearch,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSearch: () => void;
+}) {
+  // Mounted only while open — unmounting guarantees no invisible layer traps taps.
+  if (!open) return null;
   return (
-    <header className={`ix-topbar ix-topbar--${tone}`}>
-      {/* Phone: wordmark + live state + drawer trigger. Hidden on desktop. */}
-      <div className="ix-topbar__m">
-        <BrandLink className="ix-wordmark" />
-        <LiveMark />
-        <button type="button" onClick={openMenu} className="ix-menu-btn">
-          <Menu aria-hidden />
-          Menu
-        </button>
-      </div>
-
-      {/* Desktop: wordmark, the four primary charts, search, live state. */}
-      <div className="ix-topbar__d">
-        <BrandLink className="ix-wordmark" />
-        <nav className="ix-nav" aria-label="Primary">
-          {NAV_LINKS.map((link) => (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
+      <div className="animate-fade-up absolute inset-x-0 top-0 border-b border-border bg-ink shadow-2xl shadow-black/60">
+        <div className="flex h-14 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <Brand />
+            <BetaBadge />
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close navigation menu"
+            className="flex h-10 w-10 items-center justify-center text-foreground/80 transition hover:text-foreground"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+        <nav className="flex flex-col px-4 pb-6" aria-label="Mobile">
+          {PRIMARY_LINKS.map((l) => (
             <Link
-              key={link.to}
-              to={link.to}
-              className="ix-nav__link"
-              activeProps={{ className: "is-active" }}
+              key={l.label}
+              to={l.to}
+              onClick={onClose}
+              activeOptions={{ exact: l.exact ?? false }}
+              activeProps={{ className: "text-foreground" }}
+              className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition last:border-0 hover:text-foreground"
             >
-              {link.label}
+              {l.label}
             </Link>
           ))}
-          <button
-            type="button"
-            onClick={openSearch}
-            className="ix-nav__search"
-            aria-label="Search"
+          <Link
+            to="/watchlist"
+            onClick={onClose}
+            className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition hover:text-foreground"
           >
-            <Search aria-hidden />
-          </button>
+            Watchlist
+          </Link>
+          <Link
+            to="/compare"
+            onClick={onClose}
+            className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition hover:text-foreground"
+          >
+            Compare
+          </Link>
+          <Link
+            to="/about"
+            onClick={onClose}
+            className="flex min-h-12 items-center text-[15px] text-muted-foreground transition hover:text-foreground"
+          >
+            About
+          </Link>
         </nav>
-        <LiveMark />
       </div>
-    </header>
+    </div>
   );
 }

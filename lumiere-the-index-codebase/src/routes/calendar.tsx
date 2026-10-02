@@ -3,8 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import { PagePlane } from "@/components/lumiere/PagePlane";
-import { PageHead } from "@/components/lumiere/PageHead";
 import {
   getTmdbUpcoming,
   getTmdbNowPlaying,
@@ -13,7 +11,6 @@ import {
   type TmdbMovie,
 } from "@/lib/apiClient";
 import { slugify } from "@/lib/utils";
-import { posterAt } from "@/lib/tmdbImage";
 import { localDate } from "@/lib/filmUtils";
 import { RouteError } from "@/lib/route-error";
 import { Calendar as CalendarIcon, Filter, Sparkles } from "lucide-react";
@@ -134,164 +131,235 @@ function CalendarPage() {
 
   return (
     <Layout>
-      <PagePlane lead={indexUpcoming[0] ?? null} wide>
-        <PageHead
-          kicker="Release Radar"
-          title="Now & Next"
-          lede="Movies in theaters and coming soon: films tracked on the Index, plus the full TMDB release calendar."
-          meta={
-            <span className="ix-row__num">
-              {displayMovies.length} {displayMovies.length === 1 ? "title" : "titles"}
-            </span>
-          }
-        >
-          <div className="ix-pills">
-            <Filter aria-hidden />
-            {[
-              { id: "upcoming", label: "Upcoming Releases" },
-              { id: "theaters", label: "Now In Theaters" },
-              { id: "all", label: "All Releases" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setFilter(tab.id as "all" | "upcoming" | "theaters")}
-                className={filter === tab.id ? "ix-pill is-active" : "ix-pill"}
-              >
-                {tab.label}
-              </button>
+      <section className="px-4 pt-6 lg:px-6">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Release Radar
+        </div>
+        <h1 className="mt-2 font-serif text-5xl lg:text-6xl">Now &amp; Next</h1>
+        <p className="mt-3 max-w-xl text-sm text-muted-foreground">
+          Movies in theaters and coming soon: films tracked on the Index, plus the full TMDB
+          release calendar.
+        </p>
+
+        {/* Filter Pills */}
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-foreground/10 pb-4">
+          <Filter className="h-4 w-4 text-muted-foreground mr-1" />
+          {[
+            { id: "upcoming", label: "Upcoming Releases" },
+            { id: "theaters", label: "Now In Theaters" },
+            { id: "all", label: "All Releases" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id as "all" | "upcoming" | "theaters")}
+              className={`rounded-full px-4 py-1.5 font-mono text-xs font-medium transition ${
+                filter === tab.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-foreground/5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          <span className="ml-auto font-mono text-xs text-muted-foreground">
+            {displayMovies.length} {displayMovies.length === 1 ? "title" : "titles"}
+          </span>
+        </div>
+      </section>
+
+      {/* Films the Index is tracking that haven't released yet — this curated
+          section belongs to the "Upcoming Releases" tab only; "Now In Theaters"
+          and "All Releases" show the raw TMDB calendar without it. */}
+      {indexUpcoming.length > 0 && filter === "upcoming" && (
+        <section className="mt-8 px-4 lg:px-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Tracked on the Index
+              </div>
+              <h2 className="mt-1 font-serif text-2xl">Coming Next</h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {indexUpcoming.map((f) => {
+              const countdown = getDaysUntil(f.release_date ?? "");
+              const formattedDate = f.release_date
+                ? localDate(f.release_date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Release Date TBA";
+              return (
+                <Link
+                  key={f.slug}
+                  to="/films/$slug"
+                  params={{ slug: f.slug }}
+                  className="group flex gap-4 border border-foreground/10 p-4 transition hover:border-foreground/25"
+                >
+                  <div className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl bg-ink">
+                    {f.poster_url ? (
+                      <img
+                        src={f.poster_url}
+                        alt={f.title}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div
+                        className="h-full w-full"
+                        style={{
+                          background: `linear-gradient(155deg, ${f.gradient_from ?? "#333"}, ${f.gradient_to ?? "#111"})`,
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col justify-between">
+                    <div>
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                          countdown.isPast
+                            ? "bg-foreground/10 text-muted-foreground"
+                            : "bg-primary/15 text-primary"
+                        }`}
+                      >
+                        {countdown.text}
+                      </span>
+                      <div className="mt-2 truncate font-serif text-lg font-medium leading-tight transition group-hover:text-primary">
+                        {f.title}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {formattedDate} ·{" "}
+                        {f.rank > 0 ? `#${f.rank} on the Index` : "Not charted yet"}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t border-foreground/10 pt-2 text-[10px] text-muted-foreground">
+                      <span className="font-mono">{f.rank > 0 ? `#${f.rank}` : "Unranked"}</span>
+                      <span className="font-mono text-primary">View Insights →</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="mt-8 px-4 lg:px-6">
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex gap-4 border border-foreground/10 p-4">
+                <Skeleton className="h-36 w-24 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              </div>
             ))}
           </div>
-        </PageHead>
+        ) : displayMovies.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {displayMovies.map((m) => {
+              const poster = tmdbPosterUrl(m.poster_path, "w342");
+              const countdown = getDaysUntil(m.release_date);
+              const formattedDate = m.release_date
+                ? localDate(m.release_date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Release Date TBA";
 
-        {/* Films the Index is tracking that haven't released yet — this curated
-            section belongs to the "Upcoming Releases" tab only; "Now In Theaters"
-            and "All Releases" show the raw TMDB calendar without it. */}
-        {indexUpcoming.length > 0 && filter === "upcoming" ? (
-          <div className="ix-sec">
-            <div className="ix-shelf">
-              <h2>Coming Next</h2>
-              <span className="ix-row__num">Tracked on the Index</span>
-            </div>
-            <div className="ix-tiles">
-              {indexUpcoming.map((f) => {
-                const countdown = getDaysUntil(f.release_date ?? "");
-                const formattedDate = f.release_date
-                  ? localDate(f.release_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "Release Date TBA";
-                const poster = posterAt(f.poster_url, "w342") || undefined;
-                return (
-                  <Link key={f.slug} to="/films/$slug" params={{ slug: f.slug }} className="ix-tile">
-                    <span className="ix-tile__art">
-                      {poster ? (
-                        <img src={poster} alt={`${f.title} poster`} loading="lazy" decoding="async" />
-                      ) : null}
-                    </span>
-                    <span className="ix-tile__body">
-                      <span className={countdown.isPast ? "ix-tag" : "ix-tag ix-tag--live"}>
-                        {countdown.text}
-                      </span>
-                      <span className="ix-tile__t">{f.title}</span>
-                      <span className="ix-tile__l">
-                        {formattedDate} · {f.rank > 0 ? `#${f.rank} on the Index` : "Not charted yet"}
-                      </span>
-                    </span>
+              return (
+                <div
+                  key={m.id}
+                  className="flex gap-4 border border-foreground/10 p-4 transition hover:border-foreground/25"
+                >
+                  <Link
+                    to="/films/$slug"
+                    params={{ slug: slugify(m.title) }}
+                    className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl bg-ink"
+                  >
+                    {poster ? (
+                      <img
+                        src={poster}
+                        alt={m.title}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center p-2 text-center text-[10px] text-muted-foreground">
+                        {m.title}
+                      </div>
+                    )}
                   </Link>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
 
-        <div className="ix-sec">
-          {isLoading ? (
-            <div className="ix-tiles">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="ix-tile ix-tile--static">
-                  <Skeleton className="ix-tile__art-skel" />
-                  <div className="flex-1 space-y-3">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : displayMovies.length > 0 ? (
-            <div className="ix-tiles">
-              {displayMovies.map((m) => {
-                const poster = tmdbPosterUrl(m.poster_path, "w342");
-                const countdown = getDaysUntil(m.release_date);
-                const formattedDate = m.release_date
-                  ? localDate(m.release_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "Release Date TBA";
+                  <div className="flex flex-col justify-between min-w-0 flex-1">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                            countdown.isPast
+                              ? "bg-foreground/10 text-muted-foreground"
+                              : "bg-primary/15 text-primary"
+                          }`}
+                        >
+                          {countdown.text}
+                        </span>
+                      </div>
 
-                return (
-                  <div key={m.id} className="ix-tile ix-tile--static">
-                    <Link
-                      to="/films/$slug"
-                      params={{ slug: slugify(m.title) }}
-                      className="ix-tile__art"
-                    >
-                      {poster ? (
-                        <img src={poster} alt={`${m.title} poster`} loading="lazy" />
-                      ) : null}
-                    </Link>
+                      <Link
+                        to="/films/$slug"
+                        params={{ slug: slugify(m.title) }}
+                        className="mt-2 block font-serif text-lg font-medium leading-tight hover:text-primary transition truncate"
+                      >
+                        {m.title}
+                      </Link>
 
-                    <div className="ix-tile__body">
-                      <span className={countdown.isPast ? "ix-tag" : "ix-tag ix-tag--live"}>
-                        {countdown.text}
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <CalendarIcon className="h-3 w-3" />
+                        <span>{formattedDate}</span>
+                      </div>
+
+                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {m.overview || "Synopsis not yet available."}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between border-t border-foreground/10 pt-2 text-[10px] text-muted-foreground">
+                      <span className="font-mono">
+                        {m.vote_count ? (
+                          <>
+                            ★ {m.vote_average?.toFixed(1) ?? "-"} · {m.vote_count.toLocaleString()}{" "}
+                            votes
+                          </>
+                        ) : (
+                          "No viewer votes yet"
+                        )}
                       </span>
                       <Link
                         to="/films/$slug"
                         params={{ slug: slugify(m.title) }}
-                        className="ix-tile__t"
+                        className="font-mono text-primary hover:underline"
                       >
-                        {m.title}
+                        View Insights →
                       </Link>
-                      <span className="ix-tile__l">
-                        <CalendarIcon aria-hidden />
-                        {formattedDate}
-                      </span>
-                      <span className="ix-tile__l ix-tile__l--clamp">
-                        {m.overview || "Synopsis not yet available."}
-                      </span>
-                      <span className="ix-tile__foot">
-                        <span className="ix-row__num">
-                          {m.vote_count
-                            ? `★ ${m.vote_average?.toFixed(1) ?? "-"} · ${m.vote_count.toLocaleString()} votes`
-                            : "No viewer votes yet"}
-                        </span>
-                        <Link
-                          to="/films/$slug"
-                          params={{ slug: slugify(m.title) }}
-                          className="ix-tile__go"
-                        >
-                          View Insights →
-                        </Link>
-                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="ix-note">
-              <p className="ix-note__title">Nothing on the calendar</p>
-              <p className="ix-note__body">
-                No upcoming releases found matching the selected filter.
-              </p>
-            </div>
-          )}
-        </div>
-      </PagePlane>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="border-y border-foreground/10 bg-surface p-10 text-center text-sm text-muted-foreground">
+            No upcoming releases found matching the selected filter.
+          </div>
+        )}
+      </section>
     </Layout>
   );
 }

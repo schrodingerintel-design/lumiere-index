@@ -1,54 +1,93 @@
 import { Link } from "@tanstack/react-router";
 import { BrandLink } from "@/components/lumiere/Brand";
+import { BetaBadge } from "@/components/lumiere/BetaBadge";
 import { AdConsentSettings } from "@/components/lumiere/AdConsentBanner";
+import { XIcon, Music2 } from "lucide-react";
 
-/**
- * The foot of the product.
- *
- * Written for this direction rather than adapted from the previous editorial
- * footer: no four-column grid, no uppercase column headings, no Beta badge, no
- * social buttons, no heavy rules. It is a single quiet plane on the same ink
- * the home composition resolves to, so the page reads as one continuous object
- * from the first pixel to the last.
- *
- * Two rows do all the work: the wordmark and a line of destinations, then a
- * hairline and the small print. Every destination is a route that already
- * exists.
- */
-const LINKS = [
-  { to: "/top-100", label: "Movie 100" },
-  { to: "/tv-100", label: "TV 100" },
-  { to: "/weekly-100", label: "Weekly 100" },
-  { to: "/rising", label: "Biggest Movers" },
-  { to: "/new-entries", label: "New Entries" },
-  { to: "/trending", label: "Trending" },
-  { to: "/genres", label: "Genres" },
-  { to: "/calendar", label: "Now & Next" },
+const COMPANY_LINKS = [
   { to: "/about", label: "About" },
   { to: "/methodology", label: "Methodology" },
   { to: "/privacy", label: "Privacy" },
   { to: "/terms", label: "Terms" },
 ] as const;
 
+const EXPLORE_LINKS = [
+  { to: "/", label: "The Index" },
+  { to: "/tv-100", label: "TV 100" },
+  { to: "/weekly-100", label: "Weekly Top 100" },
+  { to: "/rising", label: "Biggest Movers" },
+  { to: "/new-entries", label: "New Entries" },
+  { to: "/trending", label: "Trending" },
+  { to: "/genres", label: "Genres" },
+  { to: "/calendar", label: "Now & Next" },
+] as const;
+
 export function Footer() {
   return (
-    <footer className="ix-foot">
-      <div className="ix-foot__inner">
-        <div className="ix-foot__top">
-          <div className="ix-foot__brand">
-            <BrandLink />
-            <p className="ix-foot__lede">
-              A live chart of culture. What film and television the world is
-              looking at right now, refreshed every 15 minutes.
+    <footer className="border-t border-border px-4 pb-10 pt-12 sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="sm:col-span-2">
+            <div className="flex items-center gap-2">
+              <BrandLink />
+              <BetaBadge />
+            </div>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              The cultural index for film and television. Updated every 15 minutes.
             </p>
+            {/* Official channels */}
+            <div className="mt-5 flex items-center gap-2">
+              <a
+                href="https://x.com/lumieretheindex"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="The Index on X (Twitter)"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+              >
+                <XIcon className="h-4 w-4" />
+              </a>
+              <a
+                href="https://vm.tiktok.com/ZS9A2fUMJVCGT-rygfl/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="The Index on TikTok"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+              >
+                <Music2 className="h-4 w-4" />
+              </a>
+            </div>
           </div>
 
-          <nav aria-label="All destinations">
-            <ul className="ix-foot__links">
-              {LINKS.map((link) => (
-                <li key={link.to}>
-                  <Link to={link.to} className="ix-foot__link" activeProps={{ className: "is-active" }}>
-                    {link.label}
+          <nav aria-label="Explore">
+            <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Explore
+            </div>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {EXPLORE_LINKS.map((l) => (
+                <li key={l.to}>
+                  <Link
+                    to={l.to}
+                    className="text-foreground/70 transition hover:text-foreground"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav aria-label="Company">
+            <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Company
+            </div>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {COMPANY_LINKS.map((l) => (
+                <li key={l.to}>
+                  <Link
+                    to={l.to}
+                    className="text-foreground/70 transition hover:text-foreground"
+                  >
+                    {l.label}
                   </Link>
                 </li>
               ))}
@@ -56,11 +95,9 @@ export function Footer() {
           </nav>
         </div>
 
-        <div className="ix-foot__base">
-          <span>© {new Date().getFullYear()} The Index by Lumière</span>
-          <span className="ix-foot__stamp">
-            Updated every 15 minutes <AdConsentSettings />
-          </span>
+        <div className="mt-12 border-t border-border pt-6 text-xs text-muted-foreground">
+          © {new Date().getFullYear()} The Index by Lumière. All rights reserved.{" "}
+          <AdConsentSettings />
         </div>
       </div>
     </footer>

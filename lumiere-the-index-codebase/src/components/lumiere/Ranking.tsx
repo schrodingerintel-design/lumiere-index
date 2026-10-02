@@ -1,0 +1,193 @@
+import { Link } from "@tanstack/react-router";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import type { ReactNode } from "react";
+import type { RankedFilm } from "@/lib/apiClient";
+import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
+import { ListSkeleton } from "./Skeletons";
+import { MomentumMark, MomentumInline } from "./Momentum";
+
+/**
+ * Movement indicator — arrow + number, color-supported but never color-only.
+ * "NEW" for first chart appearances; "—" for holds. Derived from the chart's
+ * own published movement (previous chart period), never fabricated.
+ */
+export function Movement({ film }: { film: RankedFilm }) {
+  const change = film.movement ?? 0;
+  if (film.prev_rank == null) {
+    return (
+      <span
+        className="inline-block rounded-sm bg-foreground/15 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-foreground"
+        title="First appearance on The Index"
+      >
+        New
+      </span>
+    );
+  }
+  if (change > 0) {
+    return (
+      <span
+        className="flex items-center gap-0.5 font-mono text-xs tabular text-up"
+        title={`Up ${change} since the previous chart`}
+      >
+        <ArrowUp className="h-3 w-3" aria-hidden />
+        {change}
+      </span>
+    );
+  }
+  if (change < 0) {
+    return (
+      <span
+        className="flex items-center gap-0.5 font-mono text-xs tabular text-down"
+        title={`Down ${Math.abs(change)} since the previous chart`}
+      >
+        <ArrowDown className="h-3 w-3" aria-hidden />
+        {Math.abs(change)}
+      </span>
+    );
+  }
+  return (
+    <span className="font-mono text-sm text-muted-foreground" title="Held its rank">
+      —
+    </span>
+  );
+}
+
+function metaLine(film: RankedFilm): string {
+  const director = film.director && film.director !== "Unknown" ? film.director : null;
+  // Chart tenure in days — the chart refreshes every 15 minutes, so days is
+  // the honest unit. NEW entries (no previous snapshot) show "1d".
+  const days = film.days_on_chart ?? 1;
+  return [director, film.year, `${days}d`].filter(Boolean).join(" · ");
+}
+
+/**
+ * The editorial ranking row — the public information hierarchy:
+ * RANK → RANK MOVEMENT → MOMENTUM → PEAK → TIME ON CHART.
+ * The internal score is never shown; the ordering is the chart's own.
+ * Mobile: rank · title · movement inline; momentum + peak join the meta line.
+ */
+export function RankRow({ film }: { film: RankedFilm }) {
+  const peak = film.peak_rank;
+  const director = film.director && film.director !== "Unknown" ? film.director : null;
+  return (
+    <Link
+      to="/films/$slug"
+      params={{ slug: film.slug }}
+      className="group flex items-center gap-3 py-3 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:py-3.5"
+    >
+      <span className="w-7 shrink-0 font-mono text-lg tabular text-muted-foreground sm:w-8 sm:text-xl">
+        {String(film.rank).padStart(2, "0")}
+      </span>
+      <FilmPosterThumbnail film={film} className="h-16 w-11 sm:h-[72px] sm:w-12" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base">
+          {film.title}
+        </div>
+        <div className="mt-0.5 flex items-center gap-2 truncate text-xs text-muted-foreground sm:text-[13px]">
+          <span className="truncate">
+            {[director, film.year].filter(Boolean).join(" · ")}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-2">
+            <MomentumInline state={film.momentum} />
+            {peak ? (
+              <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
+                Peak #{peak}
+              </span>
+            ) : null}
+          </span>
+        </div>
+      </div>
+      <div className="w-12 shrink-0 sm:w-14">
+        <Movement film={film} />
+      </div>
+      <div className="hidden w-24 shrink-0 text-right sm:block">
+        <MomentumMark state={film.momentum} />
+        <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+          {film.days_on_chart != null ? `${film.days_on_chart}d on chart` : "\u00A0"}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/**
+ * Page section heading — kicker, serif title, rule, and optional "see all".
+ */
+export function SectionHeading({
+  kicker,
+  title,
+  copy,
+  seeAllHref,
+  seeAllLabel = "See all",
+  action,
+}: {
+  kicker?: string;
+  title: string;
+  copy?: string;
+  seeAllHref?: string;
+  seeAllLabel?: string;
+  /** Optional right-aligned action node (e.g. a Share button). */
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="max-w-xl">
+        {kicker && (
+          <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
+            {kicker}
+          </div>
+        )}
+        <h2 className="mt-1.5 font-display text-2xl font-medium leading-tight sm:text-3xl">
+          {title}
+        </h2>
+        {copy && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy}</p>}
+      </div>
+      <div className="flex shrink-0 items-center gap-5">
+        {action}
+        {seeAllHref && (
+          <Link
+            to={seeAllHref}
+            className="text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            {seeAllLabel} →
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Ranked list wrapper — hairline rules, responsive skeleton, empty + error states. */
+export function RankedList({
+  films,
+  isLoading,
+  error,
+  skeletonRows = 8,
+}: {
+  films: RankedFilm[] | undefined;
+  isLoading: boolean;
+  error?: unknown;
+  skeletonRows?: number;
+}) {
+  return (
+    <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/10">
+      {isLoading ? (
+        <ListSkeleton rows={skeletonRows} />
+      ) : error ? (
+        <li className="py-12 text-center text-sm text-muted-foreground">
+          Something went wrong. Please try again.
+        </li>
+      ) : films && films.length > 0 ? (
+        films.map((f) => (
+          <li key={f.slug}>
+            <RankRow film={f} />
+          </li>
+        ))
+      ) : (
+        <li className="py-12 text-center text-sm text-muted-foreground">
+          The chart is being prepared. Check back shortly.
+        </li>
+      )}
+    </ul>
+  );
+}
