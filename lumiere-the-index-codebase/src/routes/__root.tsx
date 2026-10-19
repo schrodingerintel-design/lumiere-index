@@ -107,7 +107,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "The Index measures what's capturing cultural attention across film and television, refreshed every 15 minutes.",
+          "The Index measures what's capturing cultural attention across film and television, refreshed every 12 hours.",
       },
       { name: "author", content: "Lumière" },
       { property: "og:title", content: "The Index" },
@@ -149,7 +149,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           alternateName: SITE_NAME,
           url: SITE_URL,
           description:
-            "The Index charts cultural momentum across film and television: Movie 100, TV 100, Biggest Movers and New Entries, refreshed every 15 minutes.",
+            "The Index charts cultural momentum across film and television: Movie 100, TV 100, Biggest Movers and New Entries, refreshed every 12 hours.",
           potentialAction: {
             "@type": "SearchAction",
             target: {

@@ -464,7 +464,7 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   ctx.fillText(SITE_URL.replace(/^https:\/\//, ""), 96, H - 66);
   ctx.fillStyle = MUTED;
   ctx.font = `22px ${MONO_FONT}`;
-  const right = "REFRESHED EVERY 15 MIN";
+  const right = "REFRESHED EVERY 12 HRS";
   ctx.fillText(right, W - 96 - ctx.measureText(right).width, H - 66);
 
   const blob = await new Promise<Blob>((resolve) =>

@@ -57,7 +57,7 @@ class RankedFilm(FilmBase):
     movement: int = 0
     peak_rank: int | None = None
     weeks_on_chart: int = 0
-    # Days since the title's FIRST appearance on the continuous 15-minute
+    # Days since the title's FIRST appearance on the continuous 12-hour
     # chart — the tenure unit the UI shows (weeks is legacy, kept for
     # backward-compatible API consumers).
     days_on_chart: int | None = None
@@ -152,7 +152,7 @@ class TimelinePoint(BaseModel):
 
 class RankHistoryPoint(BaseModel):
     """One daily observation of a title's chart position — a sampled view of
-    the continuous 15-minute snapshot history, plus the index score at that
+    the continuous 12-hour snapshot history, plus the index score at that
     moment. Powers the film page's index-history chart."""
     day: date
     rank: int

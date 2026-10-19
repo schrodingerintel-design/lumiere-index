@@ -202,7 +202,7 @@ app.add_middleware(
 async def add_cache_headers(request, call_next):
     """Let browsers short-circuit repeat reads of public ranking endpoints.
 
-    Rankings refresh every 15 minutes and the endpoint cache TTL is 60s, so
+    Rankings refresh every 12 hours and the endpoint cache TTL is 60s, so
     caching public GET responses for 60s is safe and skips a full round-trip
     on every client-side navigation. Admin/mutation and live TMDB proxy calls
     are intentionally excluded.

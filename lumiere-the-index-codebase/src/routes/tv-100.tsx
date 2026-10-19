@@ -23,13 +23,13 @@ export const Route = createFileRoute("/tv-100")({
       {
         name: "description",
         content:
-          "The TV shows getting the most attention right now. Updated every 15 minutes.",
+          "The TV shows getting the most attention right now. Updated every 12 hours.",
       },
       { property: "og:title", content: "TV 100 · The Index" },
       {
         property: "og:description",
         content:
-          "The TV shows getting the most attention right now. Updated every 15 minutes.",
+          "The TV shows getting the most attention right now. Updated every 12 hours.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/tv-100")({
       {
         name: "twitter:description",
         content:
-          "The TV shows getting the most attention right now. Updated every 15 minutes.",
+          "The TV shows getting the most attention right now. Updated every 12 hours.",
       },
       ogUrlMeta("/tv-100"),
     ],
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/tv-100")({
   errorComponent: RouteError,
 });
 
-/** Countdown to the next 15-minute refresh — "12m 04s". */
+/** Countdown to the next refresh — "11h 32m" ahead, "12m 04s" in the final hour. */
 function useCountdown(nextRefreshAt: string | null): string {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -63,8 +63,10 @@ function useCountdown(nextRefreshAt: string | null): string {
   if (!nextRefreshAt) return "";
   const diff = new Date(nextRefreshAt).getTime() - now;
   if (diff <= 0) return "refreshing…";
-  const m = Math.floor(diff / 60_000);
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
   const s = Math.floor((diff % 60_000) / 1000);
+  if (h > 0) return `${h}h ${m}m`;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
@@ -128,7 +130,7 @@ function TV100() {
     queryKey: ["films", "tv100", 100],
     queryFn: () => getTopFilms(100, 0, "TV_100"),
     staleTime: 5 * 60 * 1000,
-    refetchInterval: 15 * 60 * 1000,
+    refetchInterval: 12 * 60 * 60 * 1000,
   });
 
   const { data: refreshMeta } = useQuery({
@@ -181,7 +183,7 @@ function TV100() {
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
               The TV shows getting the most attention right now. Updated every
-              15 minutes.{snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
+              12 hours.{snapshotLabel ? ` Last refresh ${snapshotLabel}.` : ""}
             </p>
           </div>
           <div className="flex items-end gap-6">

@@ -222,7 +222,7 @@ class Settings(BaseSettings):
     # M_norm at/above these floors — independent of blended FinalScore rank.
     headline_min_ca: float = 0.5             # CA_norm (percentile) floor for headline
     headline_min_momentum: float = 0.6       # M_norm floor for headline (neutral center = 0.5)
-    refresh_interval_minutes: int = 15
+    refresh_interval_minutes: int = 720       # chart snapshot cadence: 12 hours
 
     # ── Index Score calibration (absolute attention scale) ──────────────────
     # The displayed Index Score is an ABSOLUTE measure of attention, not a

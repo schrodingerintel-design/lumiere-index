@@ -22,7 +22,7 @@ now", regardless of chart position — a #1 can COOL while a #26 SURGES.
 
 Data used (all existing — no schema change)
 ───────────────────────────────────────────
-Per chart, per title, the continuous 15-minute Ranking series:
+Per chart, per title, the continuous 12-hour Ranking series:
   · current rank, previous published rank (movement since last snapshot)
   · the sampled daily rank series over the last `rank_history_days`
     (the same sampling the film page history chart uses)
@@ -46,7 +46,7 @@ before anything other than STEADY is assigned (insufficient data → STEADY).
   COOLING   −improvement ≥ rise_thresh
   STEADY    everything else, including all noise between thresholds
 
-Thresholds absorb normal 15-minute jitter: a one-position move is never
+Thresholds absorb normal cadence jitter: a one-position move is never
 enough to change the label.
 """
 from __future__ import annotations

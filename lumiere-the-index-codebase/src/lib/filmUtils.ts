@@ -41,8 +41,8 @@ export function isNewRelease(film: RankedFilm | null, days: number = 7): boolean
 
 /**
  * Chart tenure — days on the live Index, shown compactly ("1d", "12d") in
- * table rows. Days is the tenure unit: the chart refreshes every 15 minutes,
- * so weeks would be far too coarse.
+ * table rows. Days is the tenure unit: the chart refreshes every 12 hours,
+ * so anything finer would be constant for a full cycle.
  */
 export function tenureDays(film: Pick<RankedFilm, "days_on_chart" | "weeks_on_chart"> | null): number {
   return film?.days_on_chart ?? 1;

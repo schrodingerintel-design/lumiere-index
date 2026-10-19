@@ -22,6 +22,8 @@ import logging
 import time
 from datetime import datetime, timezone
 
+from app.config import settings
+
 log = logging.getLogger(__name__)
 
 # ── cadence (seconds) — mirrors the Celery beat schedule ─────────────────────
@@ -34,7 +36,7 @@ _INTERVALS = {
     "ingest_trends": 3600,
     "ingest_letterboxd": 1800,
     "discover_candidates": 600,
-    "recompute_rankings": 900,
+    "recompute_rankings": settings.refresh_interval_minutes * 60,
     "rollup_daily": 3600,
     # Data retention: collapse stale ranking snapshots + prune raw signals so
     # the volume database stays small on a single-node MySQL instance.

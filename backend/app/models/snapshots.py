@@ -40,7 +40,7 @@ class DailyIndexSnapshot(Base):
 
     `snapshot_date` is the publication day (UTC).  Movement fields compare
     against the previous published Daily Index — not against the continuous
-    15-minute `rankings` computation.
+    12-hour `rankings` computation.
     """
 
     __tablename__ = "daily_index_snapshots"

@@ -22,7 +22,7 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        // Rankings only refresh every 15 min — a 5-minute client cache means
+        // Rankings only refresh every 12 hours — a 5-minute client cache means
         // navigating back to a page is instant instead of refetching.
         staleTime: 5 * 60 * 1000,
         gcTime: 30 * 60 * 1000,

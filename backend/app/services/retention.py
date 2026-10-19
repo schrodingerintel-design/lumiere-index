@@ -5,8 +5,8 @@ Why this exists
 The production database is a small single-node Railway MySQL instance. Three
 jobs grow it without bound:
 
-  1. ``recompute_rankings`` (every 15 min) persists one full Top-100 snapshot
-     row set PER CHART (Movie 100 + TV 100 ≈ 200 rows / run ≈ 19k rows/day).
+  1. ``recompute_rankings`` (every 12 h) persists one full Top-100 snapshot
+     row set PER CHART (Movie 100 + TV 100 ≈ 200 rows / run ≈ 400 rows/day).
   2. Signal ingest accumulates ``mentions`` / ``metric_snapshots`` rows —
      each score rollup reads only the trailing ~30 days.
   3. ``pending_mentions`` accumulates rejected discovery candidates forever.
