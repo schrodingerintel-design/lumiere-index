@@ -15,7 +15,7 @@ from app.models import (
     WeeklyPublicationError,
 )
 from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
-from app.schemas import RefreshMeta, LiveStats, SourceHealth, SignalHealthFilm, SignalHealthSummary, WeeklyPublicationErrorOut
+from app.schemas import RefreshMeta, LiveStats, SourceHealth, SignalHealthFilm, SignalHealthSummary, WeeklyPublicationErrorOut, WeeklyHealthOut
 
 router = APIRouter()
 
@@ -59,7 +59,7 @@ def refresh_meta(db: Session = Depends(get_db)):
     return RefreshMeta(snapshot_at=snap, next_refresh_at=next_at, interval_minutes=interval)
 
 
-@router.get("/meta/weekly-health", response_model=list[WeeklyPublicationErrorOut])
+@router.get("/meta/weekly-health", response_model=WeeklyHealthOut)
 def weekly_publication_health(db: Session = Depends(get_db)):
     """The most recent failures of the weekly publication job.
 
@@ -69,22 +69,32 @@ def weekly_publication_health(db: Session = Depends(get_db)):
     where TV_100/WEEKLY_100 stayed empty while only a one-line scheduler log
     suggested anything was wrong.
     """
-    rows = (
-        db.query(WeeklyPublicationError)
-        .order_by(WeeklyPublicationError.id.desc())
-        .limit(20)
-        .all()
-    )
-    return [
-        WeeklyPublicationErrorOut(
-            chart_type=r.chart_type,
-            week_start=r.week_start,
-            week_end=r.week_end,
-            error=r.error,
-            created_at=r.created_at,
+    try:
+        rows = (
+            db.query(WeeklyPublicationError)
+            .order_by(WeeklyPublicationError.id.desc())
+            .limit(20)
+            .all()
         )
-        for r in rows
-    ]
+    except Exception as exc:
+        # The diagnostics table itself is not readable yet (e.g. its first
+        # creation is still pooling) — explain instead of 500ing.
+        return WeeklyHealthOut(
+            errors=[],
+            note=f"errors table unreadable — {type(exc).__name__}: {exc}",
+        )
+    return WeeklyHealthOut(
+        errors=[
+            WeeklyPublicationErrorOut(
+                chart_type=r.chart_type,
+                week_start=r.week_start,
+                week_end=r.week_end,
+                error=r.error,
+                created_at=r.created_at,
+            )
+            for r in rows
+        ]
+    )
 
 
 @router.get("/meta/sources", response_model=list[SourceHealth])

@@ -369,6 +369,17 @@ class WeeklyPublicationErrorOut(BaseModel):
     created_at: datetime | None = None
 
 
+class WeeklyHealthOut(BaseModel):
+    """Diagnostics summary for the weekly publication job.
+
+    `note` is set when the errors table itself cannot be read (e.g. a brand
+    new table not yet created by the running process) so the endpoint stays
+    a 200 that diagnoses itself instead of a bare 500.
+    """
+    errors: list[WeeklyPublicationErrorOut] = []
+    note: str | None = None
+
+
 class WeeklyIndexOut(BaseModel):
     """The official Weekly Index — a published, immutable weekly snapshot."""
     meta: WeeklyMetaOut
