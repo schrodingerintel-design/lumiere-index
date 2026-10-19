@@ -360,6 +360,15 @@ class WeeklyMetaOut(BaseModel):
     entry_count: int = 0
 
 
+class WeeklyPublicationErrorOut(BaseModel):
+    """One recorded failure of the weekly publication job (diagnostics)."""
+    chart_type: str
+    week_start: date
+    week_end: date
+    error: str
+    created_at: datetime | None = None
+
+
 class WeeklyIndexOut(BaseModel):
     """The official Weekly Index — a published, immutable weekly snapshot."""
     meta: WeeklyMetaOut

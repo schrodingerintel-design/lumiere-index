@@ -26,6 +26,7 @@ from app.models import (
     Ranking,
     Source,
     WeeklyIndexSnapshot,
+    WeeklyPublicationError,
 )
 from app.services.index_publication import (
     SnapshotValidationError,
@@ -647,6 +648,9 @@ def test_one_chart_failure_does_not_starve_the_rest(pub_db, monkeypatch):
 
     monkeypatch.setattr(index_publication, "_source_coverage", flaky_coverage)
 
+    # A failed chart must leave an observable diagnostic, not just a log line.
+    errors_before = pub_db.query(WeeklyPublicationError).count()
+
     assert publish_weekly_index(pub_db, week_start=last_monday) is not None
     by_chart = {}
     for r in pub_db.query(WeeklyIndexSnapshot).filter(
@@ -656,6 +660,11 @@ def test_one_chart_failure_does_not_starve_the_rest(pub_db, monkeypatch):
     # lished because the failure could no longer starve the rest of the loop.
     assert by_chart.get("MOVIE_100"), "movie weekly must still publish"
     assert by_chart.get("WEEKLY_100"), "combined weekly must survive a TV failure"
+    errors = pub_db.query(WeeklyPublicationError).all()
+    assert len(errors) == errors_before + 1
+    assert errors[-1].chart_type == "TV_100"
+    assert errors[-1].week_start == last_monday
+    assert "simulated production failure" in errors[-1].error
     monkeypatch.undo()
 
 

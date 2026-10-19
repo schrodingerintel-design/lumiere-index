@@ -48,6 +48,7 @@ from app.models import (
     Ranking,
     Source,
     WeeklyIndexSnapshot,
+    WeeklyPublicationError,
 )
 from app.config import settings
 from app.services.confidence import CATALOG_ONLY_SOURCE_KEYS
@@ -432,6 +433,30 @@ def _record_debuts(
 
 # ── weekly publication ───────────────────────────────────────────────────────
 
+def _record_publication_error(
+    db: Session, chart_type: str, week_start: date, week_end: date, exc: Exception
+) -> None:
+    """Persist a publication failure for the public /meta/weekly-health view.
+
+    The scheduler swallows task errors behind a one-line throttled log, which
+    is exactly how a repeatedly-failing chart stayed invisible for weeks.
+    Recording the failure in the database makes it observable by anyone with
+    the API — no Railway or admin access required.
+    """
+    try:
+        db.add(WeeklyPublicationError(
+            chart_type=chart_type,
+            week_start=week_start,
+            week_end=week_end,
+            error=f"{type(exc).__name__}: {exc}"[:1000],
+            created_at=datetime.now(timezone.utc),
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+        log.warning("publish_weekly: publication-error recording failed — %s", exc)
+
+
 def week_bounds(d: date) -> tuple[date, date]:
     """ISO week bounds (Monday–Sunday) containing `d`."""
     monday = d - timedelta(days=d.weekday())
@@ -798,15 +823,17 @@ def publish_weekly_index(
             except Exception as exc:
                 db.rollback()
                 log.error("publish_weekly: write failed for %s %s — %s", chart_id, week_start, exc)
+                _record_publication_error(db, chart_id, week_start, week_end, exc)
                 continue
             log.info("publish_weekly: published %s week of %s (%d titles)", chart_id, week_start, len(ordered))
             published_any = True
-        except Exception:
+        except Exception as exc:
             db.rollback()
             log.exception(
                 "publish_weekly: FAILED writing %s week of %s — isolated to this chart",
                 chart_id, week_start,
             )
+            _record_publication_error(db, chart_id, week_start, week_end, exc)
             continue
 
     return week_start if published_any else None

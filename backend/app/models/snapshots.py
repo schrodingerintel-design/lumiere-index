@@ -122,6 +122,25 @@ class WeeklyIndexSnapshot(Base):
     published_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
+class WeeklyPublicationError(Base):
+    """Diagnostics: per-chart failures of the weekly publication job.
+
+    Written by publish_weekly_index whenever a chart cannot be published, so
+    a silent scheduler failure becomes visible through the public
+    /api/v1/meta/weekly-health endpoint without database access. Rows are
+    diagnostics, not part of the published record; old rows are harmless.
+    """
+
+    __tablename__ = "weekly_publication_errors"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    chart_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    week_end: Mapped[date] = mapped_column(Date, nullable=False)
+    error: Mapped[str] = mapped_column(String(1000), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default="NOW()")
+
+
 class IndexDebut(Base):
     """First-ever appearance of a title on a published Daily chart.
 
