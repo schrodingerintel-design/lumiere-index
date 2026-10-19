@@ -36,6 +36,8 @@ from app.services.index_publication import (
     week_bounds,
     _validate_ranking_rows,
 )
+from app.services.index_publication import backfill_missing_weekly
+import app.services.index_publication as index_publication
 
 
 @pytest.fixture()
@@ -597,3 +599,94 @@ def test_weekly_api_serves_combined_chart(client):
     resp2 = client.get("/api/v1/index/weekly", params={"chart": "WEEKLY_100", "week_start": monday.isoformat()})
     assert resp2.status_code == 200
     assert resp2.json()["meta"]["chart_type"] == "WEEKLY_100"
+
+
+# ── weekly publication resilience (production incident: TV/combined empty) ──
+
+def _seed_movies_and_shows_with_mentions(db):
+    films = _add_films(db, 2)
+    shows = []
+    for i in range(2):
+        s = Film(slug=f"show-{i}", title=f"Show {i}", year=2025, content_type="TV_SHOW")
+        db.add(s)
+        shows.append(s)
+    db.commit()
+    src = Source(key="reddit", name="Reddit", weight=1.0)
+    db.add(src)
+    db.commit()
+    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    for fid, n in ((films[0].id, 10), (films[1].id, 4), (shows[0].id, 8), (shows[1].id, 2)):
+        for j in range(n):
+            db.add(Mention(
+                film_id=fid, source_id=src.id, external_id=f"iso-{fid}-{j}",
+                text="talk", created_at=datetime(
+                    last_monday.year, last_monday.month, last_monday.day,
+                    9, j, 0, tzinfo=timezone.utc) + timedelta(days=1),
+            ))
+    db.commit()
+    return films, shows, last_monday
+
+
+def test_one_chart_failure_does_not_starve_the_rest(pub_db, monkeypatch):
+    """An exception raised while publishing one chart is isolated to that
+    chart: the remaining charts still publish.
+
+    Production regression: an error raised after the MOVIE_100 commit used
+    to abort the whole loop, leaving TV_100 and the combined WEEKLY_100
+    empty week after week with only a one-line log."""
+    films, shows, last_monday = _seed_movies_and_shows_with_mentions(pub_db)
+
+    real_coverage = index_publication._source_coverage
+    calls = {"n": 0}
+
+    def flaky_coverage(db, film_ids):
+        calls["n"] += 1
+        if calls["n"] == 2:  # second chart in the loop (TV_100) blows up
+            raise RuntimeError("simulated production failure")
+        return real_coverage(db, film_ids)
+
+    monkeypatch.setattr(index_publication, "_source_coverage", flaky_coverage)
+
+    assert publish_weekly_index(pub_db, week_start=last_monday) is not None
+    by_chart = {}
+    for r in pub_db.query(WeeklyIndexSnapshot).filter(
+            WeeklyIndexSnapshot.week_start == last_monday).all():
+        by_chart.setdefault(r.chart_type, []).append(r)
+    # MOVIE_100 published; TV_100 blew up; the combined WEEKLY_100 still pub‑
+    # lished because the failure could no longer starve the rest of the loop.
+    assert by_chart.get("MOVIE_100"), "movie weekly must still publish"
+    assert by_chart.get("WEEKLY_100"), "combined weekly must survive a TV failure"
+    monkeypatch.undo()
+
+
+def test_backfill_missing_weekly_restores_empty_charts(pub_db):
+    """A completed week whose TV/combined archive is empty must be republished
+    on the next backfill; archived charts stay untouched (idempotent)."""
+    films, shows, last_monday = _seed_movies_and_shows_with_mentions(pub_db)
+
+    assert publish_weekly_index(pub_db, week_start=last_monday) is not None
+    def movie_ids(db):
+        return sorted(
+            r.film_id for r in db.query(WeeklyIndexSnapshot).filter(
+                WeeklyIndexSnapshot.week_start == last_monday,
+                WeeklyIndexSnapshot.chart_type == "MOVIE_100").all())
+    before = movie_ids(pub_db)
+    # Simulate the past failure: TV and combined rows are missing.
+    pub_db.query(WeeklyIndexSnapshot).filter(
+        WeeklyIndexSnapshot.week_start == last_monday,
+        WeeklyIndexSnapshot.chart_type.in_(("TV_100", "WEEKLY_100")),
+    ).delete(synchronize_session=False)
+    pub_db.commit()
+
+    filled = backfill_missing_weekly(pub_db, weeks=6)
+    assert last_monday in filled
+    charts = {
+        (r.chart_type, r.film_id)
+        for r in pub_db.query(WeeklyIndexSnapshot).filter(
+            WeeklyIndexSnapshot.week_start == last_monday).all()
+    }
+    for chart in ("MOVIE_100", "TV_100", "WEEKLY_100"):
+        assert any(c == chart for c, _ in charts), f"{chart} rows missing after backfill"
+    assert movie_ids(pub_db) == before  # archived chart untouched
+    # A second backfill run is a no-op: every chart is archived.
+    assert backfill_missing_weekly(pub_db, weeks=6) == []
