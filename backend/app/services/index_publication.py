@@ -454,7 +454,28 @@ def _record_publication_error(
         db.commit()
     except Exception:
         db.rollback()
-        log.warning("publish_weekly: publication-error recording failed — %s", exc)
+        # Heal a diagnostics table that boot never materialized, then retry
+        # once — otherwise the failure would stay invisible to the API.
+        try:
+            from app.db import Base as _Base
+            from app.models import WeeklyPublicationError as _Table
+
+            _Base.metadata.create_all(bind=db.get_bind(), tables=[_Table.__table__])
+            db.add(WeeklyPublicationError(
+                chart_type=chart_type,
+                week_start=week_start,
+                week_end=week_end,
+                error=f"{type(exc).__name__}: {exc}"[:1000],
+                created_at=datetime.now(timezone.utc),
+            ))
+            db.commit()
+            log.info("publish_weekly: created weekly_publication_errors after write failure")
+        except Exception as heal_exc:
+            db.rollback()
+            log.warning(
+                "publish_weekly: publication-error recording failed — %s (heal: %s)",
+                exc, heal_exc,
+            )
 
 
 def week_bounds(d: date) -> tuple[date, date]:

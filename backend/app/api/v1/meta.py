@@ -76,13 +76,28 @@ def weekly_publication_health(db: Session = Depends(get_db)):
             .limit(20)
             .all()
         )
-    except Exception as exc:
-        # The diagnostics table itself is not readable yet (e.g. its first
-        # creation is still pooling) — explain instead of 500ing.
-        return WeeklyHealthOut(
-            errors=[],
-            note=f"errors table unreadable — {type(exc).__name__}: {exc}",
-        )
+    except Exception:
+        # Heal, don't 500: the diagnostics table may not exist yet because
+        # the process booted before the model was deployed (boot convergence
+        # does not create new tables in every configuration). Creating it on
+        # first read makes the next publish cycle record its failures.
+        try:
+            from app.db import Base as _Base
+            from app.models import WeeklyPublicationError as _Table
+
+            _Base.metadata.create_all(bind=db.get_bind(), tables=[_Table.__table__])
+            rows = (
+                db.query(WeeklyPublicationError)
+                .order_by(WeeklyPublicationError.id.desc())
+                .limit(20)
+                .all()
+            )
+        except Exception as heal_exc:
+            db.rollback()
+            return WeeklyHealthOut(
+                errors=[],
+                note=f"errors table could not be read or created — {type(heal_exc).__name__}: {heal_exc}",
+            )
     return WeeklyHealthOut(
         errors=[
             WeeklyPublicationErrorOut(
