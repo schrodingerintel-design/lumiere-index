@@ -21,6 +21,8 @@ from .schemas import (
     WeeklyEntryOut,
     WeeklyMetaOut,
     WeeklyIndexOut,
+    WeeklyPublicationErrorOut,
+    WeeklyHealthOut,
     MoverOut,
     MoversOut,
     NewEntryOut,

@@ -34,7 +34,7 @@ export function Footer() {
               <BetaBadge />
             </div>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              The cultural index for film and television. Updated every 15 minutes.
+              The cultural index for film and television. Updated every 12 hours.
             </p>
             {/* Official channels */}
             <div className="mt-5 flex items-center gap-2">

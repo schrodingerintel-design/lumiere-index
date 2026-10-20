@@ -21,7 +21,7 @@ export const Route = createFileRoute("/top-100")({
       {
         name: "description",
         content:
-          "The movies getting the most attention right now. Updated every 15 minutes.",
+          "The movies getting the most attention right now. Updated every 12 hours.",
       },
       ogUrlMeta("/top-100"),
     ],
@@ -69,12 +69,17 @@ function Top100() {
     <Layout>
       <section className="px-4 pt-6 lg:px-6">
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          The Index · Movie 100 · Updated every 15 minutes
+          The Index · Movie 100 · Updated every 12 hours ·{" "}
+          {new Date().toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
         </div>
         <h1 className="mt-2 font-display text-5xl lg:text-6xl">Movie 100</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          The movies getting the most attention right now. Updated every 15
-          minutes. A public rank only exists between #1 and #100; titles beyond
+          The movies getting the most attention right now. Updated every 12
+          hours. A public rank only exists between #1 and #100; titles beyond
           the chart are simply not currently ranked.
         </p>
       </section>

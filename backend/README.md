@@ -49,10 +49,10 @@ Base: `/api/v1`
 | GET    | `/films/{slug}/timeline`     | Daily sparkline points      |
 | GET    | `/films/{slug}/countries`    | Country breakdown           |
 | GET    | `/stats/live`                | Hero live stats             |
-| GET    | `/meta/refresh`              | Snapshot + 15-min countdown |
+| GET    | `/meta/refresh`              | Snapshot + 12-h countdown |
 | POST   | `/newsletter/subscribe`      | `{ "email": "…" }`          |
 
-## Ranking (every 15 min)
+## Ranking (every 12 hours)
 
 ```
 raw = Σ source_weight × log1p(engagement) × (0.5 ** (age_h / 24))

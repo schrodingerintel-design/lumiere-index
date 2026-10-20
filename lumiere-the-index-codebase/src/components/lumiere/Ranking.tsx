@@ -54,7 +54,7 @@ export function Movement({ film }: { film: RankedFilm }) {
 
 function metaLine(film: RankedFilm): string {
   const director = film.director && film.director !== "Unknown" ? film.director : null;
-  // Chart tenure in days — the chart refreshes every 15 minutes, so days is
+  // Chart tenure in days — the chart refreshes every 12 hours, so days is
   // the honest unit. NEW entries (no previous snapshot) show "1d".
   const days = film.days_on_chart ?? 1;
   return [director, film.year, `${days}d`].filter(Boolean).join(" · ");

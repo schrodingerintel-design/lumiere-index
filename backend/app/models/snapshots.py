@@ -40,7 +40,7 @@ class DailyIndexSnapshot(Base):
 
     `snapshot_date` is the publication day (UTC).  Movement fields compare
     against the previous published Daily Index — not against the continuous
-    15-minute `rankings` computation.
+    12-hour `rankings` computation.
     """
 
     __tablename__ = "daily_index_snapshots"
@@ -120,6 +120,28 @@ class WeeklyIndexSnapshot(Base):
     ae_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     cp_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     published_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+
+class WeeklyPublicationError(Base):
+    """Diagnostics: per-chart failures of the weekly publication job.
+
+    Written by publish_weekly_index whenever a chart cannot be published, so
+    a silent scheduler failure becomes visible through the public
+    /api/v1/meta/weekly-health endpoint without database access. Rows are
+    diagnostics, not part of the published record; old rows are harmless.
+    """
+
+    __tablename__ = "weekly_publication_errors"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    chart_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    week_end: Mapped[date] = mapped_column(Date, nullable=False)
+    error: Mapped[str] = mapped_column(String(1000), nullable=False)
+    # No server_default: this managed MySQL rejects datetime defaults
+    # (error 1067 on both NOW() and CURRENT_TIMESTAMP); every writer sets
+    # the value explicitly.
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class IndexDebut(Base):

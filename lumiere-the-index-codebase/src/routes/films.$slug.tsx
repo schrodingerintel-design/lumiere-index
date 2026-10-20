@@ -557,7 +557,7 @@ function FilmDetailView() {
       (watchRegionData.buy?.length ?? 0) >
       0;
 
-  // Chart tenure in days — the chart refreshes every 15 minutes, so days is
+  // Chart tenure in days — the chart refreshes every 12 hours, so days is
   // the honest unit. A NEW entry (no previous snapshot) is on day 1.
   // Chart law: a public rank only exists between #1 and #100 on the title's
   // OWN chart. rank 0 ⇒ "Not currently ranked" — never an internal position.

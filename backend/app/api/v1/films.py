@@ -759,7 +759,7 @@ def film_rank_history(slug: str, days: int = 60, db: Session = Depends(get_db)):
     """Daily-sampled rank + score history for a title's trajectory on its OWN
     chart.
 
-    The chart is a continuous 15-minute snapshot series; this endpoint samples
+    The chart is a continuous 12-hour snapshot series; this endpoint samples
     one representative snapshot per calendar day (the last of the day) so the
     film page can draw an honest "Index history" line without shipping every
     snapshot.  History is chart-scoped: a TV show's line is its TV 100

@@ -3,7 +3,7 @@ from .source import Source
 from .mention import Mention
 from .pending import PendingMention
 from .score import DailyScore, Ranking, CountryScore
-from .snapshots import DailyIndexSnapshot, WeeklyIndexSnapshot, IndexDebut
+from .snapshots import DailyIndexSnapshot, WeeklyIndexSnapshot, IndexDebut, WeeklyPublicationError
 from .newsletter import NewsletterSub
 from .youtube import YouTubeSignal
 from .imdb import IMDbEnrichment, IMDbVoteSnapshot
@@ -14,6 +14,7 @@ __all__ = [
     "Film", "FilmAlias", "Source", "Mention",
     "PendingMention", "DailyScore", "Ranking", "CountryScore",
     "DailyIndexSnapshot", "WeeklyIndexSnapshot", "IndexDebut",
+    "WeeklyPublicationError",
     "NewsletterSub", "YouTubeSignal", "IMDbEnrichment", "IMDbVoteSnapshot",
     "MetricSnapshot",
     "ClientErrorReport",

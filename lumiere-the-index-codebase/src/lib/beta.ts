@@ -67,7 +67,7 @@ export const BETA_RELEASES: BetaRelease[] = [
     changes: [
       "New home: the Index now lives at lumiereindex.com. Faster pages, proper search-engine listings, and share links that always land on the canonical site.",
       "Resilience: if the charts' data connection hiccups, the site now says so honestly and recovers automatically instead of hanging.",
-      "Under the hood: the chart database keeps itself lean, so refreshing every 15 minutes stays fast as history grows.",
+      "Under the hood: the chart database keeps itself lean, so refreshing every 12 hours stays fast as history grows.",
     ],
   },
   {
@@ -84,7 +84,7 @@ export const BETA_RELEASES: BetaRelease[] = [
     date: "2026-08",
     headline: "Public beta opens",
     changes: [
-      "The Index goes public: Movie 100, Biggest Movers, New Entries, Trending and genre collections, refreshed every 15 minutes.",
+      "The Index goes public: Movie 100, Biggest Movers, New Entries, Trending and genre collections, refreshed every 12 hours.",
       "Share cards, watchlists and film pages ship from day one.",
     ],
   },

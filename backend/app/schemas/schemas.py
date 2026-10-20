@@ -57,7 +57,7 @@ class RankedFilm(FilmBase):
     movement: int = 0
     peak_rank: int | None = None
     weeks_on_chart: int = 0
-    # Days since the title's FIRST appearance on the continuous 15-minute
+    # Days since the title's FIRST appearance on the continuous 12-hour
     # chart — the tenure unit the UI shows (weeks is legacy, kept for
     # backward-compatible API consumers).
     days_on_chart: int | None = None
@@ -152,7 +152,7 @@ class TimelinePoint(BaseModel):
 
 class RankHistoryPoint(BaseModel):
     """One daily observation of a title's chart position — a sampled view of
-    the continuous 15-minute snapshot history, plus the index score at that
+    the continuous 12-hour snapshot history, plus the index score at that
     moment. Powers the film page's index-history chart."""
     day: date
     rank: int
@@ -358,6 +358,26 @@ class WeeklyMetaOut(BaseModel):
     chart_type: str = "MOVIE_100"
     published_at: datetime | None = None
     entry_count: int = 0
+
+
+class WeeklyPublicationErrorOut(BaseModel):
+    """One recorded failure of the weekly publication job (diagnostics)."""
+    chart_type: str
+    week_start: date
+    week_end: date
+    error: str
+    created_at: datetime | None = None
+
+
+class WeeklyHealthOut(BaseModel):
+    """Diagnostics summary for the weekly publication job.
+
+    `note` is set when the errors table itself cannot be read (e.g. a brand
+    new table not yet created by the running process) so the endpoint stays
+    a 200 that diagnoses itself instead of a bare 500.
+    """
+    errors: list[WeeklyPublicationErrorOut] = []
+    note: str | None = None
 
 
 class WeeklyIndexOut(BaseModel):

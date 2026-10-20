@@ -126,7 +126,7 @@ function Methodology() {
         <List
           items={[
             "Data collection: continuous. Audience activity is measured around the clock.",
-            "The live charts (Movie 100, TV 100): recomputed every 15 minutes from the latest signals.",
+            "The live charts (Movie 100, TV 100): recomputed every 12 hours from the latest signals.",
             "The Weekly Top 100: published once per week from the whole week's measurements. Sustained performance across the week counts more than a one-day spike.",
             "Biggest Movers: derived from rank changes between consecutive published charts. It highlights the titles climbing or falling fastest; it is not a separate ranking with separate math.",
           ]}

@@ -83,8 +83,8 @@ export function ChartsUnavailable({ onRetry }: { onRetry?: () => void }) {
       </div>
       <h2 className="mt-3 font-display text-2xl">Charts reconnecting</h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-        Live rankings are temporarily unavailable. The Index refreshes every 15
-        minutes; this page recovers automatically once the chart engine is
+        Live rankings are temporarily unavailable. The Index refreshes every 12
+        hours; this page recovers automatically once the chart engine is
         back.
       </p>
       {onRetry && (
@@ -348,14 +348,14 @@ export function Hero() {
               <span>{daysOnChart} {daysOnChart === 1 ? "day" : "days"} on chart</span>
             </div>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60">
-              Movie 100 · Updated every 15 min
+              Movie 100 · Updated every 12 hrs
               <span className="hidden sm:inline"> · ← → to explore</span>
             </span>
           </div>
 
           <div className="mb-5 flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/55 sm:hidden">
             <span className="text-foreground">Movie 100</span>
-            <span>Updated every 15 min · ← →</span>
+            <span>Updated every 12 hrs · ← →</span>
           </div>
 
           {/* On mobile, one lower lockup carries the title, current movement,

@@ -219,8 +219,8 @@ export interface RankedFilm {
   weeks_on_chart: number | null;
   /** Public Momentum — the derived state of change (rank-trajectory based). */
   momentum?: string;
-  /** Days since the title's first appearance on the live 15-minute chart.
-   *  The tenure unit the UI shows. */
+  /** Days since the title's first appearance on the live chart (refreshed
+   *  every 12 hours). The tenure unit the UI shows. */
   days_on_chart?: number | null;
   /** Distinct calendar days the title has spent at rank #1 — its historical
    *  dominance on the chart. */

@@ -161,9 +161,20 @@ def publish_daily_index() -> str | None:
 
 @celery.task
 def publish_weekly_index() -> str | None:
-    """Publish the official Weekly Index (idempotent per week)."""
-    from app.services.index_publication import publish_weekly_index as _publish
+    """Publish the official Weekly Index (idempotent per week).
+
+    After the week containing today, also backfill recent COMPLETED weeks
+    whose archive is incomplete (e.g. a failed write left the TV_100 or the
+    combined WEEKLY_100 chart empty): archived charts are skipped, so this
+    is a no-op for healthy weeks. Resilience for "the Weekly Top 100 shows
+    nothing for past weeks".
+    """
+    from app.services.index_publication import (
+        publish_weekly_index as _publish,
+        backfill_missing_weekly as _backfill,
+    )
 
     with SessionLocal() as db:
         result = _publish(db)
+        _backfill(db, weeks=6)
         return result.isoformat() if result else None
