@@ -425,17 +425,19 @@ function ComparePage() {
               <Link
                 to="/films/$slug"
                 params={{ slug: filmA!.slug }}
-                className="text-right font-serif text-lg leading-snug hover:text-primary transition sm:truncate sm:text-xl"
+                title={filmA!.title}
+                className="text-right font-serif text-lg leading-snug transition hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:truncate sm:text-xl"
               >
                 {filmA!.title}
               </Link>
-              <div className="hidden px-2 text-center sm:block">
+              <div className="hidden px-2 text-center sm:block" aria-hidden>
                 <Scale className="mx-auto h-5 w-5 text-muted-foreground" />
               </div>
               <Link
                 to="/films/$slug"
                 params={{ slug: filmB!.slug }}
-                className="text-left font-serif text-lg leading-snug hover:text-primary transition sm:truncate sm:text-xl"
+                title={filmB!.title}
+                className="text-left font-serif text-lg leading-snug transition hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:truncate sm:text-xl"
               >
                 {filmB!.title}
               </Link>

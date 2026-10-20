@@ -142,8 +142,8 @@ function CalendarPage() {
         </p>
 
         {/* Filter Pills */}
-        <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-foreground/10 pb-4">
-          <Filter className="h-4 w-4 text-muted-foreground mr-1" />
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-foreground/10 pb-4" role="group" aria-label="Release filter">
+          <Filter className="h-4 w-4 text-muted-foreground mr-1" aria-hidden />
           {[
             { id: "upcoming", label: "Upcoming Releases" },
             { id: "theaters", label: "Now In Theaters" },
@@ -152,7 +152,8 @@ function CalendarPage() {
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id as "all" | "upcoming" | "theaters")}
-              className={`rounded-full px-4 py-1.5 font-mono text-xs font-medium transition ${
+              aria-pressed={filter === tab.id}
+              className={`rounded-full px-4 py-1.5 min-h-[44px] font-mono text-xs font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 filter === tab.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-foreground/5 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
@@ -196,24 +197,28 @@ function CalendarPage() {
                   key={f.slug}
                   to="/films/$slug"
                   params={{ slug: f.slug }}
-                  className="group flex gap-4 border border-foreground/10 p-4 transition hover:border-foreground/25"
+                  aria-label={`${f.title}, ${countdown.text}${f.rank > 0 ? `, ranked #${f.rank}` : ""}`}
+                  className="group flex gap-4 border border-foreground/10 p-4 transition hover:border-foreground/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   <div className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl bg-ink">
                     {f.poster_url ? (
                       <img
                         src={f.poster_url}
-                        alt={f.title}
-                        className="h-full w-full object-cover"
+                        alt=""
+                        role="presentation"
+                        className="h-full w-full object-cover motion-reduce:transform-none"
                         loading="lazy"
                         decoding="async"
                       />
                     ) : (
                       <div
-                        className="h-full w-full"
+                        className="flex h-full w-full items-center justify-center p-2 text-center text-[10px] text-cream/70"
                         style={{
                           background: `linear-gradient(155deg, ${f.gradient_from ?? "#333"}, ${f.gradient_to ?? "#111"})`,
                         }}
-                      />
+                      >
+                        {f.title}
+                      </div>
                     )}
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col justify-between">
@@ -227,7 +232,7 @@ function CalendarPage() {
                       >
                         {countdown.text}
                       </span>
-                      <div className="mt-2 truncate font-serif text-lg font-medium leading-tight transition group-hover:text-primary">
+                      <div className="mt-2 truncate font-serif text-lg font-medium leading-tight transition group-hover:text-primary" title={f.title}>
                         {f.title}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
@@ -282,14 +287,17 @@ function CalendarPage() {
                   <Link
                     to="/films/$slug"
                     params={{ slug: slugify(m.title) }}
-                    className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl bg-ink"
+                    aria-label={`${m.title}, view insights`}
+                    className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
                     {poster ? (
                       <img
                         src={poster}
-                        alt={m.title}
-                        className="h-full w-full object-cover"
+                        alt=""
+                        role="presentation"
+                        className="h-full w-full object-cover motion-reduce:transform-none"
                         loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center p-2 text-center text-[10px] text-muted-foreground">
@@ -315,7 +323,8 @@ function CalendarPage() {
                       <Link
                         to="/films/$slug"
                         params={{ slug: slugify(m.title) }}
-                        className="mt-2 block font-serif text-lg font-medium leading-tight hover:text-primary transition truncate"
+                        title={m.title}
+                        className="mt-2 block font-serif text-lg font-medium leading-tight hover:text-primary transition truncate focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
                         {m.title}
                       </Link>

@@ -186,7 +186,7 @@ function Weekly100() {
                           <FilmPosterThumbnail film={e} className="h-14 w-10 sm:h-12 sm:w-9" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="truncate font-display text-[15px] font-medium sm:text-lg">
+                              <span className="truncate font-display text-[15px] font-medium sm:text-lg" title={e.title}>
                                 {e.title}
                               </span>
                               <span className="sm:hidden">

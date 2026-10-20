@@ -31,6 +31,8 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
   const [highlighted, setHighlighted] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const listId = "index-search-listbox";
+  const inputId = "index-search-input";
 
   const debounced = useDebouncedValue(query.trim(), 250);
 
@@ -87,6 +89,10 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
     if (!open) {
       setQuery("");
       setHighlighted(0);
+    } else {
+      // Focus the input on open for keyboard users.
+      const t = setTimeout(() => inputRef.current?.focus(), 30);
+      return () => clearTimeout(t);
     }
   }, [open]);
 
@@ -107,11 +113,16 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
           <div className="overflow-hidden rounded-lg border border-foreground/15 bg-surface shadow-2xl">
             {/* ── Search input ── */}
             <div className="relative border-b border-foreground/10">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
               <input
                 ref={inputRef}
+                id={inputId}
                 type="text"
                 value={query}
+                role="combobox"
+                aria-expanded={debounced.length >= 2 && results.length > 0}
+                aria-controls={listId}
+                aria-activedescendant={results.length > 0 ? `search-option-${highlighted}` : undefined}
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setHighlighted(0);
@@ -119,7 +130,8 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                 onKeyDown={handleKeyDown}
                 placeholder="Search films & shows…"
                 aria-label="Search films"
-                className="w-full border-0 bg-transparent py-4 pl-12 pr-12 text-base outline-none placeholder:text-muted-foreground"
+                autoComplete="off"
+                className="w-full border-0 bg-transparent py-4 pl-12 pr-12 text-base outline-none placeholder:text-muted-foreground focus-visible:bg-foreground/[0.02]"
               />
               {query ? (
                 <button
@@ -171,10 +183,11 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                         </p>
                       </div>
                     )}
-                    <ul className="py-1" role="listbox">
+                    <ul className="py-1" role="listbox" id={listId} aria-label="Search results">
                       {results.map((film, i) => (
                         <li
                           key={film.id}
+                          id={`search-option-${i}`}
                           role="option"
                           aria-selected={i === highlighted}
                           onMouseEnter={() => setHighlighted(i)}
@@ -183,13 +196,14 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                             to="/films/$slug"
                             params={{ slug: film.slug }}
                             onClick={closeAndClear}
-                            className={`flex min-h-12 items-center gap-3 px-5 py-2.5 transition ${
+                            aria-label={`${film.title}${film.year ? `, ${film.year}` : ""}${film.rank > 0 ? `, ranked #${film.rank}` : ""}`}
+                            className={`flex min-h-[44px] items-center gap-3 px-5 py-2.5 transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                               i === highlighted ? "bg-foreground/10" : ""
                             }`}
                           >
                             <FilmPosterThumbnail film={film} />
                             <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-medium">{film.title}</div>
+                              <div className="truncate text-sm font-medium" title={film.title}>{film.title}</div>
                               <div className="truncate text-xs text-muted-foreground">
                                 {film.year ?? "Year TBA"}
                                 {film.rank > 0 && <> &middot; #{film.rank} on The Index</>}
@@ -240,11 +254,11 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             </div>
 
             {/* ── Footer hints ── */}
-            <div className="flex items-center justify-between border-t border-foreground/10 px-5 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-foreground/10 px-5 py-3">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Search The Index
               </span>
-              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              <div className="hidden items-center gap-3 text-[10px] text-muted-foreground sm:flex">
                 <kbd className="rounded border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 font-mono">
                   &uarr;&darr;
                 </kbd>

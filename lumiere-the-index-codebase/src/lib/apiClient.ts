@@ -556,6 +556,50 @@ export const getTmdbUpcoming = (page: number = 1) =>
 export const getTmdbNowPlaying = (page: number = 1) =>
   apiFetch<{ results: TmdbMovie[] }>(`/api/v1/tmdb/movie/now_playing?page=${page}`);
 
+/**
+ * The release calendar renders a title, a poster, a date and a popularity
+ * score - nothing else. Trimming the TMDB payload here keeps the first paint
+ * (and the server-rendered HTML that carries it) a fraction of the size.
+ */
+export interface ReleaseMovie {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  release_date: string;
+  popularity: number;
+}
+
+const toReleaseMovie = (movie: TmdbMovie): ReleaseMovie => ({
+  id: movie.id,
+  title: movie.title,
+  poster_path: movie.poster_path,
+  release_date: movie.release_date,
+  popularity: movie.popularity ?? 0,
+});
+
+/** Merge several TMDB pages into one trimmed release list. A failed page
+ *  contributes nothing instead of emptying the calendar. */
+async function fetchReleasePages(
+  fetchPage: (page: number) => Promise<{ results?: TmdbMovie[] }>,
+  pages: number,
+): Promise<ReleaseMovie[]> {
+  const results = await Promise.all(
+    [...Array(pages)].map((_, i) =>
+      fetchPage(i + 1)
+        .then((p) => (p.results ?? []).map(toReleaseMovie))
+        .catch(() => [] as ReleaseMovie[]),
+    ),
+  );
+  return results.flat();
+}
+
+/** Upcoming releases, soonest first, trimmed for the release calendar. */
+export const getUpcomingReleases = (pages: number = 5) => fetchReleasePages(getTmdbUpcoming, pages);
+
+/** What is playing in theaters right now, trimmed for the release calendar. */
+export const getNowPlayingReleases = (pages: number = 2) =>
+  fetchReleasePages(getTmdbNowPlaying, pages);
+
 // ─── TV via backend proxy (TV shows are first-class content) ────────────────
 
 /** TV result shape: name/original_name + first_air_date, not title/release_date. */

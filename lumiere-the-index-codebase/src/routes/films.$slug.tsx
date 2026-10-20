@@ -584,10 +584,14 @@ function FilmDetailView() {
               key={backdropUrl}
               src={backdropUrl}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover opacity-50"
             />
-            {/* Legibility scrims — heavier to the left where the text sits */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/70 to-background/20" />
+            {/* Legibility scrims — heavier to the left where the text sits,
+                plus a bottom-anchored dark wash so bright artwork keeps 4.5:1. */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/30" />
+            <div className="absolute inset-0 bg-ink/30" />
             <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent" />
             <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-background/80 to-transparent" />
           </div>
@@ -695,11 +699,9 @@ function FilmDetailView() {
                 {/* Momentum — the title's state of change (no public score) */}
                 <div className="flex h-24 w-24 shrink-0 flex-col items-center justify-center border border-foreground/10 bg-foreground/[0.02] text-center">
                   <MomentumMark state={film.momentum} className="!text-[11px]" />
-                  {isRanked && (
-                    <span className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
-                      Momentum
-                    </span>
-                  )}
+                  <span className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Momentum
+                  </span>
                 </div>
 
                 {/* Chart stats — the title's Index résumé, chart-scoped */}
@@ -737,31 +739,36 @@ function FilmDetailView() {
 
               {/* Actions */}
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                {trailerKey && (
+                {trailerKey ? (
                   <button
                     onClick={scrollToTrailer}
-                    className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-primary/90"
+                    className="inline-flex min-h-[44px] items-center gap-2 border border-primary bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
-                    <Play className="h-4 w-4" />
+                    <Play className="h-4 w-4" aria-hidden />
                     Watch trailer
                   </button>
+                ) : (
+                  <span className="inline-flex min-h-[44px] items-center border border-foreground/10 px-5 py-2.5 text-sm text-muted-foreground">
+                    Trailer coming soon
+                  </span>
                 )}
                 <button
                   onClick={handleToggleSave}
-                  aria-label={saved ? "Remove from Watchlist" : "Save to Watchlist"}
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-md border transition ${
+                  aria-label={saved ? `Remove ${film.title} from Watchlist` : `Save ${film.title} to Watchlist`}
+                  aria-pressed={saved}
+                  className={`inline-flex h-11 w-11 items-center justify-center border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                     saved
                       ? "border-primary/50 text-primary"
                       : "border-foreground/20 text-muted-foreground hover:border-foreground/45 hover:text-foreground"
                   }`}
                 >
-                  {saved ? <BookmarkCheck className="h-4.5 w-4.5" /> : <Bookmark className="h-4.5 w-4.5" />}
+                  {saved ? <BookmarkCheck className="h-5 w-5" aria-hidden /> : <Bookmark className="h-5 w-5" aria-hidden />}
                 </button>
                 <ShareCardButton
                   variant="film"
                   card={film}
-                  label="Share"
-                  className="rounded-md border border-foreground/20 px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-foreground/45 hover:bg-foreground/5 hover:text-foreground"
+                  label={`Share ${film.title}`}
+                  className="border border-foreground/20 px-5 py-2.5 min-h-[44px] text-sm font-semibold text-foreground transition hover:border-foreground/45 hover:bg-foreground/5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 />
               </div>
             </div>
@@ -800,7 +807,11 @@ function FilmDetailView() {
             </div>
             {hasSentimentData ? (
               <>
-                <div className="mt-4 flex h-1.5">
+                <div
+                  className="mt-4 flex h-1.5 overflow-hidden rounded-full"
+                  role="img"
+                  aria-label={`Sentiment: ${sentiment.positive}% positive, ${sentiment.neutral}% neutral, ${sentiment.negative}% negative`}
+                >
                   <div style={{ width: `${sentiment.positive}%` }} className="bg-up" />
                   <div style={{ width: `${sentiment.neutral}%` }} className="bg-foreground/20" />
                   <div style={{ width: `${sentiment.negative}%` }} className="bg-down" />
@@ -862,7 +873,13 @@ function FilmDetailView() {
                   </span>
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="border border-foreground/10 bg-surface p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No trailer available for this title yet.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

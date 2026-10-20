@@ -108,41 +108,43 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
       {/* Category header — typography only, no icons */}
       <div className="flex items-end justify-between gap-3 px-1">
         <div className="min-w-0">
-          <h3 className="truncate font-display text-xl leading-tight text-foreground">
+          <h3 className="font-display text-xl leading-tight text-foreground">
             {category.title}
           </h3>
-          <p className="truncate text-xs text-muted-foreground">{category.subtitle}</p>
+          <p className="mt-0.5 text-xs leading-snug text-muted-foreground sm:truncate">{category.subtitle}</p>
         </div>
 
-        <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             onClick={() => scroll("left")}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             aria-label={`Scroll ${category.title} left`}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" aria-hidden />
           </button>
           <button
             onClick={() => scroll("right")}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-foreground/15 text-muted-foreground transition hover:border-foreground/35 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             aria-label={`Scroll ${category.title} right`}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
       </div>
 
-      {/* Horizontal scroll carousel — swipeable on touch devices */}
+      {/* Horizontal scroll carousel — swipeable on touch devices.
+          snap-proximity (not mandatory) so swipe never traps scroll. */}
       <div
         ref={scrollRef}
-        className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 pt-1 scroll-smooth"
+        className="no-scrollbar -mx-4 flex snap-x snap-proximity gap-4 overflow-x-auto px-4 pb-2 pt-1 scroll-smooth motion-reduce:scroll-auto"
       >
         {films.map((film) => (
           <Link
             key={film.slug}
             to="/films/$slug"
             params={{ slug: film.slug }}
-            className="card-lift group relative block w-[140px] shrink-0 snap-start sm:w-[160px]"
+            aria-label={`${film.title}${isRanked(film) ? `, ranked #${film.rank}` : ", not currently ranked"}`}
+            className="card-lift group relative block w-[140px] shrink-0 snap-start sm:w-[160px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <div
               className="relative aspect-[2/3] overflow-hidden bg-ink"
@@ -151,9 +153,11 @@ function GenreRow({ category, films }: { category: GenreCategoryConfig; films: R
               {film.poster_url ? (
                 <img
                   src={film.poster_url}
-                  alt={film.title}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  alt=""
+                  role="presentation"
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transform-none"
                   loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center p-3 text-center text-xs font-display text-white/90">

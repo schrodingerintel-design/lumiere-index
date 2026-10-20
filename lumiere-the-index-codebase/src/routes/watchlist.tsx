@@ -93,10 +93,10 @@ function WatchlistPage() {
           {savedFilms.length > 0 && (
             <button
               onClick={clearAll}
-              className="flex items-center gap-1.5 rounded-full border border-foreground/10 bg-foreground/[0.03] px-4 py-2 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-foreground/10 bg-foreground/[0.03] px-4 py-2 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
-              <BookmarkX className="h-3.5 w-3.5" />
-              Clear all ({savedFilms.length})
+              <BookmarkX className="h-3.5 w-3.5" aria-hidden />
+              Clear all ({savedSlugs.length})
             </button>
           )}
         </div>
@@ -124,12 +124,20 @@ function WatchlistPage() {
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
                 Save titles with the bookmark button on any film page to follow them here.
               </p>
-              <Link
-                to="/top-100"
-                className="mt-6 inline-block rounded-full bg-foreground px-5 py-2.5 text-[13px] font-medium text-background transition hover:bg-foreground/85"
-              >
-                Browse the Movie 100
-              </Link>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  to="/top-100"
+                  className="inline-block rounded-full bg-foreground px-5 py-3 min-h-[44px] text-[13px] font-medium text-background transition hover:bg-foreground/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Browse the Movie 100
+                </Link>
+                <Link
+                  to="/tv-100"
+                  className="inline-block rounded-full border border-foreground/20 px-5 py-3 min-h-[44px] text-[13px] font-medium text-foreground transition hover:border-foreground/45 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Browse the TV 100
+                </Link>
+              </div>
             </div>
           ) : (
             <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/10">
@@ -141,14 +149,14 @@ function WatchlistPage() {
                     <Link
                       to="/films/$slug"
                       params={{ slug: film.slug }}
-                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:px-5"
+                      className="flex items-center gap-3 px-4 py-3 pr-14 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
                     >
                       <FilmPosterThumbnail
                         film={film}
                         className="h-16 w-11 sm:h-[72px] sm:w-12"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base">
+                        <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base" title={film.title}>
                           {film.title}
                         </div>
                         <div className="mt-0.5 truncate text-xs text-muted-foreground sm:text-[13px]">
@@ -170,9 +178,9 @@ function WatchlistPage() {
                       onClick={() => removeSlug(film.slug)}
                       title="Remove from watchlist"
                       aria-label={`Remove ${film.title} from watchlist`}
-                      className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full p-2 text-muted-foreground/60 transition hover:bg-foreground/10 hover:text-down group-hover:block"
+                      className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground/70 transition hover:bg-foreground/10 hover:text-down focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
                     >
-                      <BookmarkX className="h-4 w-4" />
+                      <BookmarkX className="h-4 w-4" aria-hidden />
                     </button>
                   </li>
                 );

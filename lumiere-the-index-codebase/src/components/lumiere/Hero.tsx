@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ArrowRight } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
+} from "lucide-react";
 import {
   getTopFilms,
   getBiggestMovers,
@@ -18,6 +26,11 @@ import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
 import { TopTenSkeleton } from "./Skeletons";
 import { ShareCardButton } from "./ShareCardButton";
 import { MomentumMark, MomentumInline } from "./Momentum";
+
+/** The home page shows the leader and the Top 10 - ten titles, not the whole
+ *  chart. Fetching only what is rendered keeps the first paint light; the
+ *  full chart is fetched on /top-100. */
+const HOME_CHART_SIZE = 10;
 
 /** Preload the next mobile hero artwork so touch transitions stay instant. */
 function useBackdropPreload(films: RankedFilm[], index: number) {
@@ -94,8 +107,8 @@ export function Hero() {
   useQuery({ queryKey: ["trending", "films"], queryFn: () => getTrendingFilms(6), staleTime: 5 * 60 * 1000 });
 
   const { data: films, isLoading, error, refetch } = useQuery({
-    queryKey: ["films", "top", 100],
-    queryFn: () => getTopFilms(100),
+    queryKey: ["films", "top", HOME_CHART_SIZE],
+    queryFn: () => getTopFilms(HOME_CHART_SIZE),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -106,34 +119,72 @@ export function Hero() {
   const heroRef = useRef<HTMLElement>(null);
   const [isCompact, setIsCompact] = useState(false);
   const [manualSelection, setManualSelection] = useState(false);
+  const [autoplayPaused, setAutoplayPaused] = useState(false);
+  // Desktop is engaged only when the viewer starts the carousel from the
+  // control bar. Engaging is opt-in, so the default desktop state - anchored
+  // to the live #1 - is unchanged.
+  const [desktopEngaged, setDesktopEngaged] = useState(false);
+  const [desktopPlaying, setDesktopPlaying] = useState(false);
   const topFive = films?.slice(0, 5) ?? [];
   const leader = films?.[0] ?? null;
-  const activeFilm = isCompact || manualSelection ? topFive[index] ?? leader : leader;
+  const activeFilm =
+    isCompact || manualSelection || desktopEngaged ? (topFive[index] ?? leader) : leader;
 
   useBackdropPreload(topFive, index);
 
   useEffect(() => {
     const compact = window.matchMedia("(max-width: 1023px)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let timer: number | undefined;
     const sync = () => {
       if (timer !== undefined) window.clearInterval(timer);
       setIsCompact(compact.matches);
-      if (!compact.matches || topFive.length < 2) {
+      if (topFive.length < 2) {
         setIndex(0);
-        if (!compact.matches) setManualSelection(false);
         return;
       }
+      // Desktop default: anchored to the live #1, no auto-advance.
+      if (!compact.matches && !desktopEngaged) {
+        setIndex(0);
+        setManualSelection(false);
+        return;
+      }
+      const advancing = compact.matches ? !autoplayPaused : desktopPlaying;
+      // No autoplay for reduced-motion users, or when paused via the UI.
+      if (reducedMotion.matches || !advancing) return;
       timer = window.setInterval(() => {
         setIndex((current) => (current + 1) % topFive.length);
       }, 8000);
     };
     sync();
     compact.addEventListener("change", sync);
+    const onMotionChange = () => sync();
+    reducedMotion.addEventListener?.("change", onMotionChange);
     return () => {
       if (timer !== undefined) window.clearInterval(timer);
       compact.removeEventListener("change", sync);
+      reducedMotion.removeEventListener?.("change", onMotionChange);
     };
-  }, [topFive.length]);
+  }, [topFive.length, autoplayPaused, desktopEngaged, desktopPlaying]);
+
+  /** Step to the previous/next featured title. */
+  const step = (delta: number) => {
+    setManualSelection(true);
+    setIndex((current) => (current + delta + topFive.length) % topFive.length);
+  };
+
+  /** Play/pause the desktop carousel. The first press engages it at the
+   *  leader; after that it simply holds or resumes the current frame. */
+  const toggleDesktopPlay = () => {
+    if (!desktopEngaged) {
+      setDesktopEngaged(true);
+      setDesktopPlaying(true);
+      setIndex(0);
+      setManualSelection(false);
+      return;
+    }
+    setDesktopPlaying((playing) => !playing);
+  };
 
   // A new live leader always resets manual exploration, keeping the default
   // desktop state honest without discarding the carousel implementation.
@@ -142,31 +193,9 @@ export function Hero() {
     setManualSelection(false);
   }, [leader?.slug]);
 
-  // The slideshow is also controllable without first tabbing into the hero.
-  // Ignore form fields, editable content, dialogs, and modified shortcuts so
-  // global arrow support never steals normal keyboard interaction.
-  useEffect(() => {
-    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (topFive.length < 2 || event.altKey || event.ctrlKey || event.metaKey) return;
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      if (event.target instanceof HTMLElement) {
-        if (heroRef.current?.contains(event.target)) return;
-        if (event.target.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) {
-          return;
-        }
-      }
-      event.preventDefault();
-      setManualSelection(true);
-      setIndex((current) =>
-        event.key === "ArrowLeft"
-          ? (current - 1 + topFive.length) % topFive.length
-          : (current + 1) % topFive.length,
-      );
-    };
-    document.addEventListener("keydown", handleDocumentKeyDown);
-    return () => document.removeEventListener("keydown", handleDocumentKeyDown);
-  }, [topFive.length]);
-
+  // Keyboard control stays local to the hero region (tab into it, then use
+  // arrows). No global document hijack: arrows must keep scrolling the page
+  // and working in inputs, dialogs, and selects everywhere else.
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (topFive.length < 2 || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -208,7 +237,7 @@ export function Hero() {
   return (
     <section
       ref={heroRef}
-      className="relative scroll-mt-14 outline-none max-sm:min-h-[78svh] sm:flex sm:min-h-[500px] lg:min-h-[600px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary/70"
+      className="relative scroll-mt-14 outline-none max-sm:min-h-[78svh] sm:flex sm:min-h-[500px] lg:min-h-[660px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary/70"
       role="region"
       aria-roledescription="carousel"
       aria-label="Movie 100 featured titles. Use the left and right arrow keys to explore."
@@ -237,9 +266,10 @@ export function Hero() {
             key={`${backdropUrl}-blur`}
             src={backdropUrl}
             alt=""
-            className="hero-fade-blur absolute inset-0 h-full w-full scale-110 object-cover object-[50%_30%] blur-2xl"
-            fetchPriority="high"
+            loading="lazy"
+            fetchPriority="low"
             decoding="async"
+            className="hero-fade-blur absolute inset-0 h-full w-full scale-110 object-cover object-[50%_30%] blur-2xl"
           />
           {/* Color management only — keeps the top bright while the dissolve lands on the canvas */}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/55 to-ink" />
@@ -250,35 +280,61 @@ export function Hero() {
         </div>
       )}
 
-      {/* Compact touch navigation keeps the mobile hero art-led while the
-          editorial lockup sits in one deliberate block near the lower edge. */}
+      {/* Visible carousel controls: previous / dots / pause / next.
+          The old full-bleed invisible tap layer trapped taps and gave no
+          affordance, so it now only exists as labeled buttons. */}
       {topFive.length > 1 && (
-        <div className="absolute inset-0 grid grid-cols-3 lg:hidden">
+        <div className="pointer-events-auto absolute inset-x-0 bottom-2 z-10 flex items-center justify-center gap-2 lg:hidden">
           <button
             type="button"
-            onClick={() => setIndex((current) => (current - 1 + topFive.length) % topFive.length)}
+            onClick={() => step(-1)}
             aria-label="Previous title"
-            className="h-full w-full"
-          />
-          <Link
-            to="/films/$slug"
-            params={{ slug: activeFilm?.slug ?? "" }}
-            aria-label={`Open ${activeFilm?.title ?? "film"}`}
-            className="h-full w-full"
-          />
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-foreground/20 bg-ink/70 text-foreground backdrop-blur-sm transition hover:border-foreground/40"
+          >
+            <span aria-hidden>←</span>
+          </button>
+          <div className="flex items-center gap-1.5 px-1" role="tablist" aria-label="Featured titles">
+            {topFive.map((f, i) => (
+              <button
+                key={f.slug}
+                type="button"
+                role="tab"
+                aria-selected={i === index}
+                aria-label={`Show ${f.title}`}
+                onClick={() => {
+                  setManualSelection(true);
+                  setIndex(i);
+                }}
+                className={`h-2 rounded-full transition ${
+                  i === index ? "w-6 bg-primary" : "w-2 bg-foreground/30 hover:bg-foreground/60"
+                }`}
+              />
+            ))}
+          </div>
           <button
             type="button"
-            onClick={() => setIndex((current) => (current + 1) % topFive.length)}
+            onClick={() => setAutoplayPaused((p) => !p)}
+            aria-label={autoplayPaused ? "Resume auto-advance" : "Pause auto-advance"}
+            aria-pressed={autoplayPaused}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-foreground/20 bg-ink/70 font-mono text-[10px] uppercase tracking-widest text-foreground backdrop-blur-sm transition hover:border-foreground/40"
+          >
+            <span aria-hidden>{autoplayPaused ? "▶" : "❚❚"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => step(1)}
             aria-label="Next title"
-            className="h-full w-full"
-          />
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-foreground/20 bg-ink/70 text-foreground backdrop-blur-sm transition hover:border-foreground/40"
+          >
+            <span aria-hidden>→</span>
+          </button>
         </div>
       )}
 
       {/* The leader is the focal point. The rank, movement, and tenure lockup
           stays deliberately sparse so the artwork carries the atmosphere. */}
       <div className="pointer-events-none relative max-sm:flex max-sm:min-h-[84svh] max-sm:flex-col max-sm:px-5 max-sm:pb-5 max-sm:pt-6 sm:px-8 sm:pt-14 lg:px-16 lg:pt-12 xl:px-20">
-        <div className="mx-auto max-w-7xl max-sm:flex max-sm:min-h-[calc(84svh-6.75rem)] max-sm:w-full max-sm:flex-col lg:flex lg:min-h-[520px] lg:flex-col xl:min-h-[600px]">
+        <div className="mx-auto max-w-7xl max-sm:flex max-sm:min-h-[calc(84svh-6.75rem)] max-sm:w-full max-sm:flex-col lg:flex lg:min-h-[520px] lg:flex-col lg:pb-16 xl:min-h-[600px]">
           <div className="hidden flex-wrap items-center justify-between gap-3 self-start sm:flex">
             <div className="inline-flex flex-wrap items-center border border-foreground/15 bg-ink/45 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
               <span className="mr-2 inline-flex items-center gap-1.5 text-foreground">
@@ -392,6 +448,75 @@ export function Hero() {
         </div>
       </div>
 
+      {/* Control bar — the still's own transport row, sitting on the lower
+          edge of the image. Caption on the left, transport in the middle,
+          actions on the right. Desktop only: the compact layout keeps its own
+          touch control row. */}
+      {topFive.length > 1 && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 hidden border-t border-foreground/15 bg-ink/75 backdrop-blur-md lg:block">
+          {/* Mirrors the hero's own column so the bar lines up with the
+              title and the artwork above it. */}
+          <div className="w-full lg:px-16 xl:px-20">
+            <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-6">
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-[0.16em]">
+                <span className="text-foreground/85">{activeFilm?.title}</span>
+                <span className="text-muted-foreground">
+                  {activeFilm?.year ? ` (${activeFilm.year})` : ""}
+                  {director ? ` - ${director}` : ""}
+                </span>
+              </span>
+
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => step(-1)}
+                  aria-label="Previous title"
+                  className="flex h-10 w-10 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleDesktopPlay}
+                  aria-pressed={desktopPlaying}
+                  aria-label={desktopPlaying ? "Pause auto-advance" : "Play auto-advance"}
+                  className="flex h-10 w-10 items-center justify-center text-foreground transition hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  {desktopPlaying ? (
+                    <Pause className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <Play className="h-4 w-4" aria-hidden />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => step(1)}
+                  aria-label="Next title"
+                  className="flex h-10 w-10 items-center justify-center text-muted-foreground transition hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-5">
+                <Link
+                  to="/films/$slug"
+                  params={{ slug: activeFilm?.slug ?? "" }}
+                  className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  About this film
+                </Link>
+                <Link
+                  to="/top-100"
+                  className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Full Movie 100
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -399,8 +524,8 @@ export function Hero() {
 /** Homepage Movie 100 Top 10 — charts are the primary content (§21). */
 export function TopTen() {
   const { data: films, isLoading, error, refetch } = useQuery({
-    queryKey: ["films", "top", 100],
-    queryFn: () => getTopFilms(100),
+    queryKey: ["films", "top", HOME_CHART_SIZE],
+    queryFn: () => getTopFilms(HOME_CHART_SIZE),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -503,11 +628,12 @@ function MoverRow({ film }: { film: MoverFilm }) {
       <Link
         to="/films/$slug"
         params={{ slug: film.slug }}
-        className="group flex items-center gap-3 py-2.5"
+        aria-label={`${film.title}, ${up ? "up" : "down"} ${Math.abs(film.movement)} to #${film.current_rank}`}
+        className="group flex items-center gap-3 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <FilmPosterThumbnail film={film} className="h-14 w-10" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary" title={film.title}>
             {film.title}
           </div>
           <div className="mt-0.5 font-mono text-[11px] tabular text-muted-foreground">
@@ -520,13 +646,14 @@ function MoverRow({ film }: { film: MoverFilm }) {
           className={`flex items-center gap-0.5 font-mono text-xs font-semibold tabular ${
             up ? "text-up" : "text-down"
           }`}
+          title={up ? `Up ${Math.abs(film.movement)} since previous chart` : `Down ${Math.abs(film.movement)} since previous chart`}
         >
           {up ? (
             <ArrowUp className="h-3 w-3" aria-hidden />
           ) : (
             <ArrowDown className="h-3 w-3" aria-hidden />
           )}
-          {film.movement}
+          {Math.abs(film.movement)}
         </span>
       </Link>
     </li>
@@ -539,11 +666,12 @@ function NewEntryRow({ film }: { film: NewEntryFilm }) {
       <Link
         to="/films/$slug"
         params={{ slug: film.slug }}
-        className="group flex items-center gap-3 py-2.5"
+        aria-label={`${film.title}, debuted at #${film.debut_rank}`}
+        className="group flex items-center gap-3 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <FilmPosterThumbnail film={film} className="h-14 w-10" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary" title={film.title}>
             {film.title}
           </div>
           <div className="mt-0.5 font-mono text-[11px] tabular text-muted-foreground">
@@ -564,11 +692,12 @@ function TrendingRow({ film }: { film: TrendingFilmOut }) {
       <Link
         to="/films/$slug"
         params={{ slug: film.film_slug }}
-        className="group flex items-center gap-3 py-2.5"
+        aria-label={`${film.title}, trending`}
+        className="group flex items-center gap-3 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <FilmPosterThumbnail film={film} className="h-14 w-10" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary" title={film.title}>
             {film.title}
           </div>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">Drawing attention across the Index</div>

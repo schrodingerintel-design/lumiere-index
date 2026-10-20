@@ -42,8 +42,10 @@ export function MomentumMark({
   const Icon = m.icon;
   return (
     <span
-      className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] ${m.className} ${className}`}
+      role="img"
+      aria-label={`Momentum: ${m.label}`}
       title={`Momentum: ${m.label}`}
+      className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] ${m.className} ${className}`}
     >
       <Icon
         className={`h-3 w-3 ${m.strong ? "stroke-[2.5]" : ""}`}
@@ -68,10 +70,13 @@ export function MomentumInline({
   const Icon = m.icon;
   return (
     <span
-      className={`inline-flex items-center gap-0.5 font-mono text-[10px] uppercase tracking-[0.14em] ${m.className} ${className}`}
+      role="img"
+      aria-label={`Momentum: ${m.label}`}
       title={`Momentum: ${m.label}`}
+      className={`inline-flex items-center gap-0.5 font-mono text-[10px] uppercase tracking-[0.14em] ${m.className} ${className}`}
     >
       <Icon className={`h-3 w-3 ${m.strong ? "stroke-[2.5]" : ""}`} aria-hidden />
+      <span className="sr-only">{m.label}</span>
     </span>
   );
 }

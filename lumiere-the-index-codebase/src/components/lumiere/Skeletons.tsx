@@ -48,16 +48,28 @@ export function TopTenSkeleton() {
   );
 }
 
-/** Skeleton row for the full-width chart tables (Top 100, Weekly Index). */
+/** Skeleton row for the full-width chart tables (Top 100, Weekly Index).
+ *  Mirrors the real grid: rank / movement / title+poster / tenure / momentum. */
 export function FilmRowSkeleton() {
   return (
-    <li className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
-      <Skeleton className="h-12 w-9 shrink-0" />
-      <div className="min-w-0 flex-1 space-y-2">
-        <Skeleton className="h-4 w-48 max-w-full" />
-        <Skeleton className="h-3 w-32" />
+    <li className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 sm:grid-cols-[64px_64px_1fr_90px_130px] sm:px-5" aria-hidden>
+      <Skeleton className="h-7 w-9" />
+      <div className="hidden sm:block">
+        <Skeleton className="h-4 w-8" />
       </div>
-      <Skeleton className="h-6 w-10 shrink-0" />
+      <div className="flex min-w-0 items-center gap-3">
+        <Skeleton className="h-14 w-10 shrink-0 sm:h-12 sm:w-9" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-4 w-48 max-w-full" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+      </div>
+      <div className="hidden sm:block">
+        <Skeleton className="h-3 w-16" />
+      </div>
+      <div className="flex justify-end">
+        <Skeleton className="h-4 w-16" />
+      </div>
     </li>
   );
 }

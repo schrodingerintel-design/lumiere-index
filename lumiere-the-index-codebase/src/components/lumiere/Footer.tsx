@@ -13,6 +13,7 @@ const COMPANY_LINKS = [
 
 const EXPLORE_LINKS = [
   { to: "/", label: "The Index" },
+  { to: "/top-100", label: "Movie 100" },
   { to: "/tv-100", label: "TV 100" },
   { to: "/weekly-100", label: "Weekly Top 100" },
   { to: "/rising", label: "Biggest Movers" },
@@ -42,16 +43,16 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="The Index on X (Twitter)"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
               >
                 <XIcon className="h-4 w-4" />
               </a>
               <a
-                href="https://vm.tiktok.com/ZS9A2fUMJVCGT-rygfl/"
+                href="https://www.tiktok.com/@lumieretheindex"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="The Index on TikTok"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-foreground/10 text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
               >
                 <Music2 className="h-4 w-4" />
               </a>

@@ -1,7 +1,7 @@
-import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { installStaleDeployRecovery } from "@/lib/staleDeploy";
+import { createQueryClient, hydrateFromDom } from "@/lib/queryClient";
 
 /**
  * Stale-deploy recovery.
@@ -19,18 +19,13 @@ import { installStaleDeployRecovery } from "@/lib/staleDeploy";
  */
 
 export const getRouter = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        // Rankings only refresh every 15 min — a 5-minute client cache means
-        // navigating back to a page is instant instead of refetching.
-        staleTime: 5 * 60 * 1000,
-        gcTime: 30 * 60 * 1000,
-        refetchOnWindowFocus: false,
-        retry: 1,
-      },
-    },
-  });
+  const queryClient = createQueryClient();
+
+  // On the client, the server already ran the route loaders and shipped the
+  // results inside the HTML. Restoring them here - before the first render -
+  // means the browser paints the same content the server sent instead of
+  // re-rendering it from scratch.
+  hydrateFromDom(queryClient);
 
   installStaleDeployRecovery();
 

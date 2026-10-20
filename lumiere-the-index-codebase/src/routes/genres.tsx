@@ -58,7 +58,7 @@ function GenresPage() {
   });
 
   // Fetch films for the selected genre from the backend's dedicated endpoint
-  const { data: genreFilms = [], isLoading: filmsLoading } = useQuery({
+  const { data: genreFilms = [], isLoading: filmsLoading, error: filmsError, refetch } = useQuery({
     queryKey: ["genres", selectedGenre.tag, "films", 100],
     queryFn: () => getGenreFilms(selectedGenre.tag, 100),
     staleTime: 5 * 60 * 1000,
@@ -107,7 +107,8 @@ function GenresPage() {
                     const def = GENRES.find((d) => d.tag.toLowerCase() === g.tag.toLowerCase());
                     if (def) setSelectedGenre(def);
                   }}
-                  className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[13px] font-medium transition ${
+                  aria-pressed={isSelected}
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 min-h-[44px] text-[13px] font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                     isSelected
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-foreground/10 bg-foreground/[0.03] text-muted-foreground hover:border-foreground/25 hover:text-foreground"
@@ -137,7 +138,20 @@ function GenresPage() {
           </div>
 
           <div className="mt-6">
-            {isLoading ? (
+            {filmsError ? (
+              <div className="border-y border-foreground/10 bg-surface p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Genre titles are temporarily unavailable. Please try again.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="mt-4 border border-foreground/25 px-5 py-2.5 min-h-[44px] font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/50 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Retry now
+                </button>
+              </div>
+            ) : isLoading ? (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {[...Array(10)].map((_, i) => (
                   <FilmCardSkeleton key={i} />

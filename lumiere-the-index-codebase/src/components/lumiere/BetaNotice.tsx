@@ -38,6 +38,7 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
   const [mode] = useState(() => (forceOpen ? "update" : pendingBetaAnnouncement()) as "update" | null);
   const [visible, setVisible] = useState(mode !== null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const wasForced = useRef(forceOpen === true);
 
   useEffect(() => {
@@ -63,7 +64,26 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
   useEffect(() => {
     if (!visible) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") dismiss();
+      if (e.key === "Escape") {
+        dismiss();
+        return;
+      }
+      // Simple focus trap: keep Tab cycling inside the dialog.
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -91,7 +111,10 @@ export function BetaNotice({ forceOpen, onClose }: { forceOpen?: boolean; onClos
       <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" onClick={dismiss} aria-hidden />
 
       {/* Centered dialog */}
-      <div className="animate-fade-up relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-ink shadow-2xl shadow-black/70">
+      <div
+        ref={dialogRef}
+        className="animate-fade-up motion-reduce:animate-none relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-ink shadow-2xl shadow-black/70"
+      >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
           <div className="flex items-center gap-3">

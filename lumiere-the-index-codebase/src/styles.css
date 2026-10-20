@@ -152,17 +152,31 @@
   line-height: 1;
 }
 
-/* 44px minimum tap targets on coarse pointers. */
+/* 44px minimum tap targets on coarse pointers. Scoped to real controls so
+   text links and nav items keep their editorial rhythm. */
 @media (pointer: coarse) {
-  button, a[role="button"], [role="button"] {
+  button, a[role="button"], [role="button"], input[type="button"], input[type="submit"] {
     min-height: 44px;
   }
 }
 
-/* Respect reduced-motion preferences. */
+/* Respect reduced-motion preferences: kill entrances, smooth scroll, and
+   hover-scale so the JS carousel pause is not the only gate. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-up {
+  .animate-fade-up,
+  .hero-leader-transition {
     animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+  }
+  .group:hover .group-hover\:scale-105,
+  .group:hover .group-hover\:scale-\[1\.02\],
+  .group:hover .group-hover\:scale-\[1\.03\] {
+    transform: none !important;
   }
 }
 
@@ -251,8 +265,9 @@
   animation: heroLeaderIn 560ms cubic-bezier(.2,.7,.2,1) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hero-leader-transition { animation: none; }
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* Scrollbars */
