@@ -138,7 +138,10 @@ class WeeklyPublicationError(Base):
     week_start: Mapped[date] = mapped_column(Date, nullable=False)
     week_end: Mapped[date] = mapped_column(Date, nullable=False)
     error: Mapped[str] = mapped_column(String(1000), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default="CURRENT_TIMESTAMP")
+    # No server_default: this managed MySQL rejects datetime defaults
+    # (error 1067 on both NOW() and CURRENT_TIMESTAMP); every writer sets
+    # the value explicitly.
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class IndexDebut(Base):
