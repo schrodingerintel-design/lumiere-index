@@ -1,11 +1,19 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { Layout } from "@/components/lumiere/Layout";
-import { RouteError } from "@/lib/route-error";
-import { Hero, TopTen, TvTopFive, PulseRow } from "@/components/lumiere/Hero";
 import { GenreSections } from "@/components/lumiere/GenreSections";
 import { AdSlot } from "@/components/lumiere/AdSlot";
-import { getTopFilms } from "@/lib/apiClient";
+import { HomeIntro, TrendingRail, TodaysIndex } from "@/components/lumiere/Discovery";
+import { PulseRow } from "@/components/lumiere/Hero";
+import { RouteError } from "@/lib/route-error";
+import {
+  getBiggestMovers,
+  getMetaRefresh,
+  getTopFilms,
+  getTrendingFilms,
+  getWeeklyTop100,
+  getIndexNewEntries,
+} from "@/lib/apiClient";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,29 +28,39 @@ export const Route = createFileRoute("/")({
     ],
     links: [canonicalLink("/")],
   }),
-  // Prefetch every query the home page renders so SSR serves real data.
+  // Prefetch every query the home page renders so SSR serves real data. Each
+  // key must match the consuming component exactly; a failed section degrades
+  // to its own skeleton/retry state without blocking the page.
   loader: async ({ context }) => {
     const { queryClient } = context;
     await Promise.all([
+      queryClient.prefetchQuery({
+        queryKey: ["meta", "refresh"],
+        queryFn: () => getMetaRefresh(),
+      }),
+      queryClient.prefetchQuery({
+        queryKey: ["trending", "home", 12],
+        queryFn: () => getTrendingFilms(12),
+      }),
       queryClient.prefetchQuery({
         queryKey: ["films", "top", 100],
         queryFn: () => getTopFilms(100),
       }),
       queryClient.prefetchQuery({
-        queryKey: ["films", "tv100", 5],
-        queryFn: () => getTopFilms(5, 0, "TV_100"),
+        queryKey: ["films", "tv100", 10],
+        queryFn: () => getTopFilms(10, 0, "TV_100"),
+      }),
+      queryClient.prefetchQuery({
+        queryKey: ["weekly", "top100"],
+        queryFn: () => getWeeklyTop100(),
       }),
       queryClient.prefetchQuery({
         queryKey: ["index", "movers"],
-        queryFn: () => import("@/lib/apiClient").then((m) => m.getBiggestMovers()),
+        queryFn: () => getBiggestMovers(),
       }),
       queryClient.prefetchQuery({
         queryKey: ["index", "new-entries"],
-        queryFn: () => import("@/lib/apiClient").then((m) => m.getIndexNewEntries()),
-      }),
-      queryClient.prefetchQuery({
-        queryKey: ["trending", "films"],
-        queryFn: () => import("@/lib/apiClient").then((m) => m.getTrendingFilms(6)),
+        queryFn: () => getIndexNewEntries(),
       }),
     ]);
   },
@@ -68,11 +86,6 @@ function ChartNav() {
         <Link
           key={link.to}
           to={link.to}
-          activeOptions={{ exact: true }}
-          activeProps={{
-            className:
-              "text-foreground after:absolute after:bottom-0 after:left-4 after:right-4 after:h-px after:bg-primary after:content-[''] xl:after:left-6 xl:after:right-6",
-          }}
           className={`group relative flex min-h-14 flex-1 items-center justify-between px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground xl:px-6 ${
             index > 0 ? "border-l border-foreground/10" : ""
           }`}
@@ -87,22 +100,30 @@ function ChartNav() {
   );
 }
 
+
+/**
+ * The Index 1.0 homepage — discovery-first, no oversized hero. The first
+ * viewport carries the compact intro, the trending poster rail and the chart
+ * tabs; rankings remain the spine, with movers, new entries and genre rails
+ * layered below. Every section owns its data and its failure states, and all
+ * displayed figures come from the existing chart endpoints.
+ */
 function Home() {
-  // The page reads as a live publication: leader, chart sections, then the
-  // supporting intelligence that explains what changed around the chart.
   return (
     <Layout>
-      <Hero />
       <ChartNav />
+      <HomeIntro />
+      <TrendingRail />
       <div className="home-desktop-composition">
-        <TopTen />
-        <PulseRow rail />
+        <TodaysIndex />
+        {/* The rail carries movers + new entries only: trending artwork lives
+            in the poster rail above, so the two never duplicate. */}
+        <PulseRow rail showTrending={false} />
       </div>
       {/* Future ad: home-after-top10 — after the primary ranking experience.
-          Never inside the hero, under the #1 title, or inside Top 10.
+          Never inside the discovery opening or inside Today's Index.
           Renders nothing while advertising is disabled. */}
       <AdSlot placement="home-after-top10" />
-      <TvTopFive />
       {/* Future ad: home-secondary — far down the page between discovery
           sections. Renders nothing while advertising is disabled. */}
       <AdSlot placement="home-secondary" />
