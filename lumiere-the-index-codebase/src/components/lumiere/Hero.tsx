@@ -16,6 +16,8 @@ import { MomentumInline } from "./Momentum";
  * Editorial pulse — Biggest Movers and New Entries (and optionally the
  * trending list). The homepage's poster-rail carries trending artwork, so the
  * homepage rail passes showTrending={false} to avoid the duplicate column.
+ * hideMovers drops the movers column entirely — used where the front-page
+ * hero already surfaces Biggest Movers in its side rail.
  */
 
 /** Honest degraded state when the live charts can't be reached (backend down,
@@ -136,14 +138,17 @@ function TrendingRow({ film }: { film: TrendingFilmOut }) {
 export function PulseRow({
   rail = false,
   showTrending = true,
+  hideMovers = false,
 }: {
   rail?: boolean;
   showTrending?: boolean;
+  hideMovers?: boolean;
 }) {
   const { data: movers, isLoading: moversLoading, error: moversError } = useQuery({
     queryKey: ["index", "movers"],
     queryFn: () => getBiggestMovers(),
     staleTime: 5 * 60 * 1000,
+    enabled: !hideMovers,
   });
 
   const { data: newEntries, isLoading: entriesLoading, error: entriesError } = useQuery({
@@ -165,9 +170,18 @@ export function PulseRow({
 
   const loading = moversLoading || entriesLoading || (showTrending && trendingLoading);
 
+  const columns: Array<"movers" | "entries" | "trending"> = [];
+  if (!hideMovers) columns.push("movers");
+  columns.push("entries");
+  if (showTrending) columns.push("trending");
+
+  const gridClass =
+    columns.length === 3 ? "md:grid-cols-3" : columns.length === 2 ? "md:grid-cols-2" : "";
+
   return (
     <section className={`${rail ? "home-pulse-rail mt-14 lg:mt-0" : "mt-14"} px-4 sm:px-6`}>
-      <div className={`mx-auto grid max-w-6xl grid-cols-1 gap-10 ${rail ? "home-pulse-grid" : showTrending ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+      <div className={`mx-auto grid max-w-6xl grid-cols-1 gap-10 ${rail ? "home-pulse-grid" : gridClass}`}>
+        {!hideMovers && (
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Biggest Movers
@@ -198,6 +212,7 @@ export function PulseRow({
             </p>
           )}
         </div>
+        )}
 
         <div>
           <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">

@@ -39,8 +39,8 @@ export function HomeIntro() {
   }, [refresh?.next_refresh_at]);
 
   return (
-    <section className="px-4 pt-5 sm:px-6" aria-label="What is happening on The Index">
-      <div className="mx-auto flex max-w-[90rem] flex-wrap items-end justify-between gap-x-6 gap-y-2">
+    <section className="px-4 pb-1 pt-6 sm:px-6" aria-label="What is happening on The Index">
+      <div className="mx-auto flex max-w-[90rem] flex-wrap items-end justify-between gap-x-6 gap-y-2 lg:pt-1">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             The Index
@@ -150,7 +150,7 @@ export function TrendingRail() {
   const films = data ?? [];
 
   return (
-    <section className="px-4 pt-8 lg:px-6">
+    <section className="px-4 pt-7 lg:px-6">
       <div className="mx-auto max-w-[90rem]">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
@@ -301,7 +301,7 @@ export function TodaysIndex() {
   const current = TAB_META[tab];
 
   return (
-    <section className="px-4 pt-12 sm:px-6" id="todays-index">
+    <section className="px-4 pt-10 sm:px-6" id="todays-index">
       <div className="mx-auto max-w-[90rem]">
         <SectionHeading
           kicker="The Index · updated every 12 hours"
@@ -329,11 +329,12 @@ export function TodaysIndex() {
           }
         />
 
-        {/* Compact chart tabs */}
+        {/* Compact chart tabs — horizontally scrollable on phones so the
+            three labels never squish or clip. */}
         <div
           role="tablist"
           aria-label="Official charts"
-          className="mb-4 flex items-center gap-1 border-b border-foreground/10"
+          className="no-scrollbar mb-4 flex items-center gap-1 overflow-x-auto border-b border-foreground/10"
         >
           {(Object.keys(TAB_META) as TabId[]).map((id) => {
             const active = tab === id;
@@ -343,7 +344,7 @@ export function TodaysIndex() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setTab(id)}
-                className={`relative -mb-px flex h-10 items-center gap-1.5 border-b-2 px-3.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors sm:px-4 ${
+                className={`relative -mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 px-3.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors sm:h-10 sm:px-4 ${
                   active
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"

@@ -4,6 +4,7 @@ import { Layout } from "@/components/lumiere/Layout";
 import { GenreSections } from "@/components/lumiere/GenreSections";
 import { AdSlot } from "@/components/lumiere/AdSlot";
 import { HomeIntro, TrendingRail, TodaysIndex } from "@/components/lumiere/Discovery";
+import { FrontPage } from "@/components/lumiere/FrontPage";
 import { ComingSoon } from "@/components/lumiere/ComingSoon";
 import { PulseRow } from "@/components/lumiere/Hero";
 import { RouteError } from "@/lib/route-error";
@@ -11,6 +12,7 @@ import {
   getBiggestMovers,
   getMetaRefresh,
   getTopFilms,
+  getRisingFilms,
   getTrendingFilms,
   getWeeklyTop100,
   getIndexNewEntries,
@@ -22,6 +24,9 @@ import {
  *  whole chart. Fetching only what is shown keeps the first paint (and the
  *  HTML that carries it) light. The full chart is fetched on /top-100. */
 const HOME_CHART_SIZE = 10;
+
+/** Rising titles that headline the front-page hero. */
+const FRONT_HERO_COUNT = 5;
 
 /** TMDB pages merged for the release calendar. */
 const UPCOMING_PAGES = 5;
@@ -57,6 +62,10 @@ export const Route = createFileRoute("/")({
       queryClient.prefetchQuery({
         queryKey: ["films", "top", HOME_CHART_SIZE],
         queryFn: () => getTopFilms(HOME_CHART_SIZE),
+      }),
+      queryClient.prefetchQuery({
+        queryKey: ["films", "rising", FRONT_HERO_COUNT],
+        queryFn: () => getRisingFilms(FRONT_HERO_COUNT),
       }),
       queryClient.prefetchQuery({
         queryKey: ["films", "tv100", 10],
@@ -99,73 +108,55 @@ const CHART_LINKS = [
 ] as const;
 
 function ChartNav() {
+  // Desktop only. The hamburger-driven MobileMenu in TopNav owns chart
+  // navigation on phones, so the homepage reuses that surface instead of
+  // stacking a second strip the user has to scroll past.
   return (
-    <>
-      <nav
-        aria-label="Chart sections"
-        className="mx-auto hidden max-w-[90rem] border-y border-foreground/10 px-6 lg:flex lg:items-stretch xl:px-8"
-      >
-        {CHART_LINKS.map((link, index) => (
-          <Link
-            key={link.to}
-            to={link.to}
-            activeOptions={{ exact: true }}
-            activeProps={{
-              className:
-                "text-foreground after:absolute after:bottom-0 after:left-4 after:right-4 after:h-px after:bg-primary after:content-[''] xl:after:left-6 xl:after:right-6",
-            }}
-            className={`group relative flex min-h-14 flex-1 items-center justify-between px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground xl:px-6 ${
-              index > 0 ? "border-l border-foreground/10" : ""
-            }`}
-          >
-            <span>{link.label}</span>
-            <span className="text-[10px] text-foreground/30 transition-colors group-hover:text-primary" aria-hidden>
-              ↗
-            </span>
-          </Link>
-        ))}
-      </nav>
-      {/* Mobile: horizontal scroll strip so chart sections stay discoverable. */}
-      <nav
-        aria-label="Chart sections"
-        className="no-scrollbar flex gap-2 overflow-x-auto border-y border-foreground/10 px-4 py-3 lg:hidden"
-      >
-        {CHART_LINKS.map((link) => (
-          <Link
-            key={link.to}
-            to={link.to}
-            activeOptions={{ exact: true }}
-            activeProps={{
-              className: "border-primary/60 bg-primary/10 text-foreground",
-            }}
-            className="shrink-0 rounded-full border border-foreground/15 bg-foreground/[0.03] px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
-    </>
+    <nav
+      aria-label="Chart sections"
+      className="mx-auto hidden max-w-[90rem] border-y border-foreground/10 px-6 lg:flex lg:items-stretch xl:px-8"
+    >
+      {CHART_LINKS.map((link, index) => (
+        <Link
+          key={link.to}
+          to={link.to}
+          activeOptions={{ exact: true }}
+          activeProps={{
+            className:
+              "text-foreground after:absolute after:bottom-0 after:left-4 after:right-4 after:h-px after:bg-primary after:content-[''] xl:after:left-6 xl:after:right-6",
+          }}
+          className={`group relative flex min-h-14 flex-1 items-center justify-between px-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground xl:px-6 ${
+            index > 0 ? "border-l border-foreground/10" : ""
+          }`}
+        >
+          <span>{link.label}</span>
+          <span className="text-[10px] text-foreground/30 transition-colors group-hover:text-primary" aria-hidden>
+            ↗
+          </span>
+        </Link>
+      ))}
+    </nav>
   );
 }
 
 /**
- * The Index 1.0 homepage — discovery-first, no oversized hero. The first
- * viewport carries the compact intro, the trending poster rail and the chart
- * tabs; rankings remain the spine, with movers, new entries, the release
- * calendar and genre rails layered below. Every section owns its data and its
- * failure states, and all displayed figures come from the existing endpoints.
+ * The Index 1.0 homepage. Desktop opens with a chart nav rail beneath the
+ * masthead; on mobile the page flows straight from the front-page hero into
+ * discovery — the hamburger menu owns chart navigation on phones.
  */
 function Home() {
   return (
     <Layout>
       <ChartNav />
+      <FrontPage />
       <HomeIntro />
       <TrendingRail />
       <div className="home-desktop-composition">
         <TodaysIndex />
-        {/* The rail carries movers + new entries only: trending artwork lives
-            in the poster rail above, so the two never duplicate. */}
-        <PulseRow rail showTrending={false} />
+        {/* The rail carries new entries only: the front-page hero owns
+            Biggest Movers in its side rail, and trending artwork lives in
+            the poster rail above — no duplicated column anywhere. */}
+        <PulseRow rail showTrending={false} hideMovers />
       </div>
       {/* Future ad: home-after-top10 — after the primary ranking experience.
           Never inside the discovery opening or inside Today's Index.
