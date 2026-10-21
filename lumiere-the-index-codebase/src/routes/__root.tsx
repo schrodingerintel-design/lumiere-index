@@ -21,20 +21,24 @@ import {
   recordRetryAction,
   consumeRetryOutcome,
 } from "@/lib/diagnostics";
+import { QUERY_STATE_ELEMENT_ID, dehydrateToJson } from "@/lib/queryClient";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          The Index
+        </div>
+        <h1 className="mt-3 font-display text-7xl font-medium tracking-tight text-foreground">404</h1>
+        <h2 className="mt-4 font-display text-xl font-medium text-foreground">Page not found</h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-[44px] items-center justify-center border border-foreground/25 bg-foreground px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-background transition hover:bg-foreground/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Go home
           </Link>
@@ -64,16 +68,19 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          The Index
+        </div>
+        <h1 className="mt-3 font-display text-2xl font-medium tracking-tight text-foreground">
           This page didn't load
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
         <p className="mt-3 font-mono text-xs text-muted-foreground/70">
           Reference: {incidentId}
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => {
               // Instrumented: record the action before it fires so the next
@@ -82,13 +89,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
               reset();
               window.location.reload();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-[44px] items-center justify-center border border-foreground/25 bg-foreground px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-background transition hover:bg-foreground/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex min-h-[44px] items-center justify-center border border-foreground/20 bg-background px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/45 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Go home
           </a>
@@ -186,6 +193,12 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        {/* The server's query cache, carried into the page as inert JSON. The
+            browser restores it before the first render, so the content that
+            arrives with the HTML is the content that gets painted - no
+            skeleton flash, no hydration mismatch. It must sit before
+            <Scripts /> so the payload is parsed before the client boots. */}
+        <QueryStateScript />
         {/* AdSense is loaded lazily by AdSlot — never here — and only once a
             real consent decision exists. The banner is the surface that
             records that decision. */}
@@ -194,6 +207,30 @@ function RootShell({ children }: { children: ReactNode }) {
         <Analytics />
       </body>
     </html>
+  );
+}
+
+/**
+ * Serialized server cache. On the server it is produced from the query
+ * client; in the browser it is read back out of the DOM so both sides
+ * render byte-identical markup.
+ */
+function QueryStateScript() {
+  const { queryClient } = Route.useRouteContext();
+
+  const json =
+    typeof document === "undefined"
+      ? dehydrateToJson(queryClient)
+      : (document.getElementById(QUERY_STATE_ELEMENT_ID)?.textContent ?? "");
+
+  if (!json) return null;
+
+  return (
+    <script
+      id={QUERY_STATE_ELEMENT_ID}
+      type="application/json"
+      dangerouslySetInnerHTML={{ __html: json }}
+    />
   );
 }
 

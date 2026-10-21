@@ -34,9 +34,10 @@ function TrendingRow({ film, position }: { film: TrendingFilmOut; position: numb
       <Link
         to="/films/$slug"
         params={{ slug: film.film_slug }}
-        className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:px-5"
+        aria-label={`${film.title}, trending #${position}, ranked #${film.rank} on The Index`}
+        className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
       >
-        <span className="w-8 shrink-0 font-mono text-xl tabular text-muted-foreground sm:text-2xl">
+        <span className="w-8 shrink-0 font-mono text-xl tabular text-muted-foreground sm:text-2xl" title="Trending position">
           {String(position).padStart(2, "0")}
         </span>
         <div
@@ -45,18 +46,23 @@ function TrendingRow({ film, position }: { film: TrendingFilmOut; position: numb
             background: `linear-gradient(155deg, ${film.gradient_from ?? "#333"}, ${film.gradient_to ?? "#111"})`,
           }}
         >
-          {film.poster_url && (
+          {film.poster_url ? (
             <img
               src={film.poster_url}
-              alt={film.title}
+              alt=""
+              role="presentation"
               className="absolute inset-0 h-full w-full object-cover"
               loading="lazy"
               decoding="async"
             />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center p-1 text-center text-[9px] leading-tight text-cream/60">
+              {film.title}
+            </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base">
+          <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base" title={film.title}>
             {film.title}
           </div>
           <div className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground sm:text-[13px]">
@@ -64,7 +70,8 @@ function TrendingRow({ film, position }: { film: TrendingFilmOut; position: numb
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="font-mono text-sm tabular text-muted-foreground">#{film.rank}</div>
+          <div className="font-mono text-sm tabular text-muted-foreground" title="Current rank on The Index">#{film.rank}</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">Index rank</div>
         </div>
       </Link>
     </li>
@@ -72,7 +79,7 @@ function TrendingRow({ film, position }: { film: TrendingFilmOut; position: numb
 }
 
 function TrendingPage() {
-  const { data: films, isLoading, error } = useQuery({
+  const { data: films, isLoading, error, refetch } = useQuery({
     queryKey: ["trending", "films"],
     queryFn: () => getTrendingFilms(20),
     staleTime: 5 * 60 * 1000,
@@ -97,8 +104,17 @@ function TrendingPage() {
       <section className="mt-10 px-4 pb-16 sm:px-6">
         <div className="mx-auto max-w-6xl">
           {error && (
-            <div className="border-y border-foreground/10 bg-surface p-8 text-center text-sm text-muted-foreground">
-              Unable to load trending films. Please try again later.
+            <div className="border-y border-foreground/10 bg-surface p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Live trending titles are temporarily unavailable. Please try again.
+              </p>
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="mt-4 border border-foreground/25 px-5 py-2.5 min-h-[44px] font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/50 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Retry now
+              </button>
             </div>
           )}
 

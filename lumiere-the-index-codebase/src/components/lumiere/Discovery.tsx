@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
@@ -31,6 +31,13 @@ export function HomeIntro() {
     staleTime: 60 * 1000,
   });
 
+  // The clock renders only after mount: a local-timezone format can differ
+  // between server and browser, which would flash a hydration mismatch.
+  const [clock, setClock] = useState(false);
+  useEffect(() => {
+    if (refresh?.next_refresh_at) setClock(true);
+  }, [refresh?.next_refresh_at]);
+
   return (
     <section className="px-4 pt-5 sm:px-6" aria-label="What is happening on The Index">
       <div className="mx-auto flex max-w-[90rem] flex-wrap items-end justify-between gap-x-6 gap-y-2">
@@ -49,7 +56,7 @@ export function HomeIntro() {
         <span className="mb-1 inline-flex shrink-0 items-center gap-2 border border-foreground/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-forest-deep" aria-hidden />
           Live
-          {refresh?.next_refresh_at && (
+          {clock && refresh?.next_refresh_at && (
             <span title="Next chart refresh">
               {new Date(refresh.next_refresh_at).toLocaleTimeString("en-US", {
                 hour: "2-digit",
@@ -264,8 +271,10 @@ export function TodaysIndex() {
   const [tab, setTab] = useState<TabId>("movie");
 
   const movie = useQuery({
-    queryKey: ["films", "top", 100],
-    queryFn: () => getTopFilms(100),
+    // Same key + window the loader prefetches: the home page renders the top
+    // of the chart only, so it fetches ten titles instead of the full 100.
+    queryKey: ["films", "top", 10],
+    queryFn: () => getTopFilms(10),
     staleTime: 5 * 60 * 1000,
   });
   const tv = useQuery({

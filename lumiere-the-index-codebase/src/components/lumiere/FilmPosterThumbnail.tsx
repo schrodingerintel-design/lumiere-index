@@ -35,13 +35,21 @@ export function FilmPosterThumbnail({ film, className = "h-12 w-9" }: FilmPoster
       {poster ? (
         <img
           src={poster}
-          alt={film.title}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          alt=""
+          role="presentation"
+          title={film.title}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transform-none"
           loading="lazy"
           decoding="async"
         />
       ) : (
-        <div className="h-full w-full" style={{ background: gradient }} />
+        <div
+          className="flex h-full w-full items-center justify-center p-1 text-center font-display text-[10px] leading-tight text-cream/80"
+          style={{ background: gradient }}
+          title={film.title}
+        >
+          <span className="line-clamp-4">{film.title}</span>
+        </div>
       )}
     </div>
   );

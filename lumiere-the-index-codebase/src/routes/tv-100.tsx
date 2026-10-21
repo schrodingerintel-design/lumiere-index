@@ -82,11 +82,11 @@ function ChampionSeries({ film }: { film: RankedFilm }) {
           <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary">
             #1 TV 100
           </div>
-          <h2 className="mt-2 truncate font-display text-4xl font-medium leading-tight sm:text-5xl">
+          <h2 className="mt-2 truncate font-display text-4xl font-medium leading-tight sm:text-5xl" title={film.title}>
             <Link
               to="/films/$slug"
               params={{ slug: film.slug }}
-              className="transition-colors hover:text-primary"
+              className="transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               {film.title}
             </Link>
@@ -126,7 +126,7 @@ function TV100() {
   // The official TV 100 — the live TV chart on its own 1–100 numbering.
   // The API serves this chart directly (chart=TV_100), so rows carry their
   // real TV-chart positions; no client-side renumbering, no global ranks.
-  const { data: films, isLoading, error } = useQuery({
+  const { data: films, isLoading, error, refetch } = useQuery({
     queryKey: ["films", "tv100", 100],
     queryFn: () => getTopFilms(100, 0, "TV_100"),
     staleTime: 5 * 60 * 1000,
@@ -222,8 +222,17 @@ function TV100() {
       <section className="mt-10 px-4 pb-16 sm:px-6">
         <div className="mx-auto max-w-6xl">
           {error && (
-            <div className="border-y border-foreground/10 bg-surface p-8 text-center text-sm text-muted-foreground">
-              Unable to load the TV 100 right now. Please try again later.
+            <div className="border-y border-foreground/10 bg-surface p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Live TV rankings are temporarily unavailable. Please try again.
+              </p>
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="mt-4 border border-foreground/25 px-5 py-2.5 min-h-[44px] font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/50 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Retry now
+              </button>
             </div>
           )}
           <div className="border-t-2 border-foreground/20">
@@ -256,12 +265,13 @@ function TV100() {
                         <Link
                           to="/films/$slug"
                           params={{ slug: f.slug }}
+                          aria-label={`${f.title}, ranked #${f.rank} on TV 100`}
                           /* Mobile: stacked card — rank/movement/title/score, meta underneath.
                              Desktop: full scan table. No horizontal overflow anywhere. */
-                          className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.03] sm:grid-cols-[64px_64px_1fr_80px_110px] sm:px-5"
+                          className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.03] sm:grid-cols-[64px_64px_1fr_80px_110px] sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
                         >
                           <div className="flex flex-col items-start gap-0.5">
-                            <span className="index-score text-2xl font-semibold sm:text-xl">
+                            <span className="index-score text-2xl font-semibold sm:text-xl" title={`Ranked #${f.rank}`}>
                               {String(f.rank).padStart(2, "0")}
                             </span>
                             <span className="sm:hidden">
@@ -277,7 +287,7 @@ function TV100() {
                               className="h-14 w-10 sm:h-12 sm:w-9"
                             />
                             <div className="min-w-0">
-                              <div className="truncate text-[15px] font-medium sm:text-lg">
+                              <div className="truncate text-[15px] font-medium sm:text-lg" title={f.title}>
                                 {f.title}
                               </div>
                               <div className="truncate text-xs text-muted-foreground">

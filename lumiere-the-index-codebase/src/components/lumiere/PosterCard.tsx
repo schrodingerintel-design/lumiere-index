@@ -48,7 +48,8 @@ export function PosterCard({
     <Link
       to="/films/$slug"
       params={{ slug: film.slug }}
-      className="group block shrink-0"
+      aria-label={`${film.title}${isRanked ? `, ranked #${film.rank}` : ", not currently ranked"}`}
+      className="group block shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       style={{ width }}
     >
       <div
@@ -58,8 +59,9 @@ export function PosterCard({
         {posterUrl ? (
           <img
             src={posterUrl}
-            alt={film.title}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+            alt=""
+            role="presentation"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
             loading="lazy"
             decoding="async"
           />
@@ -91,7 +93,7 @@ export function PosterCard({
       </div>
 
       <div className="mt-2">
-        <div className="truncate text-sm font-medium leading-snug">{film.title}</div>
+        <div className="truncate text-sm font-medium leading-snug" title={film.title}>{film.title}</div>
         <div
           className={`truncate font-mono text-[11px] tabular ${
             isRanked ? "text-muted-foreground" : "text-muted-foreground/70"

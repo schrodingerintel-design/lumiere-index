@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Search } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 import { Brand, BrandLink } from "@/components/lumiere/Brand";
 import { BetaBadge } from "@/components/lumiere/BetaBadge";
 
@@ -27,7 +27,7 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
           <button
             onClick={onMenu}
             aria-label="Open navigation menu"
-            className="-ml-1.5 flex h-10 w-10 items-center justify-center text-foreground/80 transition hover:text-foreground lg:hidden"
+            className="-ml-1.5 flex h-11 w-11 items-center justify-center text-foreground/80 transition hover:text-foreground lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -35,7 +35,7 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
           <BrandLink />
 
           {/* Public-beta pill: obvious but quiet; opens the release notes. */}
-          <BetaBadge className="hidden sm:inline-flex" />
+          <BetaBadge />
 
           <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
             {PRIMARY_LINKS.map((l) => (
@@ -56,9 +56,10 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
           <button
             type="button"
             onClick={onSearch}
-            className="flex h-9 items-center gap-2 border border-foreground/10 bg-foreground/[0.04] px-3.5 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground"
+            aria-label="Search films and shows"
+            className="flex h-11 items-center gap-2 border border-foreground/10 bg-foreground/[0.04] px-3.5 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground lg:h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">Search</span>
           </button>
         </div>
@@ -90,9 +91,9 @@ export function MobileMenu({
           <button
             onClick={onClose}
             aria-label="Close navigation menu"
-            className="flex h-10 w-10 items-center justify-center text-foreground/80 transition hover:text-foreground"
+            className="flex h-11 w-11 items-center justify-center text-foreground/80 transition hover:text-foreground"
           >
-            <Menu className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden />
           </button>
         </div>
         <nav className="flex flex-col px-4 pb-6" aria-label="Mobile">

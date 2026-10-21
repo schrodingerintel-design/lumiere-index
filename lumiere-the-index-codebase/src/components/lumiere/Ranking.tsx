@@ -73,14 +73,15 @@ export function RankRow({ film }: { film: RankedFilm }) {
     <Link
       to="/films/$slug"
       params={{ slug: film.slug }}
-      className="group flex items-center gap-3 py-3 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:py-3.5"
+      aria-label={`${film.title}, ranked #${film.rank} on The Index`}
+      className="group flex items-center gap-3 py-3 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:py-3.5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
     >
-      <span className="w-7 shrink-0 font-mono text-lg tabular text-muted-foreground sm:w-8 sm:text-xl">
+      <span className="w-7 shrink-0 font-mono text-lg tabular text-muted-foreground sm:w-8 sm:text-xl" title={`Ranked #${film.rank}`}>
         {String(film.rank).padStart(2, "0")}
       </span>
       <FilmPosterThumbnail film={film} className="h-16 w-11 sm:h-[72px] sm:w-12" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base">
+        <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base" title={film.title}>
           {film.title}
         </div>
         <div className="mt-0.5 flex items-center gap-2 truncate text-xs text-muted-foreground sm:text-[13px]">

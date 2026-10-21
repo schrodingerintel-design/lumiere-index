@@ -42,6 +42,7 @@ function Top100() {
     data: films,
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["films", "top", 100],
     queryFn: () => getTopFilms(100),
@@ -85,8 +86,17 @@ function Top100() {
 
       <section className="mt-10 px-4 lg:px-6">
         {error && (
-          <div className="border border-foreground/10 bg-surface p-6 text-center text-sm text-muted-foreground">
-            Unable to load rankings right now. Please try again later.
+          <div className="border border-foreground/10 bg-surface p-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Live rankings are temporarily unavailable. Please try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="mt-4 border border-foreground/25 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-foreground transition hover:border-foreground/50 hover:bg-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              Retry now
+            </button>
           </div>
         )}
         <div className="border-t-2 border-foreground/20">
@@ -125,10 +135,10 @@ function Top100() {
                         params={{ slug: f.slug }}
                         /* Mobile: stacked card — rank/movement/title/score, meta underneath.
                            Desktop: full 6-column scan table. No horizontal overflow anywhere. */
-                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_130px] sm:px-5"
+                        className="grid grid-cols-[44px_1fr_72px] items-center gap-3 border-b border-foreground/5 px-4 py-3.5 transition hover:bg-foreground/[0.04] sm:grid-cols-[64px_64px_1fr_90px_130px] sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
                       >
                         <div className="flex flex-col items-start gap-0.5">
-                          <span className="index-score text-2xl font-semibold sm:text-xl">
+                          <span className="index-score text-2xl font-semibold sm:text-xl" title={`Ranked #${f.rank}`}>
                             {String(f.rank).padStart(2, "0")}
                           </span>
                           <span className="sm:hidden">
@@ -182,7 +192,7 @@ function Top100() {
                         <div className="min-w-0 flex items-center gap-3">
                           <FilmPosterThumbnail film={f} className="h-14 w-10 sm:h-12 sm:w-9" />
                           <div className="min-w-0">
-                            <div className="truncate font-display text-[15px] font-medium sm:text-lg">
+                            <div className="truncate font-display text-[15px] font-medium sm:text-lg" title={f.title}>
                               {f.title}
                             </div>
                             <div className="truncate text-xs text-muted-foreground">

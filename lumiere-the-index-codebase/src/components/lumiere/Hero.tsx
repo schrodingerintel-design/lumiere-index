@@ -53,11 +53,12 @@ function MoverRow({ film }: { film: MoverFilm }) {
       <Link
         to="/films/$slug"
         params={{ slug: film.slug }}
-        className="group flex items-center gap-3 py-2.5"
+        aria-label={`${film.title}, ${up ? "up" : "down"} ${Math.abs(film.movement)} to #${film.current_rank}`}
+        className="group flex items-center gap-3 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <FilmPosterThumbnail film={film} className="h-14 w-10" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary" title={film.title}>
             {film.title}
           </div>
           {/* Rank movement between published charts — never a score change. */}
@@ -71,13 +72,14 @@ function MoverRow({ film }: { film: MoverFilm }) {
           className={`flex items-center gap-0.5 font-mono text-xs font-semibold tabular ${
             up ? "text-up" : "text-down"
           }`}
+          title={up ? `Up ${Math.abs(film.movement)} since previous chart` : `Down ${Math.abs(film.movement)} since previous chart`}
         >
           {up ? (
             <ArrowUp className="h-3 w-3" aria-hidden />
           ) : (
             <ArrowDown className="h-3 w-3" aria-hidden />
           )}
-          {film.movement}
+          {Math.abs(film.movement)}
         </span>
       </Link>
     </li>
@@ -90,11 +92,12 @@ function NewEntryRow({ film }: { film: NewEntryFilm }) {
       <Link
         to="/films/$slug"
         params={{ slug: film.slug }}
-        className="group flex items-center gap-3 py-2.5"
+        aria-label={`${film.title}, debuted at #${film.debut_rank}`}
+        className="group flex items-center gap-3 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <FilmPosterThumbnail film={film} className="h-14 w-10" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary" title={film.title}>
             {film.title}
           </div>
           <div className="mt-0.5 font-mono text-[11px] tabular text-muted-foreground">
@@ -115,11 +118,12 @@ function TrendingRow({ film }: { film: TrendingFilmOut }) {
       <Link
         to="/films/$slug"
         params={{ slug: film.film_slug }}
-        className="group flex items-center gap-3 py-2.5"
+        aria-label={`${film.title}, trending`}
+        className="group flex items-center gap-3 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <FilmPosterThumbnail film={film} className="h-14 w-10" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary">
+          <div className="truncate text-sm font-medium transition-colors group-hover:text-primary" title={film.title}>
             {film.title}
           </div>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">Drawing attention across the Index</div>
