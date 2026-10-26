@@ -1,70 +1,90 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Search, X } from "lucide-react";
-import { Brand, BrandLink } from "@/components/lumiere/Brand";
-import { BetaBadge } from "@/components/lumiere/BetaBadge";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Bookmark, Compass, Menu, Search, TrendingUp, X } from "lucide-react";
+import { Brand, BrandLink } from "./Brand";
+import { useWatchlist } from "@/lib/watchlist";
 
-/**
- * Primary navigation — the product surface. Secondary destinations
- * (Watchlist, Compare, About) live in the footer and mobile menu.
- */
 const PRIMARY_LINKS = [
-  { to: "/", label: "The Index", exact: true },
-  { to: "/top-100", label: "Movie 100", exact: false },
-  { to: "/tv-100", label: "TV 100", exact: false },
-  { to: "/weekly-100", label: "Weekly 100", exact: false },
-  { to: "/rising", label: "Biggest Movers", exact: false },
-  { to: "/new-entries", label: "New Entries", exact: false },
-  { to: "/trending", label: "Trending", exact: false },
-  { to: "/genres", label: "Genres", exact: false },
+  { to: "/", label: "Discover", exact: true },
+  { to: "/trending", label: "The buzz", exact: false },
+  { to: "/top-100", label: "The charts", exact: false },
+  { to: "/genres", label: "Explore", exact: false },
+] as const;
+const CHART_LINKS = [
+  { to: "/top-100", label: "Movie 100" },
+  { to: "/tv-100", label: "TV 100" },
+  { to: "/weekly-100", label: "Weekly 100" },
+  { to: "/rising", label: "Biggest movers" },
+  { to: "/new-entries", label: "New entries" },
+  { to: "/calendar", label: "Now & next" },
+  { to: "/compare", label: "Compare titles" },
+  { to: "/about", label: "About The Index" },
 ] as const;
 
 export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
+  const { slugs } = useWatchlist();
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-ink/95 backdrop-blur-sm">
-      <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-6">
-          {/* Mobile: compact Apple-style header — logo + menu + search */}
-          <button
-            onClick={onMenu}
-            aria-label="Open navigation menu"
-            className="-ml-1.5 flex h-11 w-11 items-center justify-center text-foreground/80 transition hover:text-foreground lg:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
+    <>
+      <header className="social-nav">
+        <div className="social-nav-inner">
           <BrandLink />
-
-          {/* Public-beta pill: obvious but quiet; opens the release notes. */}
-          <BetaBadge />
-
-          <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
-            {PRIMARY_LINKS.map((l) => (
+          <nav className="desktop-links" aria-label="Primary">
+            {PRIMARY_LINKS.map((link) => (
               <Link
-                key={l.label}
-                to={l.to}
-                activeOptions={{ exact: l.exact ?? false }}
-                activeProps={{ className: "text-foreground" }}
-                className="text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
+                key={link.to}
+                to={link.to}
+                activeOptions={{ exact: link.exact }}
+                activeProps={{ className: "nav-active" }}
               >
-                {l.label}
+                {link.label}
               </Link>
             ))}
           </nav>
+          <div className="nav-actions">
+            <button
+              type="button"
+              className="nav-search"
+              onClick={onSearch}
+              aria-label="Search films and shows"
+            >
+              <Search size={17} />
+              <span>Find your next obsession</span>
+            </button>
+            <Link to="/watchlist" className="nav-watchlist">
+              <Bookmark size={17} />
+              <span>Watchlist</span>
+              {slugs.length > 0 && <small>{slugs.length}</small>}
+            </Link>
+            <button
+              type="button"
+              className="nav-menu"
+              onClick={onMenu}
+              aria-label="Open navigation menu"
+            >
+              <Menu size={21} />
+            </button>
+          </div>
         </div>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onSearch}
-            aria-label="Search films and shows"
-            className="flex h-11 items-center gap-2 border border-foreground/10 bg-foreground/[0.04] px-3.5 text-[13px] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground lg:h-9 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <Search className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">Search</span>
-          </button>
-        </div>
-      </div>
-    </header>
+      </header>
+      <nav className="mobile-bottom-nav" aria-label="Quick navigation">
+        <Link to="/" activeOptions={{ exact: true }} activeProps={{ className: "nav-active" }}>
+          <Compass size={20} />
+          Discover
+        </Link>
+        <Link to="/trending" activeProps={{ className: "nav-active" }}>
+          <TrendingUp size={20} />
+          The buzz
+        </Link>
+        <button onClick={onSearch}>
+          <Search size={20} />
+          Search
+        </button>
+        <Link to="/watchlist" activeProps={{ className: "nav-active" }}>
+          <Bookmark size={20} />
+          Watchlist
+        </Link>
+      </nav>
+    </>
   );
 }
 
@@ -77,61 +97,41 @@ export function MobileMenu({
   onClose: () => void;
   onSearch: () => void;
 }) {
-  // Mounted only while open — unmounting guarantees no invisible layer traps taps.
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 lg:hidden">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
-      <div className="animate-fade-up absolute inset-x-0 top-0 border-b border-border bg-ink shadow-2xl shadow-black/60">
-        <div className="flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+    <Dialog.Root
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
+        <Dialog.Content className="navigation-dialog">
+          <div className="flex items-center justify-between">
             <Brand />
-            <BetaBadge />
+            <Dialog.Close className="soft-button" aria-label="Close navigation menu">
+              <X size={20} />
+            </Dialog.Close>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close navigation menu"
-            className="flex h-11 w-11 items-center justify-center text-foreground/80 transition hover:text-foreground"
-          >
-            <X className="h-5 w-5" aria-hidden />
+          <Dialog.Title className="mt-8 text-2xl">Find your corner of film culture.</Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm text-muted-foreground">
+            Discover, explore the charts, and make your next movie plan.
+          </Dialog.Description>
+          <nav aria-label="All destinations">
+            {[...PRIMARY_LINKS, ...CHART_LINKS, { to: "/watchlist", label: "Your watchlist" }].map(
+              (link) => (
+                <Link key={`${link.to}-${link.label}`} to={link.to} onClick={onClose}>
+                  {link.label}
+                  <span aria-hidden>↗</span>
+                </Link>
+              ),
+            )}
+          </nav>
+          <button onClick={onSearch} className="primary-button">
+            <Search size={17} /> Search films & TV
           </button>
-        </div>
-        <nav className="flex flex-col px-4 pb-6" aria-label="Mobile">
-          {PRIMARY_LINKS.map((l) => (
-            <Link
-              key={l.label}
-              to={l.to}
-              onClick={onClose}
-              activeOptions={{ exact: l.exact ?? false }}
-              activeProps={{ className: "text-foreground" }}
-              className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition last:border-0 hover:text-foreground"
-            >
-              {l.label}
-            </Link>
-          ))}
-          <Link
-            to="/watchlist"
-            onClick={onClose}
-            className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition hover:text-foreground"
-          >
-            Watchlist
-          </Link>
-          <Link
-            to="/compare"
-            onClick={onClose}
-            className="flex min-h-12 items-center border-b border-foreground/5 text-[15px] text-muted-foreground transition hover:text-foreground"
-          >
-            Compare
-          </Link>
-          <Link
-            to="/about"
-            onClick={onClose}
-            className="flex min-h-12 items-center text-[15px] text-muted-foreground transition hover:text-foreground"
-          >
-            About
-          </Link>
-        </nav>
-      </div>
-    </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

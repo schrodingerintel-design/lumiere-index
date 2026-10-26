@@ -1,3 +1,4 @@
+import { useWatchlist } from "@/lib/watchlist";
 import { useState, useEffect, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta, sitePath } from "@/lib/site";
@@ -112,26 +113,6 @@ function paramsSlugToTitle(slug: string): string {
   return slug.replace(/-/g, " ");
 }
 
-// ── Watchlist hook (localStorage) ────────────────────────────────────────────
-function useWatchlist(slug: string) {
-  const key = "lumiere_watchlist";
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const list: string[] = JSON.parse(localStorage.getItem(key) ?? "[]");
-    setSaved(list.includes(slug));
-  }, [slug]);
-
-  const toggle = () => {
-    const list: string[] = JSON.parse(localStorage.getItem(key) ?? "[]");
-    const next = list.includes(slug) ? list.filter((s) => s !== slug) : [...list, slug];
-    localStorage.setItem(key, JSON.stringify(next));
-    setSaved(next.includes(slug));
-  };
-
-  return { saved, toggle };
-}
-
 // ── Where to Watch ───────────────────────────────────────────────────────
 const WATCH_REGIONS: { code: string; label: string }[] = [
   { code: "US", label: "United States" },
@@ -167,7 +148,8 @@ function ProviderGroup({
             key={p.provider_id}
             href={link}
             target="_blank"
-            rel="noopener noreferrer"                    title={`${p.provider_name}, ${label}`}
+            rel="noopener noreferrer"
+            title={`${p.provider_name}, ${label}`}
             className="flex items-center gap-1.5 border border-foreground/10 bg-foreground/5 px-1.5 py-1 transition hover:border-foreground/25 hover:bg-foreground/10"
           >
             {p.logo_path ? (
@@ -242,10 +224,7 @@ function RankHistoryChart({ history }: { history: RankHistoryPoint[] }) {
               fontSize: 11,
             }}
             labelStyle={{ color: "rgba(244,241,234,0.6)" }}
-            formatter={(_v, _n, item) => [
-              `#${item?.payload?.rank}`,
-              "",
-            ]}
+            formatter={(_v, _n, item) => [`#${item?.payload?.rank}`, ""]}
           />
           <Line
             type="monotone"
@@ -349,7 +328,8 @@ function FilmDetailView() {
   const searchFirst = tmdb?.results?.[0];
   const searchDateStr =
     (searchFirst as { release_date?: string } | undefined)?.release_date ??
-    (searchFirst as { first_air_date?: string } | undefined)?.first_air_date ?? "";
+    (searchFirst as { first_air_date?: string } | undefined)?.first_air_date ??
+    "";
   const searchYear = Number(searchDateStr.slice(0, 4));
   const yearMatches = !!film?.year && searchYear === film.year;
   const tmdbId = storedTmdbId ?? (yearMatches ? searchFirst!.id : null);
@@ -373,16 +353,12 @@ function FilmDetailView() {
     }
   }, [posterUrl]);
 
-  const { data: videos } = useQuery<
-    { results: { key: string; site: string; type: string }[] } | null
-  >({
+  const { data: videos } = useQuery<{
+    results: { key: string; site: string; type: string }[];
+  } | null>({
     queryKey: ["tmdb", "videos", isTvShow ? "tv" : "movie", tmdbId],
     queryFn: () =>
-      tmdbId
-        ? isTvShow
-          ? getTmdbTvVideos(tmdbId)
-          : getTmdbMovieVideos(tmdbId)
-        : null,
+      tmdbId ? (isTvShow ? getTmdbTvVideos(tmdbId) : getTmdbMovieVideos(tmdbId)) : null,
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
   });
@@ -408,11 +384,7 @@ function FilmDetailView() {
   const { data: tmdbDetails } = useQuery<TmdbDetailsUnion | null>({
     queryKey: ["tmdb", "details", isTvShow ? "tv" : "movie", tmdbId],
     queryFn: () =>
-      tmdbId
-        ? isTvShow
-          ? getTmdbTvDetails(tmdbId)
-          : getTmdbMovieDetails(tmdbId)
-        : null,
+      tmdbId ? (isTvShow ? getTmdbTvDetails(tmdbId) : getTmdbMovieDetails(tmdbId)) : null,
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
   });
@@ -420,11 +392,7 @@ function FilmDetailView() {
   const { data: watchData } = useQuery<TmdbWatchProviders | null>({
     queryKey: ["tmdb", "watch-providers", isTvShow ? "tv" : "movie", tmdbId],
     queryFn: () =>
-      tmdbId
-        ? isTvShow
-          ? getTmdbTvWatchProviders(tmdbId)
-          : getTmdbWatchProviders(tmdbId)
-        : null,
+      tmdbId ? (isTvShow ? getTmdbTvWatchProviders(tmdbId) : getTmdbWatchProviders(tmdbId)) : null,
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
   });
@@ -442,8 +410,7 @@ function FilmDetailView() {
   // current Top 100 for titles without a tag.
   const { data: similarFilms } = useQuery({
     queryKey: ["films", "similar", film?.genre_tag ?? "top"],
-    queryFn: () =>
-      film?.genre_tag ? getGenreFilms(film.genre_tag, 8) : getTopFilms(8),
+    queryFn: () => (film?.genre_tag ? getGenreFilms(film.genre_tag, 8) : getTopFilms(8)),
     enabled: !!film,
     staleTime: 5 * 60 * 1000,
   });
@@ -507,9 +474,10 @@ function FilmDetailView() {
   }
 
   // ── Derived values ────────────────────────────────────────────────────────
-  const director = film.director && film.director !== "Unknown" && film.director !== "Director TBA"
-    ? film.director
-    : tmdbDetails?.created_by?.[0]?.name ?? null;
+  const director =
+    film.director && film.director !== "Unknown" && film.director !== "Director TBA"
+      ? film.director
+      : (tmdbDetails?.created_by?.[0]?.name ?? null);
   const synopsis = tmdbFilm?.overview || film.synopsis || "No synopsis available.";
   const tagline = tmdbDetails?.tagline?.trim() || null;
   const trailerKey =
@@ -534,15 +502,18 @@ function FilmDetailView() {
   const budget = !isTvShow && !upcoming && tmdbDetails?.budget ? tmdbDetails.budget : null;
   const revenue = !isTvShow && !upcoming && tmdbDetails?.revenue ? tmdbDetails.revenue : null;
   const language = tmdbDetails?.original_language
-    ? new Intl.DisplayNames(["en"], { type: "language" }).of(tmdbDetails.original_language) ??
-      tmdbDetails.original_language
+    ? (new Intl.DisplayNames(["en"], { type: "language" }).of(tmdbDetails.original_language) ??
+      tmdbDetails.original_language)
     : null;
   const country = tmdbDetails?.production_countries?.[0]?.name;
   const companies = tmdbDetails?.production_companies?.slice(0, 3).map((c) => c.name) ?? [];
-  const status = tmdbDetails?.status === "Released" || tmdbDetails?.status === "Returning Series"
-    ? null
-    : tmdbDetails?.status;
-  const tmdbMovieUrl = tmdbId ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}` : undefined;
+  const status =
+    tmdbDetails?.status === "Released" || tmdbDetails?.status === "Returning Series"
+      ? null
+      : tmdbDetails?.status;
+  const tmdbMovieUrl = tmdbId
+    ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}`
+    : undefined;
   const watchRegionData = watchData?.results?.[watchRegion];
   const watchLink = tmdbId
     ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}/watch?locale=${watchRegion}`
@@ -566,7 +537,8 @@ function FilmDetailView() {
   const daysOnChart = film.days_on_chart ?? 1;
   const daysAtOne = film.days_at_one ?? 0;
   const top10Days = (film as typeof film & { top10_days?: number | null }).top10_days ?? null;
-  const longestStreak = (film as typeof film & { longest_streak_at_one?: number | null }).longest_streak_at_one ?? null;
+  const longestStreak =
+    (film as typeof film & { longest_streak_at_one?: number | null }).longest_streak_at_one ?? null;
   const peakRank = film.peak_rank ?? film.rank;
   const movement = film.movement ?? 0;
   const day = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
@@ -576,7 +548,12 @@ function FilmDetailView() {
   return (
     <Layout>
       {/* ── Hero: backdrop wash + poster left + identity right ── */}
-      <section className="relative overflow-hidden">
+      <section
+        className="film-detail-hero relative overflow-hidden"
+        style={{
+          background: `radial-gradient(ellipse at 80% 10%, ${film.gradient_from || "#533448"}, transparent 75%)`,
+        }}
+      >
         {/* Backdrop — full-bleed still, fading down into the page canvas */}
         {backdropUrl && (
           <div className="pointer-events-none absolute inset-0" aria-hidden>
@@ -638,7 +615,7 @@ function FilmDetailView() {
                 )}
                 {isRanked ? (
                   <>
-                    <span className="rounded-sm bg-primary px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground">
+                    <span className="rounded-sm bg-primary px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-foreground">
                       #{film.rank} {chartLabel}
                     </span>
                     {movement !== 0 && (
@@ -647,7 +624,11 @@ function FilmDetailView() {
                           movement > 0 ? "text-up" : "text-down"
                         }`}
                       >
-                        {movement > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                        {movement > 0 ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" />
+                        )}
                         {Math.abs(movement)} {movement > 0 ? "up" : "down"}
                       </span>
                     )}
@@ -666,7 +647,9 @@ function FilmDetailView() {
 
               {/* Tagline */}
               {tagline && (
-                <p className="mt-3 font-display text-lg italic text-muted-foreground">“{tagline}”</p>
+                <p className="mt-3 font-display text-lg italic text-muted-foreground">
+                  “{tagline}”
+                </p>
               )}
 
               {/* Year · runtime · genres */}
@@ -709,19 +692,33 @@ function FilmDetailView() {
                   {isRanked ? (
                     <>
                       <div className="text-muted-foreground">
-                        {movement > 0 && <>up {movement} place{movement === 1 ? "" : "s"} this week</>}
-                        {movement < 0 && <>down {Math.abs(movement)} place{Math.abs(movement) === 1 ? "" : "s"}</>}
+                        {movement > 0 && (
+                          <>
+                            up {movement} place{movement === 1 ? "" : "s"} this week
+                          </>
+                        )}
+                        {movement < 0 && (
+                          <>
+                            down {Math.abs(movement)} place{Math.abs(movement) === 1 ? "" : "s"}
+                          </>
+                        )}
                         {movement === 0 && <span title="Held its rank">held its position</span>}
                       </div>
                       <div className="text-muted-foreground">
-                        <span className="font-medium text-foreground">{day(daysOnChart)}</span> on chart
+                        <span className="font-medium text-foreground">{day(daysOnChart)}</span> on
+                        chart
                       </div>
                       {peakRank === 1 && (
                         <div className="text-primary">
                           Peak <span className="font-semibold">#1</span>
-                          {daysAtOne > 0 && <span className="text-muted-foreground"> · {day(daysAtOne)} at #1</span>}
+                          {daysAtOne > 0 && (
+                            <span className="text-muted-foreground"> · {day(daysAtOne)} at #1</span>
+                          )}
                           {longestStreak != null && longestStreak > 0 && (
-                            <span className="text-muted-foreground"> · best run {day(longestStreak)}</span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              · best run {day(longestStreak)}
+                            </span>
                           )}
                         </div>
                       )}
@@ -754,7 +751,11 @@ function FilmDetailView() {
                 )}
                 <button
                   onClick={handleToggleSave}
-                  aria-label={saved ? `Remove ${film.title} from Watchlist` : `Save ${film.title} to Watchlist`}
+                  aria-label={
+                    saved
+                      ? `Remove ${film.title} from Watchlist`
+                      : `Save ${film.title} to Watchlist`
+                  }
                   aria-pressed={saved}
                   className={`inline-flex h-11 w-11 items-center justify-center border transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                     saved
@@ -762,7 +763,11 @@ function FilmDetailView() {
                       : "border-foreground/20 text-muted-foreground hover:border-foreground/45 hover:text-foreground"
                   }`}
                 >
-                  {saved ? <BookmarkCheck className="h-5 w-5" aria-hidden /> : <Bookmark className="h-5 w-5" aria-hidden />}
+                  {saved ? (
+                    <BookmarkCheck className="h-5 w-5" aria-hidden />
+                  ) : (
+                    <Bookmark className="h-5 w-5" aria-hidden />
+                  )}
                 </button>
                 <ShareCardButton
                   variant="film"
@@ -787,7 +792,9 @@ function FilmDetailView() {
                 Index history
               </div>
               <span className="font-mono text-[10px] text-muted-foreground">
-                {isRanked ? `#${film.rank} ${chartLabel} today · peak #${peakRank}` : "Not currently ranked"}
+                {isRanked
+                  ? `#${film.rank} ${chartLabel} today · peak #${peakRank}`
+                  : "Not currently ranked"}
               </span>
             </div>
             <div className="mt-4">
@@ -832,7 +839,9 @@ function FilmDetailView() {
                     </div>
                   </div>
                   <div>
-                    <div className="font-mono text-2xl tabular text-down">{sentiment.negative}%</div>
+                    <div className="font-mono text-2xl tabular text-down">
+                      {sentiment.negative}%
+                    </div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                       Negative
                     </div>
@@ -892,10 +901,13 @@ function FilmDetailView() {
                 label="Release date"
                 value={
                   (isTvShow ? film.first_air_date : film.release_date)
-                    ? new Date(`${isTvShow ? film.first_air_date : film.release_date}T00:00:00`).toLocaleDateString(
-                        "en-US",
-                        { month: "short", day: "numeric", year: "numeric" },
-                      )
+                    ? new Date(
+                        `${isTvShow ? film.first_air_date : film.release_date}T00:00:00`,
+                      ).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
                     : status || "-"
                 }
               />
@@ -917,16 +929,32 @@ function FilmDetailView() {
                 <Fact icon={<Globe className="h-3.5 w-3.5" />} label="Country" value={country} />
               )}
               {language && (
-                <Fact icon={<Languages className="h-3.5 w-3.5" />} label="Language" value={language} />
+                <Fact
+                  icon={<Languages className="h-3.5 w-3.5" />}
+                  label="Language"
+                  value={language}
+                />
               )}
               {budget && (
-                <Fact icon={<Wallet className="h-3.5 w-3.5" />} label="Budget" value={money(budget)} />
+                <Fact
+                  icon={<Wallet className="h-3.5 w-3.5" />}
+                  label="Budget"
+                  value={money(budget)}
+                />
               )}
               {revenue && (
-                <Fact icon={<Ticket className="h-3.5 w-3.5" />} label="Box office" value={money(revenue)} />
+                <Fact
+                  icon={<Ticket className="h-3.5 w-3.5" />}
+                  label="Box office"
+                  value={money(revenue)}
+                />
               )}
               {companies.length > 0 && (
-                <Fact icon={<Landmark className="h-3.5 w-3.5" />} label="Studio" value={companies.join(", ")} />
+                <Fact
+                  icon={<Landmark className="h-3.5 w-3.5" />}
+                  label="Studio"
+                  value={companies.join(", ")}
+                />
               )}
             </div>
           </div>
@@ -964,7 +992,11 @@ function FilmDetailView() {
               </p>
             ) : watchData && hasWatchOptions ? (
               <>
-                <ProviderGroup label="Streaming" providers={watchRegionData?.flatrate} link={watchLink} />
+                <ProviderGroup
+                  label="Streaming"
+                  providers={watchRegionData?.flatrate}
+                  link={watchLink}
+                />
                 <ProviderGroup
                   label="Free"
                   providers={
@@ -997,7 +1029,9 @@ function FilmDetailView() {
                   <FilmIcon className="h-4 w-4 shrink-0 text-primary" />
                   <div>
                     <div className="font-medium text-foreground">Cinema & Theaters</div>
-                    <div className="text-[10px] text-muted-foreground">Find local showtimes & tickets</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Find local showtimes & tickets
+                    </div>
                   </div>
                 </div>
                 <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1012,7 +1046,9 @@ function FilmDetailView() {
                   <Tv className="h-4 w-4 shrink-0 text-primary" />
                   <div>
                     <div className="font-medium text-foreground">Streaming & Digital</div>
-                    <div className="text-[10px] text-muted-foreground">Search streaming platforms & providers</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Search streaming platforms & providers
+                    </div>
                   </div>
                 </div>
                 <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1028,7 +1064,9 @@ function FilmDetailView() {
                     <Info className="h-4 w-4 shrink-0 text-primary" />
                     <div>
                       <div className="font-medium text-foreground">Full details</div>
-                      <div className="text-[10px] text-muted-foreground">Credits & metadata on TMDB</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Credits & metadata on TMDB
+                      </div>
                     </div>
                   </div>
                   <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -1083,7 +1121,10 @@ function FilmDetailView() {
               View Watchlist →
             </Link>
           </div>
-          <button onClick={() => setToast(null)} className="ml-1 text-muted-foreground hover:text-foreground">
+          <button
+            onClick={() => setToast(null)}
+            className="ml-1 text-muted-foreground hover:text-foreground"
+          >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
