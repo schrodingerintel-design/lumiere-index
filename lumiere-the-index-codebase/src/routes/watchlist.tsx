@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useWatchlist, writeWatchlist } from "@/lib/watchlist";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import { getNewReleaseFilms, getTopFilms, type RankedFilm } from "@/lib/apiClient";
+import { getFilmDetail } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { Bookmark, BookmarkX } from "lucide-react";
 import { FilmPosterThumbnail } from "@/components/lumiere/FilmPosterThumbnail";
@@ -24,55 +24,21 @@ export const Route = createFileRoute("/watchlist")({
 });
 
 function WatchlistPage() {
-  const [savedSlugs, setSavedSlugs] = useState<string[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    try {
-      const list: string[] = JSON.parse(localStorage.getItem("lumiere_watchlist") ?? "[]");
-      setSavedSlugs(list);
-    } catch {
-      setSavedSlugs([]);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  const removeSlug = (slug: string) => {
-    const next = savedSlugs.filter((s) => s !== slug);
-    setSavedSlugs(next);
-    localStorage.setItem("lumiere_watchlist", JSON.stringify(next));
-  };
-
-  const clearAll = () => {
-    setSavedSlugs([]);
-    localStorage.removeItem("lumiere_watchlist");
-  };
-
-  // Fetch catalog films to resolve saved slugs
-  const { data: topFilms = [], isLoading: topLoading } = useQuery({
-    queryKey: ["films", "top", 100],
-    queryFn: () => getTopFilms(100),
-    staleTime: 5 * 60 * 1000,
+  const { slugs: savedSlugs } = useWatchlist();
+  const removeSlug = (slug: string) => writeWatchlist(savedSlugs.filter((item) => item !== slug));
+  const clearAll = () => writeWatchlist([]);
+  // Resolve each saved identity directly, including TV and titles that leave the charts.
+  const queries = useQueries({
+    queries: savedSlugs.map((slug) => ({
+      queryKey: ["film", "detail", slug],
+      queryFn: () => getFilmDetail(slug),
+      staleTime: 300_000,
+      retry: false,
+    })),
   });
-
-  const { data: newReleases = [], isLoading: newLoading } = useQuery({
-    queryKey: ["films", "new-releases", 100],
-    queryFn: () => getNewReleaseFilms(100),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const allFilmsMap = new Map<string, RankedFilm>();
-  for (const f of [...topFilms, ...newReleases]) {
-    if (!allFilmsMap.has(f.slug)) {
-      allFilmsMap.set(f.slug, f);
-    }
-  }
-
-  const savedFilms = savedSlugs
-    .map((slug) => allFilmsMap.get(slug))
-    .filter((f): f is RankedFilm => f !== undefined);
-
-  const isLoading = !isLoaded || (savedSlugs.length > 0 && topLoading && newLoading);
+  const savedFilms = queries.flatMap((query) => (query.data ? [query.data] : []));
+  const isLoading = queries.some((query) => query.isLoading);
+  const unresolvedSlugs = savedSlugs.filter((_, index) => queries[index]?.isError);
 
   return (
     <Layout>
@@ -104,6 +70,34 @@ function WatchlistPage() {
 
       <section className="mt-10 px-4 pb-16 sm:px-6">
         <div className="mx-auto max-w-6xl">
+          {unresolvedSlugs.length > 0 && (
+            <div
+              className="mb-5 rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground"
+              role="status"
+            >
+              <p>Some saved titles couldn't be loaded. Your bookmarks are still saved.</p>
+              <button
+                className="mt-2 text-primary underline"
+                onClick={() =>
+                  queries.forEach((query) => {
+                    if (query.isError) void query.refetch();
+                  })
+                }
+              >
+                Try again
+              </button>
+              {unresolvedSlugs.map((slug) => (
+                <div key={slug} className="mt-3 flex items-center justify-between gap-4">
+                  <Link to="/films/$slug" params={{ slug }}>
+                    {slug.replace(/-/g, " ")}
+                  </Link>
+                  <button className="soft-button" onClick={() => removeSlug(slug)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           {isLoading ? (
             <ul className="divide-y divide-foreground/[0.07] border-y border-foreground/10">
               {[...Array(4)].map((_, i) => (
@@ -117,7 +111,7 @@ function WatchlistPage() {
                 </li>
               ))}
             </ul>
-          ) : savedFilms.length === 0 ? (
+          ) : savedSlugs.length === 0 ? (
             <div className="border-y border-foreground/10 bg-surface p-12 text-center">
               <Bookmark className="mx-auto h-8 w-8 text-muted-foreground/40" />
               <h2 className="mt-4 font-display text-2xl">Your watchlist is empty</h2>
@@ -151,12 +145,12 @@ function WatchlistPage() {
                       params={{ slug: film.slug }}
                       className="flex items-center gap-3 px-4 py-3 pr-14 transition-colors hover:bg-foreground/[0.03] sm:gap-4 sm:px-5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
                     >
-                      <FilmPosterThumbnail
-                        film={film}
-                        className="h-16 w-11 sm:h-[72px] sm:w-12"
-                      />
+                      <FilmPosterThumbnail film={film} className="h-16 w-11 sm:h-[72px] sm:w-12" />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base" title={film.title}>
+                        <div
+                          className="truncate text-[15px] font-medium leading-snug text-foreground sm:text-base"
+                          title={film.title}
+                        >
                           {film.title}
                         </div>
                         <div className="mt-0.5 truncate text-xs text-muted-foreground sm:text-[13px]">

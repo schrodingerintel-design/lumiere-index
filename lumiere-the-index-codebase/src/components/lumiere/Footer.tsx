@@ -34,7 +34,8 @@ export function Footer() {
               <BetaBadge />
             </div>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              The cultural index for film and television. Updated every 12 hours.
+              Find your next obsession. Follow the stories moving film and TV culture, and share the
+              ones that stay with you.
             </p>
             {/* Official channels */}
             <div className="mt-5 flex items-center gap-2">
@@ -66,10 +67,7 @@ export function Footer() {
             <ul className="mt-4 space-y-2.5 text-sm">
               {EXPLORE_LINKS.map((l) => (
                 <li key={l.to}>
-                  <Link
-                    to={l.to}
-                    className="text-foreground/70 transition hover:text-foreground"
-                  >
+                  <Link to={l.to} className="text-foreground/70 transition hover:text-foreground">
                     {l.label}
                   </Link>
                 </li>
@@ -84,10 +82,7 @@ export function Footer() {
             <ul className="mt-4 space-y-2.5 text-sm">
               {COMPANY_LINKS.map((l) => (
                 <li key={l.to}>
-                  <Link
-                    to={l.to}
-                    className="text-foreground/70 transition hover:text-foreground"
-                  >
+                  <Link to={l.to} className="text-foreground/70 transition hover:text-foreground">
                     {l.label}
                   </Link>
                 </li>
