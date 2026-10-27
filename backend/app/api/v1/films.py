@@ -619,7 +619,9 @@ def _signal_funnel(db: Session, film_id: int, days: int = 30) -> SignalFunnel:
             func.max(Mention.created_at),
         )
         .join(Source, Source.id == Mention.source_id)
-        .where(Mention.film_id == film_id, Mention.created_at >= since)
+        .where(Mention.film_id == film_id, Mention.created_at >= since,
+               ~Source.key.in_(CATALOG_ONLY_SOURCE_KEYS),
+               or_(Mention.external_id.is_(None), ~Mention.external_id.like(r"seed\_%", escape="\\")))
         .group_by(Source.key)
     ).all()
 
@@ -647,7 +649,7 @@ def _signal_funnel(db: Session, film_id: int, days: int = 30) -> SignalFunnel:
         raw_observations_30d=total_obs,
         ingest_records_30d=total_records,
         source_coverage=len(sources),
-        window_start=window_start,
+        window_start=since if total_records else None,
         window_end=datetime.now(timezone.utc) if total_records else None,
         sources=sources,
     )
@@ -674,17 +676,20 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
     days_at_one = _days_at_one_map(db, [film.id], chart_type=chart_id).get(film.id, 0)
     # Sentiment split counts real audience conversation only — catalog-only
     # sources ("tmdb" vote rows) never contribute.
-    catalog_ids = _catalog_source_ids(db)
+    # Aggregate search/view/vote measurements are not audience text reviews.
+    non_discussion = CATALOG_ONLY_SOURCE_KEYS | {"trends", "google_trends", "wikipedia", "youtube", "imdb", "boxoffice", "box_office"}
+    eligible_sources = select(Source.id).where(~Source.key.in_(non_discussion))
+    sentiment_filters = (
+        Mention.film_id == film.id,
+        Mention.created_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30),
+        ~Mention.external_id.startswith("seed_", autoescape=True),
+        Mention.text.isnot(None), Mention.text != "",
+        Mention.source_id.in_(eligible_sources),
+        Mention.sentiment_label.in_(["positive", "neutral", "negative"]),
+    )
     def _sent_count(label: str) -> int:
-        q = select(func.count()).where(
-            Mention.film_id == film.id, Mention.sentiment_label == label,
-            Mention.created_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30),
-            ~Mention.external_id.startswith("seed_", autoescape=True),
-            Mention.text.isnot(None), Mention.text != ""
-        )
-        if catalog_ids:
-            q = q.where(~Mention.source_id.in_(catalog_ids))
-        return db.scalar(q) or 0
+        return db.scalar(select(func.count()).select_from(Mention).where(*sentiment_filters, Mention.sentiment_label == label)) or 0
+    sentiment_sources = db.scalar(select(func.count(func.distinct(Mention.source_id))).where(*sentiment_filters)) or 0
     pos = _sent_count("positive")
     neu = _sent_count("neutral")
     neg = _sent_count("negative")
@@ -697,10 +702,11 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
             negative=round(neg * 100 / total, 1),
             sufficient_data=True,
             sample_size=total,
+            source_count=sentiment_sources,
             window_days=30,
         )
     else:
-        sentiment = SentimentBreakdown(sample_size=total, window_days=30)
+        sentiment = SentimentBreakdown(sample_size=total, source_count=sentiment_sources, window_days=30)
     base = _to_ranked(film, r) if r else RankedFilm(
         id=film.id, slug=film.slug, title=film.title,
         original_title=film.original_title, content_type=film.content_type,

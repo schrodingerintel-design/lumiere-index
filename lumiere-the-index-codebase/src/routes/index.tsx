@@ -2,7 +2,7 @@ import { CultureHighlights } from "@/components/lumiere/CultureHighlights";
 import { getPeople } from "@/lib/catalog";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { canonicalLink, ogUrlMeta } from "@/lib/site";
+import { canonicalLink, titleSocialMeta } from "@/lib/site";
 import { Layout } from "@/components/lumiere/Layout";
 import { GenreSections } from "@/components/lumiere/GenreSections";
 import { AdSlot } from "@/components/lumiere/AdSlot";
@@ -38,7 +38,11 @@ export const Route = createFileRoute("/")({
         content:
           "Discover film, television, people, games, creators, and music. Explore stories, credits, original guides, and audience charts.",
       },
-      ogUrlMeta("/"),
+      ...titleSocialMeta(
+        "Film, TV, games, music & culture",
+        "Discover titles, people, original culture guides, and the Lumière charts.",
+        "/",
+      ),
     ],
     links: [canonicalLink("/")],
   }),

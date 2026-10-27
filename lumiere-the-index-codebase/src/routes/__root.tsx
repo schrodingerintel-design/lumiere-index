@@ -16,11 +16,7 @@ import { SITE_URL, SITE_NAME, sitePath } from "@/lib/site";
 import { AdConsentBanner } from "@/components/lumiere/AdConsentBanner";
 import { ADSENSE_ACCOUNT_ID } from "@/lib/ads/config";
 import { recoverFromStaleDeploy } from "@/lib/staleDeploy";
-import {
-  reportRootBoundaryError,
-  recordRetryAction,
-  consumeRetryOutcome,
-} from "@/lib/diagnostics";
+import { reportRootBoundaryError, recordRetryAction, consumeRetryOutcome } from "@/lib/diagnostics";
 import { QUERY_STATE_ELEMENT_ID, dehydrateToJson } from "@/lib/queryClient";
 
 function NotFoundComponent() {
@@ -30,7 +26,9 @@ function NotFoundComponent() {
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           The Index
         </div>
-        <h1 className="mt-3 font-display text-7xl font-medium tracking-tight text-foreground">404</h1>
+        <h1 className="mt-3 font-display text-7xl font-medium tracking-tight text-foreground">
+          404
+        </h1>
         <h2 className="mt-4 font-display text-xl font-medium text-foreground">Page not found</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
@@ -77,9 +75,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
-        <p className="mt-3 font-mono text-xs text-muted-foreground/70">
-          Reference: {incidentId}
-        </p>
+        <p className="mt-3 font-mono text-xs text-muted-foreground/70">Reference: {incidentId}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => {
@@ -127,18 +123,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // Canonical identity: every og:image resolves to the production domain,
       // never a deployment URL. og:url + canonical are set PER ROUTE (links
       // are not deduped across routes, so the root must not add them).
-      { property: "og:image", content: sitePath("/og-image.png") },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "The Index: live cultural rankings for film and television" },
+      { property: "og:image", content: sitePath("/og-culture-v2.png") },
+      {
+        property: "og:image:alt",
+        content: "The Index: live cultural rankings for film and television",
+      },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@lumieretheindex" },
       { name: "twitter:creator", content: "@lumieretheindex" },
-      { name: "twitter:image", content: sitePath("/og-image.png") },
+      { name: "twitter:image", content: sitePath("/og-culture-v2.png") },
       // Google Search Console (HTML-tag method): set VITE_GOOGLE_SITE_VERIFICATION
       // to the token from the Search Console verification record; renders only when set.
       ...(import.meta.env.VITE_GOOGLE_SITE_VERIFICATION
-        ? [{ name: "google-site-verification", content: import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string }]
+        ? [
+            {
+              name: "google-site-verification",
+              content: import.meta.env.VITE_GOOGLE_SITE_VERIFICATION as string,
+            },
+          ]
         : []),
       // Google AdSense account verification. UNCONDITIONAL on purpose: AdSense
       // rejects verification when this tag is absent, so it must ship in every

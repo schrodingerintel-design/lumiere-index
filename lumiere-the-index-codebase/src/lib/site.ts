@@ -47,3 +47,27 @@ export const canonicalShareUrl = (currentHref: string): string => {
     return SITE_URL;
   }
 };
+
+/** Server-rendered social metadata, shared by catalog and chart title pages. */
+export function titleSocialMeta(
+  title: string,
+  description: string,
+  path: string,
+  image?: string | null,
+) {
+  const artwork = image && /^https:\/\//.test(image) ? image : sitePath("/og-culture-v2.png");
+  return [
+    { title: `${title} · Lumière Index` },
+    { name: "description", content: description },
+    { property: "og:title", content: `${title} · Lumière Index` },
+    { property: "og:description", content: description },
+    { property: "og:url", content: sitePath(path) },
+    { property: "og:type", content: "website" },
+    { property: "og:image", content: artwork },
+    { property: "og:image:alt", content: `${title} · Lumière Index` },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: `${title} · Lumière Index` },
+    { name: "twitter:description", content: description },
+    { name: "twitter:image", content: artwork },
+  ];
+}

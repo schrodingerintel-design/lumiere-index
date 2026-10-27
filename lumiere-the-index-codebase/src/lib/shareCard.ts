@@ -21,9 +21,9 @@ import { getApiBase } from "@/lib/apiClient";
 import { SITE_URL } from "@/lib/site";
 
 const IVORY = "#F4F1EA";
-const INK = "#080808";
-const RED = "#E52B2B";
-const MUTED = "#A6A29B";
+const INK = "#17131e";
+const RED = "#eb795d";
+const MUTED = "#c6a6b7";
 const HAIRLINE = "rgba(244, 241, 234, 0.16)";
 
 const DISPLAY_FONT = '"Fraunces", Georgia, "Times New Roman", serif';
@@ -78,10 +78,7 @@ async function loadPoster(
  *  served the site's non-CORS cache entry and the load fails. The proxy
  *  (the same API host the app already fetches data from) sidesteps that.
  *  Falls back to the CDN directly if the proxy is unreachable. */
-function posterSrc(
-  posterUrl: string | null | undefined,
-  size: "w185" | "w500",
-): string | null {
+function posterSrc(posterUrl: string | null | undefined, size: "w185" | "w500"): string | null {
   if (!posterUrl) return null;
   const name = posterUrl.split("?")[0].split("/").pop() ?? "";
   if (!/^[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/.test(name)) return null;
@@ -89,10 +86,7 @@ function posterSrc(
 }
 
 /** Direct-CDN fallback used if the proxy request fails. */
-function cdnPosterSrc(
-  posterUrl: string | null | undefined,
-  size: "w185" | "w500",
-): string | null {
+function cdnPosterSrc(posterUrl: string | null | undefined, size: "w185" | "w500"): string | null {
   if (!posterUrl) return null;
   const name = posterUrl.split("?")[0].split("/").pop() ?? "";
   if (!name) return null;
@@ -189,32 +183,19 @@ function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size
   ctx.restore();
 }
 
-function drawBrandLockup(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  markSize: number,
-) {
+function drawBrandLockup(ctx: CanvasRenderingContext2D, x: number, y: number, markSize: number) {
   drawBrandMark(ctx, x, y, markSize);
   const tx = x + markSize + markSize * 0.35;
   ctx.fillStyle = IVORY;
   ctx.font = `600 ${markSize * 0.5}px ${SANS_FONT}`;
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("Lumière", tx, y + markSize * 0.48);
+  ctx.fillText("The Index.", tx, y + markSize * 0.48);
   ctx.fillStyle = MUTED;
   ctx.font = `${markSize * 0.24}px ${SANS_FONT}`;
-  ctx.fillText(
-    "T H E   I N D E X",
-    tx + markSize * 0.04,
-    y + markSize * 0.82,
-  );
+  ctx.fillText("by Lumière", tx + markSize * 0.04, y + markSize * 0.82);
 }
 
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
   let line = "";
@@ -277,7 +258,7 @@ function liveBadge(ctx: CanvasRenderingContext2D, W: number, y: number) {
     day: "numeric",
     year: "numeric",
   });
-  const text = `LIVE · ${date.toUpperCase()}`;
+  const text = `SHARED · ${date.toUpperCase()}`;
   ctx.font = `22px ${MONO_FONT}`;
   const w = ctx.measureText(text).width;
   // Red pulse dot + right-aligned live/date stamp.
@@ -368,7 +349,8 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   const colX = pX + pW + 72;
   const colW = W - 96 - colX;
 
-  const rankText = `#${film.rank}`;
+  const isRanked = (film.rank ?? 0) > 0;
+  const rankText = isRanked ? `#${film.rank}` : "Unranked";
   const rankFont = fitFont(ctx, rankText, colW, 168, 700, DISPLAY_FONT);
   ctx.fillStyle = IVORY;
   ctx.font = `700 ${rankFont}px ${DISPLAY_FONT}`;
@@ -381,22 +363,22 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
 
   ctx.fillStyle = MUTED;
   ctx.font = `500 24px ${MONO_FONT}`;
-  ctx.fillText(`ON THE ${chartLabel(film)}`, colX, pY + 246);
+  ctx.fillText(isRanked ? `ON THE ${chartLabel(film)}` : "NOT CURRENTLY CHARTED", colX, pY + 246);
 
   // Movement line (+3 / −2 / DEBUT) — quiet, factual.
-  const mv = film.movement ?? 0;
-  if (mv > 0) {
+  const mv = isRanked ? film.movement : null;
+  if (mv != null && mv > 0) {
     ctx.fillStyle = RED;
     ctx.font = `600 30px ${MONO_FONT}`;
     ctx.fillText(`▲ +${mv}`, colX, pY + 306);
-  } else if (mv < 0) {
+  } else if (mv != null && mv < 0) {
     ctx.fillStyle = MUTED;
     ctx.font = `600 30px ${MONO_FONT}`;
     ctx.fillText(`▼ ${mv}`, colX, pY + 306);
   } else {
     ctx.fillStyle = MUTED;
     ctx.font = `500 24px ${MONO_FONT}`;
-    ctx.fillText("· HOLDING STEADY", colX, pY + 306);
+    ctx.fillText(mv === 0 ? "· NO POSITION CHANGE" : "COMPARISON UNAVAILABLE", colX, pY + 306);
   }
 
   // Tenure lines.
@@ -405,7 +387,7 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   const rawDirector = film.director && film.director !== "Unknown" ? film.director : null;
   const directorName = rawDirector && !/ TBA$/.test(rawDirector) ? rawDirector : null;
   const tenure = [
-    film.days_on_chart ? `${film.days_on_chart} days on the chart` : null,
+    isRanked && film.days_on_chart ? `${film.days_on_chart} days since debut` : null,
     film.days_at_one ? `${film.days_at_one} day${film.days_at_one === 1 ? "" : "s"} at #1` : null,
     directorName,
   ].filter(Boolean) as string[];
@@ -425,12 +407,14 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   // Position + tenure — the résumé block. Cards carry no public score.
   ctx.fillStyle = MUTED;
   ctx.font = `500 26px ${MONO_FONT}`;
-  ctx.fillText("O N   T H E   I N D E X", 96, bandY + 66);
+  ctx.fillText(isRanked ? "O N   T H E   I N D E X" : "C H A R T   H I S T O R Y", 96, bandY + 66);
   const tenureText = [
     (film.rank ?? 0) > 0 ? `#${film.rank} today` : null,
     film.peak_rank ? `peak #${film.peak_rank}` : null,
-    film.days_on_chart ? `${film.days_on_chart} days on chart` : null,
-  ].filter(Boolean).join("  ·  ");
+    film.days_on_chart ? `${film.days_on_chart} days since debut` : null,
+  ]
+    .filter(Boolean)
+    .join("  ·  ");
   const tenureFont = fitFont(ctx, tenureText || "—", 520, 96, 600, DISPLAY_FONT);
   ctx.fillStyle = IVORY;
   ctx.font = `600 ${tenureFont}px ${DISPLAY_FONT}`;
@@ -467,16 +451,14 @@ export async function renderFilmCard(film: RankedFilm): Promise<ShareCardResult>
   const right = "REFRESHED EVERY 12 HRS";
   ctx.fillText(right, W - 96 - ctx.measureText(right).width, H - 66);
 
-  const blob = await new Promise<Blob>((resolve) =>
-    canvas.toBlob((b) => resolve(b!), "image/png"),
-  );
+  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
   return { blob, filename: `the-index-${film.slug}.png` };
 }
 
 export interface ChartCardOptions {
-  title: string;          // e.g. "The Top 10" or "TV 100"
-  subtitle: string;       // supporting line under the heading
-  films: RankedFilm[];    // rows (max 5 shown)
+  title: string; // e.g. "The Top 10" or "TV 100"
+  subtitle: string; // supporting line under the heading
+  films: RankedFilm[]; // rows (max 5 shown)
   /** Display rank override — chart pages renumber (TV chart shows 1–50). */
   rankOf?: (film: RankedFilm, index: number) => number;
 }
@@ -527,9 +509,7 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
 
   // Fetch all row posters in parallel up front — sequential awaits made the
   // card render take one network round-trip per row.
-  const posters = await Promise.all(
-    rows.map((f) => loadPoster(f.poster_url, "w185")),
-  );
+  const posters = await Promise.all(rows.map((f) => loadPoster(f.poster_url, "w185")));
 
   for (let i = 0; i < rows.length; i++) {
     const f = rows[i];
@@ -558,10 +538,10 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
     const mv = f.movement ?? 0;
     ctx.textBaseline = "alphabetic";
     ctx.font = `500 19px ${MONO_FONT}`;
-    if (mv > 0) {
+    if (mv != null && mv > 0) {
       ctx.fillStyle = RED;
       ctx.fillText(`+${mv}`, 96, y + rowH / 2 + 22);
-    } else if (mv < 0) {
+    } else if (mv != null && mv < 0) {
       ctx.fillStyle = MUTED;
       ctx.fillText(`${mv}`, 96, y + rowH / 2 + 22);
     }
@@ -601,10 +581,7 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
 
     ctx.fillStyle = MUTED;
     ctx.font = `22px ${MONO_FONT}`;
-    const meta = [
-      f.days_on_chart ? `${f.days_on_chart}d on chart` : null,
-      directorLabel(f),
-    ]
+    const meta = [f.days_on_chart ? `${f.days_on_chart}d on chart` : null, directorLabel(f)]
       .filter(Boolean)
       .join("  ·  ");
     ctx.fillText(meta, textX, y + 100);
@@ -635,10 +612,11 @@ export async function renderChartCard(opts: ChartCardOptions): Promise<ShareCard
   const right = "0% CRITIC WEIGHT";
   ctx.fillText(right, W - 96 - ctx.measureText(right).width, H - 70);
 
-  const blob = await new Promise<Blob>((resolve) =>
-    canvas.toBlob((b) => resolve(b!), "image/png"),
-  );
-  return { blob, filename: `the-index-${opts.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png` };
+  const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+  return {
+    blob,
+    filename: `the-index-${opts.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`,
+  };
 }
 
 /** Catalog placeholders are not names. */

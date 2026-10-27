@@ -93,9 +93,15 @@ export function ShareCardButton({
     const chartOpts = variant === "chart" ? (card as ChartCardOptions) : null;
     const title = filmCard ? `${filmCard.title} · The Index` : "The Index · Live Charts";
     const text = filmCard
-      ? `${filmCard.title} is #${filmCard.rank} on The Index.`
+      ? (filmCard.rank ?? 0) > 0
+        ? `${filmCard.title} is #${filmCard.rank} on The Index.`
+        : `${filmCard.title} on Lumière Index.`
       : (chartOpts?.title ?? "The Index");
-    const outcome = await shareCard(result, { title, text, url: SITE_URL });
+    const outcome = await shareCard(result, {
+      title,
+      text,
+      url: filmCard ? `${SITE_URL}/films/${encodeURIComponent(filmCard.slug)}` : SITE_URL,
+    });
     if (outcome === "shared") setAction("shared");
     else if (outcome === "link-copied") setAction("copied");
     setTimeout(() => setAction(null), 2500);
@@ -155,11 +161,8 @@ export function ShareCardButton({
                 The Index
               </p>
               <h3 className="mt-1 text-lg font-semibold text-foreground">
-                Share this moment on the chart
+                {variant === "film" ? `Share ${(card as RankedFilm).title}` : "Share the chart"}
               </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Poster card rendered on your device.
-              </p>
             </div>
 
             {/* Card preview */}
@@ -168,9 +171,7 @@ export function ShareCardButton({
                 <div className="flex aspect-[4/5] w-full max-w-[260px] items-center justify-center rounded-xl border bg-muted/40">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <span className="font-mono text-xs uppercase tracking-widest">
-                      Rendering…
-                    </span>
+                    <span className="font-mono text-xs uppercase tracking-widest">Rendering…</span>
                   </div>
                 </div>
               )}

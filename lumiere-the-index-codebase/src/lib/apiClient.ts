@@ -242,6 +242,7 @@ export interface RankedFilm {
 }
 
 export interface SentimentBreakdown {
+  source_count?: number;
   positive: number | null;
   neutral: number | null;
   negative: number | null;

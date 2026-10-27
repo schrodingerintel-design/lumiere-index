@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { BrandLink } from "@/components/lumiere/Brand";
-import { BetaBadge } from "@/components/lumiere/BetaBadge";
 import { AdConsentSettings } from "@/components/lumiere/AdConsentBanner";
 import { XIcon, Music2 } from "lucide-react";
 
@@ -36,7 +35,6 @@ export function Footer() {
           <div className="sm:col-span-2">
             <div className="flex items-center gap-2">
               <BrandLink />
-              <BetaBadge />
             </div>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
               Film, TV, games, music, and the people shaping culture.
