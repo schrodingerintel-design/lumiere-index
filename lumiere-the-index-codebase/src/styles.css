@@ -2679,3 +2679,9 @@
   background: var(--background);
   color: inherit;
 }
+
+.catalog-section .catalog-source {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
