@@ -50,6 +50,7 @@ const GENRES: GenreDef[] = [
 function GenresPage() {
   const [selectedGenre, setSelectedGenre] = useState<GenreDef>(GENRES[0]);
 
+  const [page, setPage] = useState(1);
   // Fetch the list of available genres from the backend
   const { data: availableGenres = [], isLoading: genresLoading } = useQuery({
     queryKey: ["genres", "list"],
@@ -58,9 +59,14 @@ function GenresPage() {
   });
 
   // Fetch films for the selected genre from the backend's dedicated endpoint
-  const { data: genreFilms = [], isLoading: filmsLoading, error: filmsError, refetch } = useQuery({
-    queryKey: ["genres", selectedGenre.tag, "films", 100],
-    queryFn: () => getGenreFilms(selectedGenre.tag, 100),
+  const {
+    data: genreFilms = [],
+    isLoading: filmsLoading,
+    error: filmsError,
+    refetch,
+  } = useQuery({
+    queryKey: ["genres", selectedGenre.tag, "films", 200, page],
+    queryFn: () => getGenreFilms(selectedGenre.tag, 200, (page - 1) * 200),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -105,7 +111,10 @@ function GenresPage() {
                   key={g.tag}
                   onClick={() => {
                     const def = GENRES.find((d) => d.tag.toLowerCase() === g.tag.toLowerCase());
-                    if (def) setSelectedGenre(def);
+                    if (def) {
+                      setSelectedGenre(def);
+                      setPage(1);
+                    }
                   }}
                   aria-pressed={isSelected}
                   className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 min-h-[44px] text-[13px] font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
@@ -115,7 +124,9 @@ function GenresPage() {
                   }`}
                 >
                   {g.label}
-                  <span className={`ml-1.5 font-mono text-[11px] ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                  <span
+                    className={`ml-1.5 font-mono text-[11px] ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                  >
                     {g.count}
                   </span>
                 </button>
@@ -129,14 +140,32 @@ function GenresPage() {
       <section className="mt-8 px-4 pb-16 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-end justify-between border-b border-foreground/10 pb-3">
-          <h2 className="font-display text-2xl font-medium">
-            {selectedGenre.name} in the catalogue
-          </h2>
-          <span className="font-mono text-xs tabular text-muted-foreground">
-            {displayFilms.length} {displayFilms.length === 1 ? "title" : "titles"} · ranked titles first
-          </span>
+            <h2 className="font-display text-2xl font-medium">
+              {selectedGenre.name} in the catalogue
+            </h2>
+            <span className="font-mono text-xs tabular text-muted-foreground">
+              {displayFilms.length} {displayFilms.length === 1 ? "title" : "titles"} · ranked titles
+              first
+            </span>
           </div>
 
+          <div className="catalog-pagination">
+            <button
+              className="soft-button"
+              disabled={page === 1 || filmsLoading}
+              onClick={() => setPage((value) => value - 1)}
+            >
+              Previous
+            </button>
+            <span>Page {page} · up to 200 titles</span>
+            <button
+              className="soft-button"
+              disabled={genreFilms.length < 200 || filmsLoading}
+              onClick={() => setPage((value) => value + 1)}
+            >
+              Next page
+            </button>
+          </div>
           <div className="mt-6">
             {filmsError ? (
               <div className="border-y border-foreground/10 bg-surface p-8 text-center">
@@ -164,9 +193,7 @@ function GenresPage() {
                     <PosterCard key={film.slug} film={film} width="100%" showRank />
                   ))}
                 </div>
-                {splitShelf && (
-                  <AdSlot placement="genre-inline" />
-                )}
+                {splitShelf && <AdSlot placement="genre-inline" />}
                 {splitShelf && (
                   <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                     {secondGroup.map((film: RankedFilm) => (

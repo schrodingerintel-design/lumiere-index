@@ -65,7 +65,7 @@ def _add_films(db, n=5):
             title=f"Film {i}",
             director=f"Director {i}",
             year=2025,
-            release_date=date.today() - timedelta(days=5 + i),
+            release_date=datetime.now(timezone.utc).date() - timedelta(days=5 + i),
         )
         db.add(f)
         films.append(f)
@@ -102,7 +102,7 @@ def test_publish_daily_creates_snapshot(pub_db):
     _seed_continuous_ranking(pub_db, films, [90.0, 80.0, 70.0, 60.0, 50.0])
 
     result = publish_daily_index(pub_db)
-    assert result == date.today()
+    assert result == datetime.now(timezone.utc).date()
 
     rows = pub_db.query(DailyIndexSnapshot).order_by(DailyIndexSnapshot.rank).all()
     assert len(rows) == 5
@@ -132,7 +132,7 @@ def test_publish_daily_records_debuts_once(pub_db):
 def test_publish_daily_movement_uses_published_history_not_continuous(pub_db):
     """Movement must compare against the previous PUBLISHED daily index."""
     films = _add_films(pub_db, 3)
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
 
     # Yesterday's published Index: A=1, B=2, C=3
     now = datetime.now(timezone.utc)
@@ -155,7 +155,7 @@ def test_publish_daily_movement_uses_published_history_not_continuous(pub_db):
 
     publish_daily_index(pub_db)
     today_rows = {r.film_id: r for r in pub_db.query(DailyIndexSnapshot).filter(
-        DailyIndexSnapshot.snapshot_date == date.today()).all()}
+        DailyIndexSnapshot.snapshot_date == datetime.now(timezone.utc).date()).all()}
 
     # C: was 3, now 1 → rank_delta +2; A: was 1, now 2 → -1; B: was 2, now 3 → -1
     assert today_rows[films[2].id].previous_rank == 3
@@ -193,7 +193,7 @@ def test_validate_rejects_out_of_range_score(pub_db):
 def test_publish_weekly_aggregates_window_not_daily_copy(pub_db):
     """Weekly score must come from week-window aggregates, not Sunday's chart."""
     films = _add_films(pub_db, 3)
-    monday, sunday = week_bounds(date.today())
+    monday, sunday = week_bounds(datetime.now(timezone.utc).date())
     src = Source(key="reddit", name="Reddit", weight=1.0)
     pub_db.add(src)
     pub_db.commit()
@@ -204,7 +204,7 @@ def test_publish_weekly_aggregates_window_not_daily_copy(pub_db):
     # makes the seeding deterministic. Seeding relative to 'now' instead is
     # date-dependent (on a Monday, 'N hours ago' falls into the previous ISO
     # week and silently shrinks the window).
-    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    last_monday = week_bounds(datetime.now(timezone.utc).date())[0] - timedelta(days=7)
     for d in range(6):  # six distinct days, one mention each
         pub_db.add(Mention(
             film_id=films[0].id, source_id=src.id, external_id=f"a-{d}",
@@ -253,7 +253,7 @@ def test_publish_weekly_movement_vs_previous_week(pub_db):
     pub_db.add(src)
     pub_db.commit()
     now = datetime.now(timezone.utc)
-    last_week_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    last_week_monday = week_bounds(datetime.now(timezone.utc).date())[0] - timedelta(days=7)
 
     # Previous week published: A=1, B=2
     for rank, film in enumerate(films, start=1):
@@ -269,7 +269,7 @@ def test_publish_weekly_movement_vs_previous_week(pub_db):
     pub_db.commit()
 
     publish_weekly_index(pub_db)
-    this_monday = week_bounds(date.today())[0]
+    this_monday = week_bounds(datetime.now(timezone.utc).date())[0]
     rows = {r.film_id: r for r in pub_db.query(WeeklyIndexSnapshot).filter(
         WeeklyIndexSnapshot.week_start == this_monday,
         WeeklyIndexSnapshot.chart_type == "MOVIE_100").all()}
@@ -281,7 +281,7 @@ def test_publish_weekly_movement_vs_previous_week(pub_db):
 
 def test_biggest_movers_rank_based(pub_db):
     films = _add_films(pub_db, 4)
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
     now = datetime.now(timezone.utc)
 
     # Yesterday: A=1, B=2, C=3, D=4
@@ -295,7 +295,7 @@ def test_biggest_movers_rank_based(pub_db):
                    (films[3], 3, 93.0), (films[1], 4, 92.0)]
     for film, rank, score in today_order:
         pub_db.add(DailyIndexSnapshot(
-            snapshot_date=date.today(), film_id=film.id, rank=rank,
+            snapshot_date=datetime.now(timezone.utc).date(), film_id=film.id, rank=rank,
             score=score, published_at=datetime.now(timezone.utc),
         ))
     pub_db.commit()
@@ -314,17 +314,17 @@ def test_biggest_movers_exclude_debuts(pub_db):
     """A film with no prior published rank is a New Entry, not a mover."""
     films = _add_films(pub_db, 2)
     now = datetime.now(timezone.utc)
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
     pub_db.add(DailyIndexSnapshot(
         snapshot_date=yesterday, film_id=films[0].id, rank=1, score=95.0,
         published_at=now,
     ))
     pub_db.add(DailyIndexSnapshot(
-        snapshot_date=date.today(), film_id=films[0].id, rank=2, score=94.0,
+        snapshot_date=datetime.now(timezone.utc).date(), film_id=films[0].id, rank=2, score=94.0,
         published_at=datetime.now(timezone.utc),
     ))
     pub_db.add(DailyIndexSnapshot(
-        snapshot_date=date.today(), film_id=films[1].id, rank=1, score=96.0,
+        snapshot_date=datetime.now(timezone.utc).date(), film_id=films[1].id, rank=1, score=96.0,
         published_at=datetime.now(timezone.utc),
     ))
     pub_db.commit()
@@ -341,35 +341,35 @@ def test_new_entries_never_repeat(pub_db):
 
     # Day 1: A debuts. Day 2: A still on chart, B debuts.
     pub_db.add(DailyIndexSnapshot(
-        snapshot_date=date.today() - timedelta(days=1), film_id=films[0].id,
+        snapshot_date=datetime.now(timezone.utc).date() - timedelta(days=1), film_id=films[0].id,
         rank=5, score=80.0, published_at=now,
     ))
     pub_db.add(DailyIndexSnapshot(
-        snapshot_date=date.today(), film_id=films[0].id,
+        snapshot_date=datetime.now(timezone.utc).date(), film_id=films[0].id,
         rank=4, score=82.0, published_at=datetime.now(timezone.utc),
     ))
     pub_db.add(DailyIndexSnapshot(
-        snapshot_date=date.today(), film_id=films[1].id,
+        snapshot_date=datetime.now(timezone.utc).date(), film_id=films[1].id,
         rank=10, score=60.0, published_at=datetime.now(timezone.utc),
     ))
     publish_daily_index.__wrapped__ if False else None  # no-op guard
 
     # Simulate the debut recording that publication does:
     from app.services.index_publication import _record_debuts
-    _record_debuts(pub_db, date.today() - timedelta(days=1),
+    _record_debuts(pub_db, datetime.now(timezone.utc).date() - timedelta(days=1),
                    pub_db.query(Film, Ranking).join(Ranking, Ranking.film_id == Film.id).all()[:0])
     # Record via the real path: publish on day 1 (films[0] ranked in continuous too)
     pub_db.add(Ranking(snapshot_at=now, film_id=films[0].id, rank=5, score=80.0,
                        movement=0, sample_size=30, confidence="low"))
     pub_db.commit()
-    assert publish_daily_index(pub_db, publish_date=date.today() - timedelta(days=2)) is None or True
+    assert publish_daily_index(pub_db, publish_date=datetime.now(timezone.utc).date() - timedelta(days=2)) is None or True
 
     # Directly assert the invariant: unique constraint on film_id
-    pub_db.add(IndexDebut(film_id=films[0].id, debut_date=date.today() - timedelta(days=1),
+    pub_db.add(IndexDebut(film_id=films[0].id, debut_date=datetime.now(timezone.utc).date() - timedelta(days=1),
                           debut_rank=5, debut_score=80.0, recorded_at=now))
     pub_db.commit()
     with pytest.raises(Exception):
-        pub_db.add(IndexDebut(film_id=films[0].id, debut_date=date.today(),
+        pub_db.add(IndexDebut(film_id=films[0].id, debut_date=datetime.now(timezone.utc).date(),
                               debut_rank=4, debut_score=82.0, recorded_at=now))
         pub_db.commit()
     pub_db.rollback()
@@ -397,24 +397,24 @@ def test_api_daily_index(pub_db):
         assert body["entries"][0]["confidence"] == "moderate"
 
         # Historical date query
-        resp2 = client.get(f"/api/v1/index?date={date.today().isoformat()}")
+        resp2 = client.get(f"/api/v1/index?date={datetime.now(timezone.utc).date().isoformat()}")
         assert resp2.status_code == 200
-        assert resp2.json()["meta"]["snapshot_date"] == date.today().isoformat()
+        assert resp2.json()["meta"]["snapshot_date"] == datetime.now(timezone.utc).date().isoformat()
     finally:
         app.dependency_overrides.clear()
 
 
 def test_api_movers_and_new_entries(pub_db):
     films = _add_films(pub_db, 3)
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
     now = datetime.now(timezone.utc)
     pub_db.add(DailyIndexSnapshot(snapshot_date=yesterday, film_id=films[0].id,
                                   rank=1, score=95.0, published_at=now))
-    pub_db.add(DailyIndexSnapshot(snapshot_date=date.today(), film_id=films[0].id,
+    pub_db.add(DailyIndexSnapshot(snapshot_date=datetime.now(timezone.utc).date(), film_id=films[0].id,
                                   rank=3, score=93.0, published_at=datetime.now(timezone.utc)))
-    pub_db.add(DailyIndexSnapshot(snapshot_date=date.today(), film_id=films[1].id,
+    pub_db.add(DailyIndexSnapshot(snapshot_date=datetime.now(timezone.utc).date(), film_id=films[1].id,
                                   rank=1, score=96.0, published_at=datetime.now(timezone.utc)))
-    pub_db.add(IndexDebut(film_id=films[1].id, debut_date=date.today(),
+    pub_db.add(IndexDebut(film_id=films[1].id, debut_date=datetime.now(timezone.utc).date(),
                           debut_rank=1, debut_score=96.0, recorded_at=now))
     pub_db.commit()
 
@@ -474,7 +474,7 @@ def test_weekly_100_combines_movies_and_tv(pub_db):
     pub_db.add(src)
     pub_db.commit()
 
-    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    last_monday = week_bounds(datetime.now(timezone.utc).date())[0] - timedelta(days=7)
     for fid, n in ((films[0].id, 10), (films[1].id, 4), (shows[0].id, 8), (shows[1].id, 2)):
         for j in range(n):
             pub_db.add(Mention(
@@ -523,7 +523,7 @@ def test_weekly_100_sustained_beats_spike(pub_db):
     pub_db.add(src)
     pub_db.commit()
 
-    monday = week_bounds(date.today())[0]
+    monday = week_bounds(datetime.now(timezone.utc).date())[0]
     now = datetime.now(timezone.utc)
     # Steady: ranked #4 every day of the week (published dailies).
     for d in range(7):
@@ -557,7 +557,7 @@ def test_weekly_100_completed_week_is_immutable_archive(pub_db):
     pub_db.add(src)
     pub_db.commit()
 
-    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    last_monday = week_bounds(datetime.now(timezone.utc).date())[0] - timedelta(days=7)
     for j in range(5):
         pub_db.add(Mention(
             film_id=films[0].id, source_id=src.id, external_id=f"arc-{j}",
@@ -590,7 +590,7 @@ def test_weekly_100_completed_week_is_immutable_archive(pub_db):
 
 def test_weekly_api_serves_combined_chart(client):
     """GET /api/v1/index/weekly?chart=WEEKLY_100 returns the combined chart."""
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     monday = today - timedelta(days=today.weekday())
     resp = client.get("/api/v1/index/weekly", params={"chart": "weekly"})
     assert resp.status_code == 200
@@ -615,7 +615,7 @@ def _seed_movies_and_shows_with_mentions(db):
     src = Source(key="reddit", name="Reddit", weight=1.0)
     db.add(src)
     db.commit()
-    last_monday = week_bounds(date.today())[0] - timedelta(days=7)
+    last_monday = week_bounds(datetime.now(timezone.utc).date())[0] - timedelta(days=7)
     for fid, n in ((films[0].id, 10), (films[1].id, 4), (shows[0].id, 8), (shows[1].id, 2)):
         for j in range(n):
             db.add(Mention(

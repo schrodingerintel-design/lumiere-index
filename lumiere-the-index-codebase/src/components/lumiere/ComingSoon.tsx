@@ -228,8 +228,7 @@ export function ComingSoon() {
     () =>
       (nowPlaying ?? [])
         .filter((m) => m.release_date)
-        .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
-        .slice(0, 12),
+        .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0)),
     [nowPlaying],
   );
 
@@ -237,8 +236,7 @@ export function ComingSoon() {
     () =>
       (tracked ?? [])
         .filter((f) => f.release_date && f.release_date >= todayKey)
-        .sort((a, b) => (a.release_date ?? "").localeCompare(b.release_date ?? ""))
-        .slice(0, 12),
+        .sort((a, b) => (a.release_date ?? "").localeCompare(b.release_date ?? "")),
     [tracked, todayKey],
   );
 

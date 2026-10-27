@@ -1,16 +1,11 @@
+import { CatalogPager } from "@/components/lumiere/CatalogPager";
+import { catalogWindow } from "@/lib/catalog";
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/lumiere/Layout";
-import {
-  getTmdbUpcoming,
-  getTmdbNowPlaying,
-  getNewEntries,
-  tmdbPosterUrl,
-  type TmdbMovie,
-} from "@/lib/apiClient";
-import { slugify } from "@/lib/utils";
+import { getTmdbUpcoming, getTmdbNowPlaying, getNewEntries, tmdbPosterUrl } from "@/lib/apiClient";
 import { localDate } from "@/lib/filmUtils";
 import { RouteError } from "@/lib/route-error";
 import { Calendar as CalendarIcon, Filter, Sparkles } from "lucide-react";
@@ -33,8 +28,6 @@ export const Route = createFileRoute("/calendar")({
   errorComponent: RouteError,
 });
 
-const UPCOMING_PAGES = 5;
-const NOW_PLAYING_PAGES = 5;
 /** "Now in theaters" only counts films released within this window — old re-releases never qualify. */
 const THEATER_WINDOW_DAYS = 180;
 
@@ -56,36 +49,25 @@ function getDaysUntil(dateStr: string): { text: string; isPast: boolean } {
   return { text: `In ~${months} ${months === 1 ? "month" : "months"}`, isPast: false };
 }
 
-/** Fetch several TMDB pages and merge them into one deduped list. */
-async function fetchPages<T>(
-  fetchPage: (page: number) => Promise<{ results?: T[] }>,
-  pages: number,
-): Promise<T[]> {
-  // Each page is fetched independently — a slow/failed page never empties the grid.
-  const results = await Promise.all(
-    Array.from({ length: pages }, (_, i) =>
-      fetchPage(i + 1)
-        .then((p) => p.results ?? [])
-        .catch(() => [] as T[]),
-    ),
-  );
-  return results.flat();
-}
-
 function CalendarPage() {
   const [filter, setFilter] = useState<"all" | "upcoming" | "theaters">("upcoming");
 
-  const { data: upcoming, isLoading: upcomingLoading } = useQuery({
-    queryKey: ["tmdb", "calendar", "upcoming", UPCOMING_PAGES],
-    queryFn: () => fetchPages<TmdbMovie>((p) => getTmdbUpcoming(p), UPCOMING_PAGES),
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(100);
+  const { data: upcomingPage, isLoading: upcomingLoading } = useQuery({
+    queryKey: ["tmdb", "calendar", "upcoming", page, size],
+    queryFn: () => catalogWindow(getTmdbUpcoming, page, size),
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data: nowPlaying, isLoading: playingLoading } = useQuery({
-    queryKey: ["tmdb", "calendar", "now_playing", NOW_PLAYING_PAGES],
-    queryFn: () => fetchPages<TmdbMovie>((p) => getTmdbNowPlaying(p), NOW_PLAYING_PAGES),
+  const { data: nowPlayingPage, isLoading: playingLoading } = useQuery({
+    queryKey: ["tmdb", "calendar", "now_playing", page, size],
+    queryFn: () => catalogWindow(getTmdbNowPlaying, page, size),
     staleTime: 60 * 60 * 1000,
   });
+
+  const upcoming = upcomingPage?.results;
+  const nowPlaying = nowPlayingPage?.results;
 
   // Films the Index is tracking with a future release date (they link to real film pages).
   const { data: indexFilms } = useQuery({
@@ -137,12 +119,33 @@ function CalendarPage() {
         </div>
         <h1 className="mt-2 font-serif text-5xl lg:text-6xl">Now &amp; Next</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Movies in theaters and coming soon: films tracked on the Index, plus the full TMDB
-          release calendar.
+          Movies in theaters and coming soon: films tracked on the Index, plus the full TMDB release
+          calendar.
         </p>
 
+        <CatalogPager
+          page={page}
+          pages={
+            filter === "upcoming"
+              ? upcomingPage?.total_pages || 1
+              : filter === "theaters"
+                ? nowPlayingPage?.total_pages || 1
+                : Math.max(upcomingPage?.total_pages || 1, nowPlayingPage?.total_pages || 1)
+          }
+          size={size}
+          busy={upcomingLoading || playingLoading}
+          onPage={setPage}
+          onSize={(value) => {
+            setSize(value);
+            setPage(1);
+          }}
+        />
         {/* Filter Pills */}
-        <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-foreground/10 pb-4" role="group" aria-label="Release filter">
+        <div
+          className="mt-6 flex flex-wrap items-center gap-2 border-b border-foreground/10 pb-4"
+          role="group"
+          aria-label="Release filter"
+        >
           <Filter className="h-4 w-4 text-muted-foreground mr-1" aria-hidden />
           {[
             { id: "upcoming", label: "Upcoming Releases" },
@@ -151,7 +154,10 @@ function CalendarPage() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setFilter(tab.id as "all" | "upcoming" | "theaters")}
+              onClick={() => {
+                setFilter(tab.id as "all" | "upcoming" | "theaters");
+                setPage(1);
+              }}
               aria-pressed={filter === tab.id}
               className={`rounded-full px-4 py-1.5 min-h-[44px] font-mono text-xs font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 filter === tab.id
@@ -232,7 +238,10 @@ function CalendarPage() {
                       >
                         {countdown.text}
                       </span>
-                      <div className="mt-2 truncate font-serif text-lg font-medium leading-tight transition group-hover:text-primary" title={f.title}>
+                      <div
+                        className="mt-2 truncate font-serif text-lg font-medium leading-tight transition group-hover:text-primary"
+                        title={f.title}
+                      >
                         {f.title}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
@@ -285,8 +294,8 @@ function CalendarPage() {
                   className="flex gap-4 border border-foreground/10 p-4 transition hover:border-foreground/25"
                 >
                   <Link
-                    to="/films/$slug"
-                    params={{ slug: slugify(m.title) }}
+                    to="/screen/$type/$id"
+                    params={{ type: "movie", id: String(m.id) }}
                     aria-label={`${m.title}, view insights`}
                     className="relative aspect-[2/3] w-24 shrink-0 overflow-hidden rounded-xl bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
@@ -321,8 +330,8 @@ function CalendarPage() {
                       </div>
 
                       <Link
-                        to="/films/$slug"
-                        params={{ slug: slugify(m.title) }}
+                        to="/screen/$type/$id"
+                        params={{ type: "movie", id: String(m.id) }}
                         title={m.title}
                         className="mt-2 block font-serif text-lg font-medium leading-tight hover:text-primary transition truncate focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
@@ -351,8 +360,8 @@ function CalendarPage() {
                         )}
                       </span>
                       <Link
-                        to="/films/$slug"
-                        params={{ slug: slugify(m.title) }}
+                        to="/screen/$type/$id"
+                        params={{ type: "movie", id: String(m.id) }}
                         className="font-mono text-primary hover:underline"
                       >
                         View Insights →

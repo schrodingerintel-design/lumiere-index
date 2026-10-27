@@ -15,8 +15,8 @@ export const Route = createFileRoute("/trending")({
   }),
   loader: async ({ context }) => {
     await context.queryClient.prefetchQuery({
-      queryKey: ["trending", "home", 12],
-      queryFn: () => getTrendingFilms(12),
+      queryKey: ["trending", "films", 200],
+      queryFn: () => getTrendingFilms(200),
     });
   },
   component: () => (

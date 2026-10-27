@@ -297,15 +297,15 @@ def test_db():
 
 def test_ranking_scoring_graceful_degradation_without_youtube(test_db):
     """Ensure ranking recomputation finishes cleanly without YouTube signals."""
-    f1 = Film(id=1, slug="film-1", title="Film One", release_date=date.today())
-    f2 = Film(id=2, slug="film-2", title="Film Two", release_date=date.today() - timedelta(days=5))
+    f1 = Film(id=1, slug="film-1", title="Film One", release_date=datetime.now(timezone.utc).date())
+    f2 = Film(id=2, slug="film-2", title="Film Two", release_date=datetime.now(timezone.utc).date() - timedelta(days=5))
     test_db.add_all([f1, f2])
     test_db.commit()
 
     # Add daily scores (observations_sum tracks mentions_count for per-item
     # sources; NULL would also be valid legacy input)
-    d1 = DailyScore(film_id=1, day=date.today(), mentions_count=10, observations_sum=10, sentiment_avg=0.5)
-    d2 = DailyScore(film_id=2, day=date.today(), mentions_count=8, observations_sum=8, sentiment_avg=0.4)
+    d1 = DailyScore(film_id=1, day=datetime.now(timezone.utc).date(), mentions_count=10, observations_sum=10, sentiment_avg=0.5)
+    d2 = DailyScore(film_id=2, day=datetime.now(timezone.utc).date(), mentions_count=8, observations_sum=8, sentiment_avg=0.4)
     test_db.add_all([d1, d2])
     test_db.commit()
 
@@ -324,14 +324,14 @@ def test_ranking_scoring_graceful_degradation_without_youtube(test_db):
 
 def test_ranking_scoring_incorporates_youtube_signals(test_db):
     """Verify that YouTube signals blend smoothly and boost film attention."""
-    f1 = Film(id=10, slug="film-a", title="Film A", release_date=date.today())
-    f2 = Film(id=11, slug="film-b", title="Film B", release_date=date.today())
+    f1 = Film(id=10, slug="film-a", title="Film A", release_date=datetime.now(timezone.utc).date())
+    f2 = Film(id=11, slug="film-b", title="Film B", release_date=datetime.now(timezone.utc).date())
     test_db.add_all([f1, f2])
     test_db.commit()
 
     test_db.add_all([
-        DailyScore(film_id=10, day=date.today(), mentions_count=10, sentiment_avg=0.5),
-        DailyScore(film_id=11, day=date.today(), mentions_count=10, sentiment_avg=0.5),
+        DailyScore(film_id=10, day=datetime.now(timezone.utc).date(), mentions_count=10, sentiment_avg=0.5),
+        DailyScore(film_id=11, day=datetime.now(timezone.utc).date(), mentions_count=10, sentiment_avg=0.5),
     ])
     test_db.commit()
 

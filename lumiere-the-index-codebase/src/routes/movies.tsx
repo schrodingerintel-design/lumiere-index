@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ScreenBrowse } from "@/components/lumiere/ScreenBrowse";
-import { getCatalog } from "@/lib/catalog";
+import { getCatalogWindow } from "@/lib/catalog";
 import { canonicalLink } from "@/lib/site";
 export const Route = createFileRoute("/movies")({
   head: () => ({
@@ -16,8 +16,8 @@ export const Route = createFileRoute("/movies")({
   }),
   loader: ({ context }) =>
     context.queryClient.prefetchQuery({
-      queryKey: ["catalog", "movie", "trending", 1],
-      queryFn: () => getCatalog("movie"),
+      queryKey: ["catalog", "movie", "trending", 1, 60],
+      queryFn: () => getCatalogWindow("movie", "trending", 1, 60),
     }),
   component: () => <ScreenBrowse type="movie" />,
 });

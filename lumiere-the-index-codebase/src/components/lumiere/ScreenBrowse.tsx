@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "./Layout";
 import { ScreenCard, CatalogStatus, ProviderCredit } from "./Catalog";
-import { CultureNav } from "./CultureNav";
-import { getCatalog, type ScreenType } from "@/lib/catalog";
+import { CatalogPager } from "./CatalogPager";
+import { getCatalogWindow, type ScreenType } from "@/lib/catalog";
 
 export function ScreenBrowse({ type }: { type: ScreenType }) {
   const [collection, setCollection] = useState("trending");
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState(60);
   const query = useQuery({
-    queryKey: ["catalog", type, collection, page],
-    queryFn: () => getCatalog(type, collection, page),
+    queryKey: ["catalog", type, collection, page, size],
+    queryFn: () => getCatalogWindow(type, collection, page, size),
     staleTime: 1800000,
   });
   const films = (query.data?.results || []).filter((film) => !film.adult);
@@ -32,6 +33,15 @@ export function ScreenBrowse({ type }: { type: ScreenType }) {
               { id: "trending", label: "Trending this week" },
               { id: "popular", label: "Popular on TMDB" },
               { id: "top_rated", label: "Top rated on TMDB" },
+              ...(type === "movie"
+                ? [
+                    { id: "now_playing", label: "In theaters" },
+                    { id: "upcoming", label: "Upcoming" },
+                  ]
+                : [
+                    { id: "airing_today", label: "Airing today" },
+                    { id: "on_the_air", label: "On the air" },
+                  ]),
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -47,6 +57,17 @@ export function ScreenBrowse({ type }: { type: ScreenType }) {
           </div>
           <span className="catalog-source">Source: TMDB</span>
         </div>
+        <CatalogPager
+          page={page}
+          pages={query.data?.total_pages || 1}
+          size={size}
+          busy={query.isFetching}
+          onPage={setPage}
+          onSize={(value) => {
+            setSize(value);
+            setPage(1);
+          }}
+        />
         <CatalogStatus
           loading={query.isLoading}
           error={query.isError}
@@ -58,28 +79,17 @@ export function ScreenBrowse({ type }: { type: ScreenType }) {
             <ScreenCard key={film.id} film={film} type={type} />
           ))}
         </div>
-        <div className="catalog-pagination">
-          <button
-            className="soft-button"
-            disabled={page === 1 || query.isFetching}
-            onClick={() => setPage((n) => n - 1)}
-          >
-            Previous
-          </button>
-          <span>
-            Page {page}
-            {query.data?.total_pages ? ` of ${Math.min(100, query.data.total_pages)}` : ""}
-          </span>
-          <button
-            className="soft-button"
-            disabled={
-              query.isFetching || !query.data || page >= Math.min(100, query.data.total_pages)
-            }
-            onClick={() => setPage((n) => n + 1)}
-          >
-            Next page
-          </button>
-        </div>
+        <CatalogPager
+          page={page}
+          pages={query.data?.total_pages || 1}
+          size={size}
+          busy={query.isFetching}
+          onPage={setPage}
+          onSize={(value) => {
+            setSize(value);
+            setPage(1);
+          }}
+        />
         <ProviderCredit />
       </div>
     </Layout>

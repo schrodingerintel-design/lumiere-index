@@ -34,7 +34,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Sequence
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func, desc, or_, and_
 from sqlalchemy.orm import Session
 
@@ -525,7 +525,7 @@ def _build_results(db: Session, rows) -> list[TrendingFilmOut]:
 
 
 @router.get("/trending/films", response_model=list[TrendingFilmOut])
-def trending_films(limit: int = 20, db: Session = Depends(get_db)):
+def trending_films(limit: int = Query(20, ge=1, le=200), db: Session = Depends(get_db)):
     """Return films with evidence-gated editorial briefs derived from real signals.
 
     Titles with ``confidence == "insufficient"`` (raw sample below the absolute
