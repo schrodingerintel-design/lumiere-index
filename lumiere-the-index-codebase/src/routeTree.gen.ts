@@ -34,7 +34,7 @@ import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as Weekly100RouteImport } from './routes/weekly-100'
 import { Route as CultureSlugRouteImport } from './routes/culture.$slug'
 import { Route as FilmsSlugRouteImport } from './routes/films.$slug'
-import { Route as PeopleIdRouteImport } from './routes/people.$id'
+import { Route as PeopleIdRouteImport } from './routes/people_.$id'
 import { Route as ScreenTypeIdRouteImport } from './routes/screen.$type.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -163,9 +163,9 @@ const FilmsSlugRoute = FilmsSlugRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const PeopleIdRoute = PeopleIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => PeopleRoute,
+  id: '/people_/$id',
+  path: '/people/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ScreenTypeIdRoute = ScreenTypeIdRouteImport.update({
   id: '/screen/$type/$id',
@@ -187,7 +187,7 @@ export interface FileRoutesByFullPath {
   '/movies': typeof MoviesRoute
   '/music': typeof MusicRoute
   '/new-entries': typeof NewEntriesRoute
-  '/people': typeof PeopleRouteWithChildren
+  '/people': typeof PeopleRoute
   '/privacy': typeof PrivacyRoute
   '/rising': typeof RisingRoute
   '/series': typeof SeriesRoute
@@ -216,7 +216,7 @@ export interface FileRoutesByTo {
   '/movies': typeof MoviesRoute
   '/music': typeof MusicRoute
   '/new-entries': typeof NewEntriesRoute
-  '/people': typeof PeopleRouteWithChildren
+  '/people': typeof PeopleRoute
   '/privacy': typeof PrivacyRoute
   '/rising': typeof RisingRoute
   '/series': typeof SeriesRoute
@@ -246,7 +246,7 @@ export interface FileRoutesById {
   '/movies': typeof MoviesRoute
   '/music': typeof MusicRoute
   '/new-entries': typeof NewEntriesRoute
-  '/people': typeof PeopleRouteWithChildren
+  '/people': typeof PeopleRoute
   '/privacy': typeof PrivacyRoute
   '/rising': typeof RisingRoute
   '/series': typeof SeriesRoute
@@ -258,7 +258,7 @@ export interface FileRoutesById {
   '/weekly-100': typeof Weekly100Route
   '/culture/$slug': typeof CultureSlugRoute
   '/films/$slug': typeof FilmsSlugRoute
-  '/people/$id': typeof PeopleIdRoute
+  '/people_/$id': typeof PeopleIdRoute
   '/screen/$type/$id': typeof ScreenTypeIdRoute
 }
 export interface FileRouteTypes {
@@ -347,7 +347,7 @@ export interface FileRouteTypes {
     | '/weekly-100'
     | '/culture/$slug'
     | '/films/$slug'
-    | '/people/$id'
+    | '/people_/$id'
     | '/screen/$type/$id'
   fileRoutesById: FileRoutesById
 }
@@ -365,7 +365,7 @@ export interface RootRouteChildren {
   MoviesRoute: typeof MoviesRoute
   MusicRoute: typeof MusicRoute
   NewEntriesRoute: typeof NewEntriesRoute
-  PeopleRoute: typeof PeopleRouteWithChildren
+  PeopleRoute: typeof PeopleRoute
   PrivacyRoute: typeof PrivacyRoute
   RisingRoute: typeof RisingRoute
   SeriesRoute: typeof SeriesRoute
@@ -377,6 +377,7 @@ export interface RootRouteChildren {
   Weekly100Route: typeof Weekly100Route
   CultureSlugRoute: typeof CultureSlugRoute
   FilmsSlugRoute: typeof FilmsSlugRoute
+  PeopleIdRoute: typeof PeopleIdRoute
   ScreenTypeIdRoute: typeof ScreenTypeIdRoute
 }
 
@@ -557,12 +558,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FilmsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/people/$id': {
-      id: '/people/$id'
-      path: '/$id'
+    '/people_/$id': {
+      id: '/people_/$id'
+      path: '/people/$id'
       fullPath: '/people/$id'
       preLoaderRoute: typeof PeopleIdRouteImport
-      parentRoute: typeof PeopleRoute
+      parentRoute: typeof rootRouteImport
     }
     '/screen/$type/$id': {
       id: '/screen/$type/$id'
@@ -573,17 +574,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface PeopleRouteChildren {
-  PeopleIdRoute: typeof PeopleIdRoute
-}
-
-const PeopleRouteChildren: PeopleRouteChildren = {
-  PeopleIdRoute: PeopleIdRoute,
-}
-
-const PeopleRouteWithChildren =
-  PeopleRoute._addFileChildren(PeopleRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -599,7 +589,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoviesRoute: MoviesRoute,
   MusicRoute: MusicRoute,
   NewEntriesRoute: NewEntriesRoute,
-  PeopleRoute: PeopleRouteWithChildren,
+  PeopleRoute: PeopleRoute,
   PrivacyRoute: PrivacyRoute,
   RisingRoute: RisingRoute,
   SeriesRoute: SeriesRoute,
@@ -611,6 +601,7 @@ const rootRouteChildren: RootRouteChildren = {
   Weekly100Route: Weekly100Route,
   CultureSlugRoute: CultureSlugRoute,
   FilmsSlugRoute: FilmsSlugRoute,
+  PeopleIdRoute: PeopleIdRoute,
   ScreenTypeIdRoute: ScreenTypeIdRoute,
 }
 export const routeTree = rootRouteImport

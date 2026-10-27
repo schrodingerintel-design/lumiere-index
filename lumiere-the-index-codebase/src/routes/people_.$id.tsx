@@ -6,7 +6,7 @@ import { getPerson, imageOf, safeExternal } from "@/lib/catalog";
 import { canonicalLink } from "@/lib/site";
 import { RouteError } from "@/lib/route-error";
 
-export const Route = createFileRoute("/people/$id")({
+export const Route = createFileRoute("/people_/$id")({
   loader: ({ context, params }) => {
     if (!/^\d+$/.test(params.id)) throw new Error("Person not found");
     return context.queryClient.ensureQueryData({
@@ -34,7 +34,8 @@ export const Route = createFileRoute("/people/$id")({
 function PersonDetail() {
   const person = Route.useLoaderData();
   const [filter, setFilter] = useState("All credits");
-  const [sort, setSort] = useState("Newest");
+  const [sort, setSort] = useState("Most rated");
+  const [visible, setVisible] = useState(36);
   const credits = [
     ...(person.combined_credits?.cast || []),
     ...(person.combined_credits?.crew || []),
@@ -149,7 +150,7 @@ function PersonDetail() {
             ))}
           </div>
           <div className="screen-grid">
-            {filtered.map((film) => (
+            {filtered.slice(0, visible).map((film) => (
               <ScreenCard
                 key={`${film.media_type}:${film.id}`}
                 film={film}
@@ -157,6 +158,16 @@ function PersonDetail() {
               />
             ))}
           </div>
+          {filtered.length > visible && (
+            <div className="catalog-pagination">
+              <button className="soft-button" onClick={() => setVisible((count) => count + 36)}>
+                Show more credits
+              </button>
+              <span>
+                {visible} of {filtered.length}
+              </span>
+            </div>
+          )}
           {!filtered.length && (
             <p className="catalog-empty">No credits available for this selection.</p>
           )}
