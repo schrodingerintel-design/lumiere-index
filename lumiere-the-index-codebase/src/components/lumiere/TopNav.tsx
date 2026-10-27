@@ -1,3 +1,4 @@
+import { BetaBadge } from "./BetaBadge";
 import { useLibrary } from "@/lib/library";
 import { Link } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -7,6 +8,7 @@ import { useWatchlist } from "@/lib/watchlist";
 
 const PRIMARY_LINKS = [
   { to: "/", label: "Discover", exact: true },
+  { to: "/trending", label: "Buzz", exact: false },
   { to: "/movies", label: "Films", exact: false },
   { to: "/series", label: "TV", exact: false },
   { to: "/people", label: "People", exact: false },
@@ -17,7 +19,7 @@ const CHART_LINKS = [
   { to: "/creators", label: "Creators" },
   { to: "/music", label: "Music" },
   { to: "/genres", label: "Film genres" },
-  { to: "/trending", label: "Index trends" },
+  { to: "/trending", label: "Lumière Buzz" },
   { to: "/top-100", label: "Movie 100" },
   { to: "/tv-100", label: "TV 100" },
   { to: "/rising", label: "Biggest movers" },
@@ -35,7 +37,10 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
     <>
       <header className="social-nav">
         <div className="social-nav-inner">
-          <BrandLink />
+          <div className="flex shrink-0 items-center gap-2">
+            <BrandLink />
+            <BetaBadge />
+          </div>
           <nav className="desktop-links" aria-label="Primary">
             {PRIMARY_LINKS.map((link) => (
               <Link

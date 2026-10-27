@@ -6,15 +6,7 @@ import { useState, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { canonicalLink, titleSocialMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+
 import { Layout } from "@/components/lumiere/Layout";
 import {
   getFilmDetail,
@@ -22,10 +14,8 @@ import {
   getTopFilms,
   getTmdbMovieVideos,
   getTmdbTvVideos,
-  getFilmRankHistory,
   type RankedFilm,
   type FilmDetail,
-  type RankHistoryPoint,
 } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
 import { Skeleton } from "@/components/lumiere/Skeletons";
@@ -109,76 +99,6 @@ function paramsSlugToTitle(slug: string): string {
   return slug.replace(/-/g, " ");
 }
 
-// ── Index history chart (rank trajectory, inverted: #1 sits on top) ──────────
-function RankHistoryChart({ history }: { history: RankHistoryPoint[] }) {
-  if (history.length < 2) {
-    return (
-      <div className="flex h-48 items-center justify-center text-xs text-muted-foreground">
-        Chart history builds as the title spends more days ranked.
-      </div>
-    );
-  }
-  const maxRank = Math.max(...history.map((p) => p.rank));
-  const data = history.map((p) => ({
-    ...p,
-    dayLabel: new Date(`${p.day}T00:00:00`).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    }),
-    // Invert so rank 1 renders at the top of the chart.
-    pos: -p.rank,
-  }));
-  const weeks = Math.round(history.length / 7);
-  return (
-    <div className="h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: -18 }}>
-          <CartesianGrid stroke="rgba(244,241,234,0.07)" strokeDasharray="3 6" vertical={false} />
-          <XAxis
-            dataKey="dayLabel"
-            tick={{ fill: "rgba(244,241,234,0.45)", fontSize: 10, fontFamily: "var(--font-mono)" }}
-            axisLine={false}
-            tickLine={false}
-            minTickGap={28}
-          />
-          <YAxis
-            domain={[-maxRank, -1]}
-            ticks={[-maxRank, -Math.ceil(maxRank / 2), -1]}
-            tickFormatter={(v: number) => `#${-v}`}
-            tick={{ fill: "rgba(244,241,234,0.45)", fontSize: 10, fontFamily: "var(--font-mono)" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            cursor={{ stroke: "rgba(244,241,234,0.2)" }}
-            contentStyle={{
-              background: "#111",
-              border: "1px solid rgba(244,241,234,0.14)",
-              borderRadius: 6,
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-            }}
-            labelStyle={{ color: "rgba(244,241,234,0.6)" }}
-            formatter={(_v, _n, item) => [`#${item?.payload?.rank}`, ""]}
-          />
-          <Line
-            type="monotone"
-            dataKey="pos"
-            stroke="#E2483D"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 3, fill: "#E2483D" }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-      <div className="mt-1 flex items-center gap-2 px-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span className="h-1 w-1 rounded-full bg-live" />
-        {weeks > 1 ? `${weeks} weeks` : `${history.length} days`} of chart history · sampled daily
-      </div>
-    </div>
-  );
-}
-
 // ── Facts sidebar row ────────────────────────────────────────────────────────
 function Fact({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -257,14 +177,6 @@ function FilmDetailView() {
     queryFn: () => (tmdbId ? getScreen(isTvShow ? "tv" : "movie", String(tmdbId)) : null),
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
-  });
-
-  // Index history — the rank trajectory line on the film page.
-  const { data: rankHistory } = useQuery<RankHistoryPoint[]>({
-    queryKey: ["film", "rank-history", slug],
-    queryFn: () => getFilmRankHistory(slug, 60),
-    enabled: !!film,
-    staleTime: 5 * 60 * 1000,
   });
 
   // More Like This — the film's genre shelf (the backend catalog's genre_tag is
@@ -637,23 +549,6 @@ function FilmDetailView() {
       <section className="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 pb-12 lg:grid-cols-12 lg:px-6">
         {/* Main column */}
         <div className="space-y-6 lg:col-span-8">
-          {/* Index history */}
-          <div className="border border-foreground/10 bg-surface p-5">
-            <div className="flex items-baseline justify-between">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
-                Index history
-              </div>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {isRanked
-                  ? `#${film.rank} ${chartLabel} today · peak #${peakRank}`
-                  : "Not currently ranked"}
-              </span>
-            </div>
-            <div className="mt-4">
-              <RankHistoryChart history={rankHistory ?? []} />
-            </div>
-          </div>
-
           {tmdbDetails && (
             <>
               <p className="detail-rating">
@@ -699,11 +594,8 @@ function FilmDetailView() {
                 : "These are collection totals. They do not establish what caused attention or how much each input contributed to this rank."}
             </p>
             <p>
-              {rankHistory && rankHistory.length > 1
-                ? `Published rank samples cover ${rankHistory[0].day} to ${rankHistory[rankHistory.length - 1].day}; see the history above.`
-                : "Historical comparisons are unavailable until multiple published samples exist."}{" "}
-              Missing sources are not evidence of no activity. Per-snapshot input manifests and
-              methodology versions are not exposed by this API.
+              Missing sources are not evidence of no activity. See the methodology for coverage
+              limits.
             </p>
             <Link to="/methodology">Ranking methodology & limitations</Link>
           </section>

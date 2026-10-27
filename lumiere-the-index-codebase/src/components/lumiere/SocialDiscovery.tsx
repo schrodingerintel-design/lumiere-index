@@ -1,16 +1,9 @@
+import { BuzzFeed } from "./BuzzFeed";
 import { useState, type CSSProperties } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Bookmark,
-  Flame,
-  MessageCircle,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
-import { getTopFilms, getTrendingFilms, getBiggestMovers, type RankedFilm } from "@/lib/apiClient";
+import { ArrowRight, ArrowUpRight, Bookmark, Flame, MessageCircle, TrendingUp } from "lucide-react";
+import { getTopFilms, getBiggestMovers, type RankedFilm } from "@/lib/apiClient";
 import { FilmActions } from "./FilmActions";
 import { Movement } from "./Ranking";
 import { useWatchlist } from "@/lib/watchlist";
@@ -90,11 +83,6 @@ export function SocialDiscovery() {
     queryFn: () => getTopFilms(10, 0, "TV_100"),
     staleTime: 300_000,
   });
-  const trending = useQuery({
-    queryKey: ["trending", "home", 12],
-    queryFn: () => getTrendingFilms(12),
-    staleTime: 300_000,
-  });
   const movers = useQuery({
     queryKey: ["index", "movers"],
     queryFn: () => getBiggestMovers(),
@@ -132,14 +120,16 @@ export function SocialDiscovery() {
         <div>
           <span className="eyebrow">Film, TV, games, music & people</span>
           <h1>
-            Culture is better together<span>.</span>
+            Step into the buzz<span>.</span>
           </h1>
-          <p>Discover a film. Follow a creator. Find your next obsession.</p>
+          <p>Films, people, and stories worth talking about.</p>
         </div>
         <Link to="/watchlist" className="soft-button welcome-watchlist">
           <Bookmark size={17} /> Your watchlist <ArrowUpRight size={16} />
         </Link>
       </section>
+
+      <BuzzFeed compact />
 
       <div className="discovery-opening">
         <section className="spotlight" aria-label="In the spotlight">
@@ -274,31 +264,12 @@ export function SocialDiscovery() {
         </aside>
       </div>
 
-      <section className="buzz-strip" aria-label="Trending conversations">
-        <div>
-          <MessageCircle size={18} />
-          <strong>In the conversation</strong>
-        </div>
-        <div className="buzz-topics no-scrollbar">
-          {trending.data?.slice(0, 6).map((film) => (
-            <Link key={film.film_slug} to="/films/$slug" params={{ slug: film.film_slug }}>
-              {film.title}
-            </Link>
-          ))}
-          {!trending.data?.length && (
-            <Link to="/trending">
-              Explore what's trending <ArrowRight size={14} />
-            </Link>
-          )}
-        </div>
-      </section>
-
       <div className="discovery-feed-layout">
         <section className="discovery-feed" aria-labelledby="discover-heading">
           <div className="section-intro">
             <div>
               <span className="eyebrow">Find something that stays with you</span>
-              <h2 id="discover-heading">On everyone's radar</h2>
+              <h2 id="discover-heading">Explore more titles</h2>
             </div>
             <Link to="/trending" className="text-link">
               Explore trending <ArrowUpRight size={16} />
@@ -312,7 +283,7 @@ export function SocialDiscovery() {
                 aria-pressed={filter === item}
                 onClick={() => setFilter(item)}
               >
-                {item === "All titles" && <Sparkles size={14} />}
+                {item === "All titles" && <span aria-hidden="true">●</span>}
                 {item === "Saved" && <Bookmark size={14} />}
                 {item}
               </button>
