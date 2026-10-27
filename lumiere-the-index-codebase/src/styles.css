@@ -2685,3 +2685,180 @@
   overflow-wrap: anywhere;
   line-height: 1.7;
 }
+
+/* Buzz leads discovery with cinematic stories, not a miniature chart. */
+.buzz-feed {
+  margin: 2rem 0 3.5rem;
+  min-width: 0;
+}
+.buzz-feed-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 1.3rem;
+}
+.buzz-feed-heading h2 {
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+  margin-top: 0.4rem;
+}
+.buzz-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.buzz-card {
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: linear-gradient(155deg, #302136, #1b1725);
+}
+.buzz-card-lead {
+  grid-column: span 2;
+}
+.buzz-art {
+  display: block;
+  position: relative;
+  height: 350px;
+  overflow: hidden;
+  background: linear-gradient(145deg, #75516c, #352e54);
+}
+.buzz-art img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  object-position: 50% 25%;
+  transition: transform 0.35s ease;
+}
+.buzz-art:hover img {
+  transform: scale(1.035);
+}
+.buzz-art-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #100c1940, transparent 25%, #15101cec);
+}
+.buzz-kicker {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.1rem;
+  background: #251c2dd9;
+  border: 1px solid #ffffff29;
+  border-radius: 30px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.75rem;
+}
+.buzz-art-title {
+  position: absolute;
+  bottom: 1.4rem;
+  left: 1.4rem;
+  right: 1.4rem;
+}
+.buzz-art-title h3 {
+  font-size: clamp(1.65rem, 3vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: #fff6ef;
+  text-wrap: balance;
+}
+.buzz-art-title > span {
+  display: block;
+  margin-top: 0.65rem;
+  color: #eebba6;
+  font-size: 0.8rem;
+}
+.buzz-card-body {
+  padding: 1.3rem;
+}
+.buzz-card-body > p {
+  color: #d4c6d9;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+.buzz-measurements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.buzz-measurements span {
+  font-size: 0.7rem;
+  color: #e9c3b2;
+  background: #ffffff09;
+  border-radius: 9px;
+  padding: 0.35rem 0.6rem;
+}
+.buzz-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-top: 1px solid #ffffff12;
+  padding-top: 0.9rem;
+}
+.buzz-card-actions > a {
+  font-size: 0.8rem;
+  color: #ffc1a6;
+}
+.buzz-page-intro {
+  padding: 1.5rem 0 0;
+}
+.buzz-page-intro h1 {
+  font-size: clamp(3.2rem, 7vw, 5.5rem);
+  letter-spacing: -0.07em;
+  line-height: 1;
+  margin: 0.7rem 0 1rem;
+}
+.buzz-page-intro h1 span {
+  color: var(--primary);
+}
+.buzz-page-intro p,
+.buzz-coverage-note {
+  color: var(--muted-foreground);
+}
+.buzz-coverage-note {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+}
+.buzz-loading {
+  min-height: 400px;
+  background: #ffffff08;
+  border-radius: 24px;
+}
+@media (max-width: 760px) {
+  .buzz-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .buzz-card-lead {
+    grid-column: span 2;
+  }
+  .buzz-art {
+    height: 290px;
+  }
+  .buzz-feed-heading {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 520px) {
+  .buzz-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .buzz-card-lead {
+    grid-column: auto;
+  }
+  .buzz-art {
+    height: 340px;
+  }
+  .buzz-card-actions {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buzz-art img {
+    transition: none;
+  }
+}

@@ -7,6 +7,7 @@ import { useWatchlist } from "@/lib/watchlist";
 
 const PRIMARY_LINKS = [
   { to: "/", label: "Discover", exact: true },
+  { to: "/trending", label: "Buzz", exact: false },
   { to: "/movies", label: "Films", exact: false },
   { to: "/series", label: "TV", exact: false },
   { to: "/people", label: "People", exact: false },
@@ -17,7 +18,7 @@ const CHART_LINKS = [
   { to: "/creators", label: "Creators" },
   { to: "/music", label: "Music" },
   { to: "/genres", label: "Film genres" },
-  { to: "/trending", label: "Index trends" },
+  { to: "/trending", label: "Lumière Buzz" },
   { to: "/top-100", label: "Movie 100" },
   { to: "/tv-100", label: "TV 100" },
   { to: "/rising", label: "Biggest movers" },
