@@ -93,7 +93,9 @@ export function ShareCardButton({
     const chartOpts = variant === "chart" ? (card as ChartCardOptions) : null;
     const title = filmCard ? `${filmCard.title} · The Index` : "The Index · Live Charts";
     const text = filmCard
-      ? `${filmCard.title} is #${filmCard.rank} on The Index.`
+      ? (filmCard.rank ?? 0) > 0
+        ? `${filmCard.title} is #${filmCard.rank} on The Index.`
+        : `${filmCard.title} on Lumière Index.`
       : (chartOpts?.title ?? "The Index");
     const outcome = await shareCard(result, {
       title,
@@ -159,11 +161,8 @@ export function ShareCardButton({
                 The Index
               </p>
               <h3 className="mt-1 text-lg font-semibold text-foreground">
-                Share this moment on the chart
+                {variant === "film" ? `Share ${(card as RankedFilm).title}` : "Share the chart"}
               </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Poster card rendered on your device.
-              </p>
             </div>
 
             {/* Card preview */}
