@@ -1,14 +1,10 @@
+import { TitleCredits } from "@/components/lumiere/TitleCredits";
+import { WatchAvailability } from "@/components/lumiere/WatchAvailability";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Layout } from "@/components/lumiere/Layout";
-import {
-  ScreenCard,
-  PersonCard,
-  SaveItem,
-  ShareItem,
-  ProviderCredit,
-} from "@/components/lumiere/Catalog";
+import { ScreenCard, SaveItem, ShareItem, ProviderCredit } from "@/components/lumiere/Catalog";
 import { getScreen, imageOf, titleOf, yearOf, type ScreenType } from "@/lib/catalog";
-import { canonicalLink } from "@/lib/site";
+import { canonicalLink, titleSocialMeta } from "@/lib/site";
 import { RouteError } from "@/lib/route-error";
 
 export const Route = createFileRoute("/screen/$type/$id")({
@@ -22,14 +18,12 @@ export const Route = createFileRoute("/screen/$type/$id")({
     });
   },
   head: ({ loaderData, params }) => ({
-    meta: [
-      { title: `${loaderData ? titleOf(loaderData) : "Title"} · The Index` },
-      {
-        name: "description",
-        content: loaderData?.overview?.slice(0, 155) || "Cast, crew, trailers, and related titles.",
-      },
-      ...(!loaderData ? [{ name: "robots", content: "noindex" }] : []),
-    ],
+    meta: titleSocialMeta(
+      loaderData ? titleOf(loaderData) : "Title",
+      loaderData?.overview?.slice(0, 155) || "Cast, crew, and title details on Lumière Index.",
+      `/screen/${params.type}/${params.id}`,
+      imageOf(loaderData?.poster_path, "w780"),
+    ),
     links: [canonicalLink(`/screen/${params.type}/${params.id}`)],
   }),
   component: ScreenDetail,
@@ -158,7 +152,7 @@ function ScreenDetail() {
                     <small>/10</small>
                   </strong>
                   <span>
-                    TMDB audience rating
+                    Audience rating · <a href="#data-sources">source</a>
                     <br />
                     {new Intl.NumberFormat("en").format(film.vote_count || 0)} votes
                   </span>
@@ -169,29 +163,7 @@ function ScreenDetail() {
         </div>
       </div>
       <div className="catalog-page">
-        <section className="catalog-section">
-          <div className="catalog-section-heading">
-            <h2>Cast</h2>
-            <a
-              href={`https://www.themoviedb.org/${type}/${id}/cast`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Full credits on TMDB
-            </a>
-          </div>
-          <div className="people-grid">
-            {film.credits?.cast.slice(0, 18).map((person) => (
-              <div key={person.id}>
-                <PersonCard person={person} />
-                <p className="cast-character">{person.character}</p>
-              </div>
-            ))}
-          </div>
-          {!film.credits?.cast.length && (
-            <p className="catalog-empty">Cast information is not available from the source.</p>
-          )}
-        </section>
+        <TitleCredits film={film} />
         {type === "tv" && !!film.seasons?.length && (
           <section className="catalog-section">
             <h2>Seasons</h2>
@@ -229,6 +201,12 @@ function ScreenDetail() {
                 </dd>
               </div>
             )}
+            {!!film.production_countries?.length && (
+              <div>
+                <dt>Production countries</dt>
+                <dd>{film.production_countries.map((country) => country.name).join(" · ")}</dd>
+              </div>
+            )}
             {!!film.production_companies?.length && (
               <div>
                 <dt>Production</dt>
@@ -236,24 +214,22 @@ function ScreenDetail() {
               </div>
             )}
           </dl>
-          <div className="detail-actions">
-            <a
-              className="soft-button"
-              href={`https://www.themoviedb.org/${type}/${id}/watch`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Find where to watch
-            </a>
-            <a
-              className="text-link"
-              href={`https://www.themoviedb.org/${type}/${id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View source & corrections
-            </a>
-          </div>
+        </section>
+        <WatchAvailability
+          type={type as ScreenType}
+          id={film.id}
+          upcoming={
+            (film.release_date || film.first_air_date || "") > new Date().toISOString().slice(0, 10)
+          }
+        />
+        <section className="catalog-section" id="data-sources">
+          <h2>Data sources</h2>
+          <p>
+            Audience ratings, votes, credits, and catalog information are supplied by TMDB. They are
+            separate from Lumière chart rankings. No Index ranking or measured trend evidence is
+            attached to this catalog page.
+          </p>
+          <Link to="/about">About our data & methodology</Link>
         </section>
         {recommendations.length > 0 && (
           <section className="catalog-section">

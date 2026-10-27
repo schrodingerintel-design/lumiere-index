@@ -3,7 +3,6 @@ import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { StaticPage } from "@/components/lumiere/StaticPage";
 import { BETA_RELEASES } from "@/lib/beta";
 import { RouteError } from "@/lib/route-error";
-import { Compass, Eye, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -35,121 +34,63 @@ function About() {
       }
     >
       <p className="font-serif text-xl text-foreground/90">
-        Lumière: The Index is a real-time cultural ranking platform built to track the movies and
-        series capturing global attention.
+        Lumière Index connects entertainment discovery with charts of recorded cultural attention.
       </p>
       <p>
-        Entertainment moves faster than ever. A film can become a worldwide conversation overnight
-        through theaters, streaming, social platforms, and communities. Yet understanding what is
-        truly trending has become fragmented across countless platforms. The Index brings that
-        picture together in one place.
+        Explore films, TV, people, games, creators, and music. Movie 100 and TV 100 track attention
+        in our collected sources; a chart position is not a review or a measure of artistic quality.
       </p>
-
-      <div>
-        <h2 className="font-serif text-2xl text-foreground">What is The Index?</h2>
-        <p className="mt-3">
-          The Index is a ranking system designed to measure cultural momentum. Rather than focusing
-          on a single metric, Lumière looks at the full picture surrounding movies and shows to
-          understand their impact, visibility, and relevance.
+      <section id="data-sources">
+        <a href="https://www.themoviedb.org">
+          <img src="/tmdb-logo.svg" width="110" height="40" alt="TMDB" />
+        </a>
+        <h2>Data sources & limitations</h2>
+        <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+        <p>
+          Catalog metadata, credits, artwork, and audience ratings come from TMDB. Ratings and
+          provider trending lists are distinct from Lumière rankings. Each chart title exposes the
+          available collection totals, source coverage, and published rank history. Missing
+          measurements remain unavailable.
         </p>
         <p>
-          Our goal is not to decide what people should watch. Our goal is to show what the world is
-          watching, discussing, and discovering.
-        </p>
-      </div>
-
-      <div>
-        <h2 className="font-serif text-2xl text-foreground">Explore culture</h2>
-        <p>
-          Browse films, television, actors and filmmakers, games, online creators, and music. Film
-          and television catalog pages connect titles to cast, crew, trailers, and filmographies.
-          Games, creators, and music profiles pair original Lumière guides with attributed reference
-          material.
+          Streaming availability is provided by JustWatch via TMDB. It varies by country and can
+          change between retrievals. Wikipedia reference text is attributed to its contributors
+          under CC BY-SA 4.0; images retain their individual credits and licenses.
         </p>
         <p>
-          The Movie 100 and TV 100 measure attention collected by Lumière. TMDB trending lists
-          describe activity on TMDB, not a global popularity poll. Editorial selections are not
-          rankings.
+          Lumière applies its own deterministic ranking rules to collected inputs. Coverage is
+          incomplete and a high rank does not establish broad audience consensus. Source totals
+          describe collection records, not unique viewers. Per-snapshot reproduction manifests are
+          not currently available in the public API.
+        </p>
+        <Link to="/methodology">Read the ranking methodology</Link>
+      </section>
+      <section>
+        <h2>What the charts measure</h2>
+        <p>
+          Rank is a title’s position in its published chart. Movement compares published positions;
+          Momentum describes recent attention. Audience ratings are a separate assessment from TMDB
+          voters. Missing history does not establish movement.
         </p>
         <p>
-          Catalog data and film/TV imagery come from{" "}
-          <a
-            href="https://www.themoviedb.org"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline"
-          >
-            TMDB
-          </a>
-          . This product uses the TMDB API but is not endorsed or certified by TMDB. Reference
-          excerpts from Wikipedia are attributed to their contributors under CC BY-SA 4.0; image
-          credits and licenses are shown alongside the images. Send corrections or rights inquiries
-          to{" "}
-          <a href="mailto:privacy@lumiereindex.com" className="text-primary underline">
-            privacy@lumiereindex.com
-          </a>
-          .
+          The Index combines supported search, social, community, video, and news inputs using its
+          published methodology. A source’s availability varies by title and collection period. The
+          evidence section on each chart title shows which records are actually available.
         </p>
-      </div>
-
-      <div>
-        <h2 className="font-serif text-2xl text-foreground">Why The Index?</h2>
-        <p className="mt-3">Traditional entertainment rankings often focus on one area:</p>
-        <ul className="mt-2 list-inside list-disc space-y-1 font-mono text-sm">
-          <li>Box office performance.</li>
-          <li>Reviews.</li>
-          <li>Ratings.</li>
-          <li>Popularity polls.</li>
-        </ul>
-        <p className="mt-4">
-          But culture is bigger than one number. A film can become influential before it becomes
-          commercially successful. A series can dominate conversations before traditional
-          measurements capture its impact. The Index exists to measure that movement.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="border border-foreground/10 bg-surface p-5">
-          <Compass className="mb-2 h-6 w-6 text-primary" />
-          <h3 className="font-serif text-lg font-medium text-foreground">For Audiences</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            See which films the world is talking about, ranked by real attention, not promotion.
-          </p>
-        </div>
-        <div className="border border-foreground/10 bg-surface p-5">
-          <TrendingUp className="mb-2 h-6 w-6 text-primary" />
-          <h3 className="font-serif text-lg font-medium text-foreground">For Creators</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Follow how your work is landing across search, social, and community, as it happens.
-          </p>
-        </div>
-        <div className="border border-foreground/10 bg-surface p-5">
-          <Eye className="mb-2 h-6 w-6 text-primary" />
-          <h3 className="font-serif text-lg font-medium text-foreground">For The Industry</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Track cultural momentum before it shows up at the box office.
-          </p>
-        </div>
-      </div>
-
-      <div>
-        <h2 className="font-serif text-2xl text-foreground">Our Vision</h2>
-        <p className="mt-3">
-          We believe entertainment deserves a modern cultural index. From movies and television to
-          creators, books, games, and the wider world of entertainment, Lumière aims to become the
-          global reference point for cultural momentum.
-        </p>
+      </section>
+      <section>
+        <h2>Original work</h2>
         <p>
-          Lumière is not just a chart. It is a way to understand culture as it happens, built for
-          the future of entertainment.
+          Lumière produces its chart ordering, historical rank views, discovery connections, and
+          original culture guides. Reference biographies and catalog facts are attributed to their
+          providers. Editorial selections are not popularity rankings.
         </p>
-      </div>
-
+      </section>
       <div>
         <h2 className="font-serif text-2xl text-foreground">Beta changelog</h2>
         <p className="mt-3">
-          The Index is in public beta: new signals, charts and fixes ship continuously. Every
-          version is announced in the β chip beside the logo and summarized here, newest first.
+          The Index is in public beta: new signals, charts and fixes ship continuously. Changes are
+          summarized here, newest first.
         </p>
         <div className="mt-5 space-y-6">
           {BETA_RELEASES.map((release) => (

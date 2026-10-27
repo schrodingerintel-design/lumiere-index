@@ -95,7 +95,11 @@ export function ShareCardButton({
     const text = filmCard
       ? `${filmCard.title} is #${filmCard.rank} on The Index.`
       : (chartOpts?.title ?? "The Index");
-    const outcome = await shareCard(result, { title, text, url: SITE_URL });
+    const outcome = await shareCard(result, {
+      title,
+      text,
+      url: filmCard ? `${SITE_URL}/films/${encodeURIComponent(filmCard.slug)}` : SITE_URL,
+    });
     if (outcome === "shared") setAction("shared");
     else if (outcome === "link-copied") setAction("copied");
     setTimeout(() => setAction(null), 2500);
@@ -168,9 +172,7 @@ export function ShareCardButton({
                 <div className="flex aspect-[4/5] w-full max-w-[260px] items-center justify-center rounded-xl border bg-muted/40">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <span className="font-mono text-xs uppercase tracking-widest">
-                      Rendering…
-                    </span>
+                    <span className="font-mono text-xs uppercase tracking-widest">Rendering…</span>
                   </div>
                 </div>
               )}

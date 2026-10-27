@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 import { TopNav, MobileMenu } from "./TopNav";
 import { SearchModal } from "./SearchModal";
 import { Footer } from "./Footer";
-import { BetaNotice } from "./BetaNotice";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -29,8 +28,6 @@ export function Layout({ children }: { children: ReactNode }) {
       <Toaster theme="dark" richColors />
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onSearch={openSearch} />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
-      {/* Beta intro / version-upgrade popup — self-gating, shows once per version. */}
-      <BetaNotice />
     </div>
   );
 }

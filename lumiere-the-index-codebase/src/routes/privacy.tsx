@@ -166,6 +166,13 @@ function Privacy() {
 
       <Section num="6a." title="Advertising and Google">
         <p>
+          Google advertising is optional and controlled by the deployment configuration. The site
+          stores an advertising preference locally; this first-party preference is not a
+          Google-certified consent management platform. A certified platform must be configured
+          before personalized ads are served to visitors in the EEA, UK, or Switzerland. Vercel Web
+          Analytics measures site usage separately from advertising.
+        </p>
+        <p>
           When Google advertising is enabled, third-party vendors, including Google, may use cookies
           to serve ads based on your prior visits to this site or other websites. Google advertising
           cookies allow Google and its partners to personalize advertising across sites.

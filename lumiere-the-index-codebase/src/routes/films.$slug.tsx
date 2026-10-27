@@ -1,7 +1,10 @@
+import { TitleCredits } from "@/components/lumiere/TitleCredits";
+import { WatchAvailability } from "@/components/lumiere/WatchAvailability";
+import { getScreen, type ScreenDetail } from "@/lib/catalog";
 import { useWatchlist } from "@/lib/watchlist";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { canonicalLink, ogUrlMeta, sitePath } from "@/lib/site";
+import { canonicalLink, titleSocialMeta } from "@/lib/site";
 import { useQuery } from "@tanstack/react-query";
 import {
   LineChart,
@@ -17,21 +20,11 @@ import {
   getFilmDetail,
   getGenreFilms,
   getTopFilms,
-  searchTmdbMovie,
-  searchTmdbTv,
-  tmdbPosterUrl,
-  tmdbBackdropUrl,
   getTmdbMovieVideos,
-  getTmdbMovieDetails,
-  getTmdbWatchProviders,
   getTmdbTvVideos,
-  getTmdbTvDetails,
-  getTmdbTvWatchProviders,
   getFilmRankHistory,
-  TMDB_IMG,
   type RankedFilm,
-  type TmdbWatchProviders,
-  type WatchProvider,
+  type FilmDetail,
   type RankHistoryPoint,
 } from "@/lib/apiClient";
 import { RouteError } from "@/lib/route-error";
@@ -43,14 +36,12 @@ import { MomentumMark } from "@/components/lumiere/Momentum";
 import {
   Bookmark,
   BookmarkCheck,
-  ArrowUpRight,
   MessageSquare,
   ArrowUp,
   ArrowDown,
   Play,
   Info,
   X,
-  Tv,
   Film as FilmIcon,
   Calendar,
   Clock,
@@ -62,41 +53,46 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/films/$slug")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `${(params?.slug ?? "").replace(/-/g, " ")} · The Index` },
-      {
-        name: "description",
-        content: `Live cultural index ranking and audience sentiment for film ${params?.slug}.`,
-      },
-      {
-        property: "og:title",
-        content: `${(params?.slug ?? "").replace(/-/g, " ")} · The Index`,
-      },
-      {
-        property: "og:description",
-        content: `Live cultural index ranking and audience sentiment for film ${params?.slug}.`,
-      },
-      { property: "og:type", content: "video.movie" },
-      { property: "og:url", content: sitePath(`/films/${params?.slug ?? ""}`) },
-      { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "twitter:title",
-        content: `${(params?.slug ?? "").replace(/-/g, " ")} · The Index`,
-      },
-      {
-        name: "twitter:description",
-        content: `Live cultural index ranking and audience sentiment for film ${params?.slug}.`,
-      },
-    ],
-    links: [canonicalLink(`/films/${params?.slug ?? ""}`)],
+  head: ({ loaderData, params }) => ({
+    meta: titleSocialMeta(
+      (loaderData as FilmDetail | undefined)?.title || params.slug.replace(/-/g, " "),
+      (loaderData as FilmDetail | undefined)?.synopsis?.slice(0, 155) ||
+        "Chart position, recorded attention, cast, and title details on Lumière Index.",
+      `/films/${params.slug}`,
+      (loaderData as FilmDetail | undefined)?.poster_url,
+    ),
+    links: [canonicalLink(`/films/${params.slug}`)],
   }),
-  loader: async ({ context, params }) => {
-    // SSR the film detail so shared/direct links render content on first paint.
-    await context.queryClient.prefetchQuery({
+  loader: async ({ context, params }): Promise<FilmDetail> => {
+    const film = await context.queryClient.ensureQueryData({
       queryKey: ["film", "detail", params.slug],
       queryFn: () => getFilmDetail(params.slug),
+      staleTime: 300000,
     });
+    if (film.tmdb_id)
+      await context.queryClient.prefetchQuery({
+        queryKey: [
+          "tmdb",
+          "details",
+          film.content_type === "TV_SHOW" ? "tv" : "movie",
+          film.tmdb_id,
+        ],
+        queryFn: () =>
+          getScreen(film.content_type === "TV_SHOW" ? "tv" : "movie", String(film.tmdb_id)),
+        staleTime: 86400000,
+      });
+    const catalog = film.tmdb_id
+      ? context.queryClient.getQueryData<ScreenDetail>([
+          "tmdb",
+          "details",
+          film.content_type === "TV_SHOW" ? "tv" : "movie",
+          film.tmdb_id,
+        ])
+      : undefined;
+    return {
+      ...film,
+      synopsis: catalog?.overview || (film.synopsis?.includes("A premier ") ? null : film.synopsis),
+    };
   },
   component: FilmDetailView,
   errorComponent: RouteError,
@@ -111,67 +107,6 @@ function gradientStyle(film: RankedFilm | null | undefined) {
 /** Humanize a slug for the not-found page: "blade-runner-2049" → "blade runner 2049". */
 function paramsSlugToTitle(slug: string): string {
   return slug.replace(/-/g, " ");
-}
-
-// ── Where to Watch ───────────────────────────────────────────────────────
-const WATCH_REGIONS: { code: string; label: string }[] = [
-  { code: "US", label: "United States" },
-  { code: "GB", label: "United Kingdom" },
-  { code: "CA", label: "Canada" },
-  { code: "AU", label: "Australia" },
-  { code: "IN", label: "India" },
-  { code: "FR", label: "France" },
-  { code: "DE", label: "Germany" },
-  { code: "BR", label: "Brazil" },
-  { code: "JP", label: "Japan" },
-  { code: "KR", label: "South Korea" },
-];
-
-function ProviderGroup({
-  label,
-  providers,
-  link,
-}: {
-  label: string;
-  providers: WatchProvider[] | undefined;
-  link?: string;
-}) {
-  if (!providers || providers.length === 0) return null;
-  return (
-    <div>
-      <div className="mt-4 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {providers.map((p) => (
-          <a
-            key={p.provider_id}
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={`${p.provider_name}, ${label}`}
-            className="flex items-center gap-1.5 border border-foreground/10 bg-foreground/5 px-1.5 py-1 transition hover:border-foreground/25 hover:bg-foreground/10"
-          >
-            {p.logo_path ? (
-              <img
-                src={`${TMDB_IMG}/w92${p.logo_path}`}
-                alt={p.provider_name}
-                className="h-7 w-7 bg-white object-contain"
-                loading="lazy"
-              />
-            ) : (
-              <span className="flex h-7 w-7 items-center justify-center bg-foreground/10 text-[8px] font-bold">
-                {p.provider_name.slice(0, 2).toUpperCase()}
-              </span>
-            )}
-            <span className="pr-0.5 text-[10px] font-medium text-foreground/80">
-              {p.provider_name}
-            </span>
-          </a>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ── Index history chart (rank trajectory, inverted: #1 sits on top) ──────────
@@ -267,7 +202,6 @@ const money = (n: number) =>
 function FilmDetailView() {
   const { slug } = Route.useParams();
   const { saved, toggle } = useWatchlist(slug);
-  const [watchRegion, setWatchRegion] = useState("US");
   const [toast, setToast] = useState<string | null>(null);
 
   // The trailer plays inline on the page — this action just brings it into view.
@@ -303,55 +237,8 @@ function FilmDetailView() {
   // available" rather than borrowing another film's facts.
   const isTvShow = film?.content_type === "TV_SHOW";
   const storedTmdbId: number | null = film?.tmdb_id ?? null;
-  const { data: tmdb } = useQuery<{
-    results: {
-      id: number;
-      poster_path: string | null;
-      backdrop_path: string | null;
-      overview?: string;
-    }[];
-  }>({
-    queryKey: ["tmdb", isTvShow ? "tv" : "movie", film?.title, film?.year],
-    queryFn: () =>
-      isTvShow
-        ? searchTmdbTv(film!.title, film?.year ?? undefined)
-        : searchTmdbMovie(film!.title, film?.year ?? undefined),
-    // Legacy-id repair ONLY: runs when the catalog row has no stored id, and
-    // even then the result must match the film's year (enforced below).
-    enabled: !!film && storedTmdbId == null,
-    staleTime: 24 * 60 * 60 * 1000,
-  });
-
-  // The verified id: stored identity always wins. The search fallback only
-  // counts when its first result shares the film's year — a different-year
-  // result is a different film and is discarded (the Titans fix).
-  const searchFirst = tmdb?.results?.[0];
-  const searchDateStr =
-    (searchFirst as { release_date?: string } | undefined)?.release_date ??
-    (searchFirst as { first_air_date?: string } | undefined)?.first_air_date ??
-    "";
-  const searchYear = Number(searchDateStr.slice(0, 4));
-  const yearMatches = !!film?.year && searchYear === film.year;
-  const tmdbId = storedTmdbId ?? (yearMatches ? searchFirst!.id : null);
-  // Poster/overview fallback from search results is only valid on the same
-  // guarded path as tmdbId — a wrong-film poster is just as wrong as a
-  // wrong-film box office.
-  const tmdbFilm = storedTmdbId == null && yearMatches ? searchFirst : undefined;
-
-  // Dynamic OG image — declared before the early returns below so the hook order
-  // stays stable once film data arrives (which flips `filmLoading` off).
-  const posterUrl = film?.poster_url || tmdbPosterUrl(tmdbFilm?.poster_path, "w500");
-  useEffect(() => {
-    if (posterUrl) {
-      let meta = document.querySelector('meta[property="og:image"]');
-      if (!meta) {
-        meta = document.createElement("meta");
-        meta.setAttribute("property", "og:image");
-        document.head.appendChild(meta);
-      }
-      meta.setAttribute("content", posterUrl);
-    }
-  }, [posterUrl]);
+  const tmdbId = storedTmdbId;
+  const posterUrl = film?.poster_url || undefined;
 
   const { data: videos } = useQuery<{
     results: { key: string; site: string; type: string }[];
@@ -364,35 +251,10 @@ function FilmDetailView() {
   });
 
   // Normalized across both content types — per-type fields are optional.
-  type TmdbDetailsUnion = {
-    tagline?: string | null;
-    status?: string;
-    original_language?: string;
-    created_by?: { id: number; name: string }[];
-    genres?: { id: number; name: string }[];
-    production_countries?: { iso_3166_1: string; name: string }[];
-    production_companies?: { id: number; name: string; logo_path: string | null }[];
-    // Movie-only
-    runtime?: number;
-    budget?: number;
-    revenue?: number;
-    // TV-only
-    episode_run_time?: number[];
-    number_of_seasons?: number;
-    number_of_episodes?: number;
-  };
+  type TmdbDetailsUnion = ScreenDetail;
   const { data: tmdbDetails } = useQuery<TmdbDetailsUnion | null>({
     queryKey: ["tmdb", "details", isTvShow ? "tv" : "movie", tmdbId],
-    queryFn: () =>
-      tmdbId ? (isTvShow ? getTmdbTvDetails(tmdbId) : getTmdbMovieDetails(tmdbId)) : null,
-    enabled: !!tmdbId,
-    staleTime: 24 * 60 * 60 * 1000,
-  });
-
-  const { data: watchData } = useQuery<TmdbWatchProviders | null>({
-    queryKey: ["tmdb", "watch-providers", isTvShow ? "tv" : "movie", tmdbId],
-    queryFn: () =>
-      tmdbId ? (isTvShow ? getTmdbTvWatchProviders(tmdbId) : getTmdbWatchProviders(tmdbId)) : null,
+    queryFn: () => (tmdbId ? getScreen(isTvShow ? "tv" : "movie", String(tmdbId)) : null),
     enabled: !!tmdbId,
     staleTime: 24 * 60 * 60 * 1000,
   });
@@ -478,13 +340,20 @@ function FilmDetailView() {
     film.director && film.director !== "Unknown" && film.director !== "Director TBA"
       ? film.director
       : (tmdbDetails?.created_by?.[0]?.name ?? null);
-  const synopsis = tmdbFilm?.overview || film.synopsis || "No synopsis available.";
+  const synopsis =
+    tmdbDetails?.overview ||
+    (film.synopsis?.includes("A premier ") ? null : film.synopsis) ||
+    "No synopsis available.";
   const tagline = tmdbDetails?.tagline?.trim() || null;
   const trailerKey =
     videos?.results?.find((v) => v.site === "YouTube" && v.type === "Trailer")?.key ??
     videos?.results?.find((v) => v.site === "YouTube")?.key ??
     null;
-  const backdropUrl = film.backdrop_url || tmdbBackdropUrl(tmdbFilm?.backdrop_path, "w1280");
+  const backdropUrl =
+    film.backdrop_url ||
+    (tmdbDetails?.backdrop_path
+      ? `https://image.tmdb.org/t/p/w1280${tmdbDetails.backdrop_path}`
+      : undefined);
 
   const sentiment = film.sentiment;
   const hasSentimentData = sentiment?.sufficient_data === true && sentiment.positive != null;
@@ -511,23 +380,6 @@ function FilmDetailView() {
     tmdbDetails?.status === "Released" || tmdbDetails?.status === "Returning Series"
       ? null
       : tmdbDetails?.status;
-  const tmdbMovieUrl = tmdbId
-    ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}`
-    : undefined;
-  const watchRegionData = watchData?.results?.[watchRegion];
-  const watchLink = tmdbId
-    ? `https://www.themoviedb.org/${isTvShow ? "tv" : "movie"}/${tmdbId}/watch?locale=${watchRegion}`
-    : undefined;
-  const regionLabel = WATCH_REGIONS.find((r) => r.code === watchRegion)?.label ?? watchRegion;
-  const hasWatchOptions =
-    !!watchRegionData &&
-    (watchRegionData.flatrate?.length ?? 0) +
-      (watchRegionData.free?.length ?? 0) +
-      (watchRegionData.ads?.length ?? 0) +
-      (watchRegionData.rent?.length ?? 0) +
-      (watchRegionData.buy?.length ?? 0) >
-      0;
-
   // Chart tenure in days — the chart refreshes every 12 hours, so days is
   // the honest unit. A NEW entry (no previous snapshot) is on day 1.
   // Chart law: a public rank only exists between #1 and #100 on the title's
@@ -802,48 +654,73 @@ function FilmDetailView() {
             </div>
           </div>
 
-          {film.tmdb_id && (
-            <Link
-              to="/screen/$type/$id"
-              params={{ type: isTvShow ? "tv" : "movie", id: String(film.tmdb_id) }}
-              className="primary-button mb-6"
-            >
-              Cast, crew & full title details
-            </Link>
+          {tmdbDetails && (
+            <>
+              <p className="detail-rating">
+                <strong>
+                  {(tmdbDetails.vote_count || 0) > 0
+                    ? `★ ${tmdbDetails.vote_average?.toFixed(1)}/10`
+                    : "No audience rating yet"}
+                </strong>
+                <span>
+                  {(tmdbDetails.vote_count || 0).toLocaleString("en")} votes · TMDB audience rating
+                </span>
+              </p>
+              <TitleCredits film={tmdbDetails} />
+            </>
           )}
-          {film.signal_funnel && film.signal_funnel.sources.length > 0 && (
-            <section className="signal-evidence">
-              <h2>Behind this chart position</h2>
+          <section className="signal-evidence" id="ranking-evidence">
+            <h2>Ranking evidence</h2>
+            <p>
+              {film.title}: {film.signal_funnel?.ingest_records_30d ?? 0} recorded inputs across{" "}
+              {film.signal_funnel?.source_coverage ?? 0} tracked sources in the last 30 days. These
+              counts describe stored coverage, not the size of the audience.
+            </p>
+            {!!film.signal_funnel?.sources.length && (
               <div>
                 {film.signal_funnel.sources.map((source) => (
                   <div key={source.source_key}>
                     <strong>{source.source_key}</strong>
-                    <span>{source.records.toLocaleString("en")} records</span>
+                    <span>
+                      {source.records.toLocaleString("en")} records ·{" "}
+                      {source.observations.toLocaleString("en")} source observations
+                    </span>
                     {source.last_collected_at && (
-                      <small>Collected {source.last_collected_at.slice(0, 10)}</small>
+                      <small>Last collected {source.last_collected_at.slice(0, 10)}</small>
                     )}
                   </div>
                 ))}
               </div>
-              <p>
-                Last 30 days. Counts from different sources measure different kinds of activity and
-                are not interchangeable audience totals.
-              </p>
-            </section>
-          )}
+            )}
+            <p>
+              {(film.signal_funnel?.source_coverage ?? 0) < 2 ||
+              (film.signal_funnel?.ingest_records_30d ?? 0) < 20
+                ? "Coverage is limited. There is not enough evidence here to attribute this position to a specific event or claim broad public interest."
+                : "These are collection totals. They do not establish what caused attention or how much each input contributed to this rank."}
+            </p>
+            <p>
+              {rankHistory && rankHistory.length > 1
+                ? `Published rank samples cover ${rankHistory[0].day} to ${rankHistory[rankHistory.length - 1].day}; see the history above.`
+                : "Historical comparisons are unavailable until multiple published samples exist."}{" "}
+              Missing sources are not evidence of no activity. Per-snapshot input manifests and
+              methodology versions are not exposed by this API.
+            </p>
+            <Link to="/methodology">Ranking methodology & limitations</Link>
+          </section>
           {/* Audience sentiment */}
           <div className="border border-foreground/10 bg-surface p-5">
             <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Audience Sentiment Breakdown
+                Sentiment in tracked discussion
               </div>
               <span className="font-mono text-[10px] text-muted-foreground">
                 {hasSentimentData ? "Measured sample" : "Not enough recent reviews"}
               </span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              {sentiment?.sample_size ?? 0} classified text mentions · last{" "}
-              {sentiment?.window_days ?? 30} days. This sample does not represent all viewers.
+              {sentiment?.sample_size ?? 0} classified text mentions across{" "}
+              {sentiment?.source_count ?? 0} sources · last {sentiment?.window_days ?? 30} days.
+              This sample does not represent all viewers.
             </p>
             {hasSentimentData ? (
               <>
@@ -992,121 +869,14 @@ function FilmDetailView() {
             </div>
           </div>
 
-          {/* Where to Watch */}
-          <div className="border border-foreground/10 bg-surface p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                <Tv className="h-4 w-4 text-primary" />
-                Where to Watch
-              </div>
-              <select
-                value={watchRegion}
-                onChange={(e) => setWatchRegion(e.target.value)}
-                aria-label="Watch region"
-                className="rounded-full border border-foreground/15 bg-foreground/5 px-3 py-1 font-mono text-[10px] text-muted-foreground outline-none focus:border-primary/40"
-              >
-                {WATCH_REGIONS.map((r) => (
-                  <option key={r.code} value={r.code}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* An unreleased title has nothing to stream yet — provider data
-                keyed to its (future) id would be inherited from the wrong
-                film, so the honest state is a scheduled-release note. */}
-            {upcoming ? (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Not available yet. This title is scheduled for release
-                {film.release_date
-                  ? ` on ${new Date(`${film.release_date}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
-                  : ""}
-                . Streaming options appear closer to release.
-              </p>
-            ) : watchData && hasWatchOptions ? (
-              <>
-                <ProviderGroup
-                  label="Streaming"
-                  providers={watchRegionData?.flatrate}
-                  link={watchLink}
-                />
-                <ProviderGroup
-                  label="Free"
-                  providers={
-                    watchRegionData?.free?.length
-                      ? [...watchRegionData.free, ...(watchRegionData.ads ?? [])]
-                      : watchRegionData?.ads
-                  }
-                  link={watchLink}
-                />
-                <ProviderGroup label="Rent" providers={watchRegionData?.rent} link={watchLink} />
-                <ProviderGroup label="Buy" providers={watchRegionData?.buy} link={watchLink} />
-              </>
-            ) : (
-              watchData && (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  No streaming options listed for {regionLabel} yet.
-                </p>
-              )
-            )}
-
-            {/* Universal Theater & Streaming Finder */}
-            <div className="mt-4 space-y-2 border-t border-foreground/10 pt-3">
-              <a
-                href={`https://www.google.com/search?q=${encodeURIComponent(`${film.title} showtimes tickets`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:border-foreground/20 hover:bg-foreground/[0.08]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <FilmIcon className="h-4 w-4 shrink-0 text-primary" />
-                  <div>
-                    <div className="font-medium text-foreground">Cinema & Theaters</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Find local showtimes & tickets
-                    </div>
-                  </div>
-                </div>
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </a>
-              <a
-                href={`https://www.justwatch.com/us/search?q=${encodeURIComponent(film.title)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:border-foreground/20 hover:bg-foreground/[0.08]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Tv className="h-4 w-4 shrink-0 text-primary" />
-                  <div>
-                    <div className="font-medium text-foreground">Streaming & Digital</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Search streaming platforms & providers
-                    </div>
-                  </div>
-                </div>
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </a>
-              {tmdbMovieUrl && (
-                <a
-                  href={tmdbMovieUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.03] p-3 text-xs transition hover:border-foreground/20 hover:bg-foreground/[0.08]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Info className="h-4 w-4 shrink-0 text-primary" />
-                    <div>
-                      <div className="font-medium text-foreground">Full details</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        Credits & metadata on TMDB
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </a>
-              )}
-            </div>
-          </div>
+          {tmdbId ? (
+            <WatchAvailability type={isTvShow ? "tv" : "movie"} id={tmdbId} upcoming={upcoming} />
+          ) : (
+            <section className="catalog-section">
+              <h2>Where to watch</h2>
+              <p>Streaming availability is currently unavailable.</p>
+            </section>
+          )}
         </aside>
       </section>
 

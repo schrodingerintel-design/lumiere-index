@@ -68,9 +68,12 @@ export function ScreenCard({ film, type }: { film: ScreenTitle; type: ScreenType
           <span>{title}</span>
         )}
         {(film.vote_count ?? 0) > 0 && (
-          <span className="catalog-rating">
+          <span
+            className="catalog-rating"
+            title={`${film.vote_count?.toLocaleString("en")} votes · TMDB audience rating`}
+          >
             {film.vote_average?.toFixed(1)}
-            <small>TMDB</small>
+            <small>/10</small>
           </span>
         )}
       </Link>
@@ -216,12 +219,14 @@ export function CatalogStatus({
 export function ProviderCredit() {
   return (
     <p className="provider-credit">
-      Film, TV, people, images, and audience ratings:{" "}
+      Catalog & audience ratings:{" "}
       <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">
         TMDB
-      </a>
-      . This product uses the TMDB API but is not endorsed or certified by TMDB. Provider trends and
-      ratings are separate from Lumière’s charts.
+      </a>{" "}
+      ·{" "}
+      <Link to="/about" hash="data-sources">
+        Data sources & credits
+      </Link>
     </p>
   );
 }

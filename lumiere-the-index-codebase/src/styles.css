@@ -2623,3 +2623,59 @@
 .home-culture-highlights {
   margin-top: 35px;
 }
+
+/* Title context stays visible while credits expand in place. */
+.full-credits {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+}
+.full-credits summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.4rem;
+}
+.credit-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 0.8rem 1.5rem;
+  margin-top: 1rem;
+}
+.credit-list p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.credit-list span {
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+.watch-provider-group {
+  margin: 1rem 0;
+}
+.watch-provider-group h3 {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.7;
+}
+.watch-provider-group > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.watch-provider-group span {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.catalog-section-heading select {
+  max-width: 50%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.5rem;
+  background: var(--background);
+  color: inherit;
+}

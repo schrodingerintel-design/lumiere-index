@@ -41,12 +41,14 @@ export interface ScreenDetail extends ScreenTitle {
   tagline?: string;
   status?: string;
   runtime?: number;
+  episode_run_time?: number[];
   number_of_seasons?: number;
   number_of_episodes?: number;
   genres?: { id: number; name: string }[];
   production_companies?: { id: number; name: string }[];
   spoken_languages?: { english_name: string; name: string }[];
   origin_country?: string[];
+  production_countries?: { iso_3166_1: string; name: string }[];
   budget?: number;
   revenue?: number;
   original_language?: string;
@@ -127,21 +129,21 @@ export const CULTURE_CATEGORIES = [
     kind: "games",
     label: "Games",
     path: "/games",
-    heading: "Worlds worth getting lost in",
+    heading: "Games",
     copy: "Explore games through their design, stories, and communities.",
   },
   {
     kind: "creators",
     label: "Creators",
     path: "/creators",
-    heading: "People shaping what we watch",
+    heading: "Creators",
     copy: "Video, comedy, technology, and the craft behind online culture.",
   },
   {
     kind: "music",
     label: "Music",
     path: "/music",
-    heading: "More than the songs",
+    heading: "Music",
     copy: "Artists, performance, production, and the worlds around a record.",
   },
 ] as const;

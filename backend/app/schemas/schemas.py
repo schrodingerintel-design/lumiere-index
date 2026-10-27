@@ -83,6 +83,7 @@ class RankedFilm(FilmBase):
 
 class SentimentBreakdown(BaseModel):
     sample_size: int = 0
+    source_count: int = 0
     window_days: int = 30
     positive: float | None = None
     neutral: float | None = None

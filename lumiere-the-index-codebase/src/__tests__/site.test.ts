@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SITE_URL, sitePath, canonicalShareUrl } from "@/lib/site";
+import { SITE_URL, sitePath, canonicalShareUrl, titleSocialMeta } from "@/lib/site";
 
 /**
  * The canonical-domain contract: every externally visible URL points at
@@ -32,5 +32,30 @@ describe("canonicalShareUrl", () => {
   it("keeps a canonical URL unchanged", () => {
     const url = canonicalShareUrl("https://lumiereindex.com/top-100");
     expect(url).toBe("https://lumiereindex.com/top-100");
+  });
+});
+
+describe("title sharing metadata", () => {
+  it("keeps deep links, titles, and artwork specific to each title", () => {
+    const first = titleSocialMeta(
+      "Fight Club",
+      "1999 film",
+      "/screen/movie/550",
+      "https://image.tmdb.org/t/p/w780/fight.jpg",
+    );
+    const second = titleSocialMeta("Superman", "2025 film", "/films/superman", null);
+    expect(first).toContainEqual({
+      property: "og:url",
+      content: "https://lumiereindex.com/screen/movie/550",
+    });
+    expect(first).toContainEqual({
+      name: "twitter:image",
+      content: "https://image.tmdb.org/t/p/w780/fight.jpg",
+    });
+    expect(second).toContainEqual({
+      property: "og:image",
+      content: "https://lumiereindex.com/og-culture-v2.png",
+    });
+    expect(second).toContainEqual({ property: "og:title", content: "Superman · Lumière Index" });
   });
 });
