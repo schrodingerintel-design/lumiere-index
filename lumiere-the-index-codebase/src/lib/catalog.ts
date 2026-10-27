@@ -89,6 +89,27 @@ export const searchCatalog = (query: string) =>
 export const titleOf = (title: ScreenTitle) => title.title || title.name || "Untitled";
 export const yearOf = (title: ScreenTitle) =>
   (title.release_date || title.first_air_date || "").slice(0, 4);
+export function mergeScreenCredits(credits: ScreenTitle[]): ScreenTitle[] {
+  const merged = new Map<string, ScreenTitle>();
+  const roles = (first?: string, next?: string) =>
+    [...new Set([first, next].filter(Boolean))].join(" / ") || undefined;
+  for (const credit of credits) {
+    const key = `${credit.media_type}:${credit.id}`;
+    const previous = merged.get(key);
+    merged.set(
+      key,
+      previous
+        ? {
+            ...previous,
+            ...credit,
+            character: roles(previous.character, credit.character),
+            job: roles(previous.job, credit.job),
+          }
+        : credit,
+    );
+  }
+  return [...merged.values()];
+}
 export const imageOf = (path?: string | null, size = "w500") =>
   path ? `${TMDB_IMG}/${size}${path}` : undefined;
 export const safeExternal = (url?: string | null) => {

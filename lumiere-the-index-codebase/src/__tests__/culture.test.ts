@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseLibrary } from "@/lib/library";
-import { CULTURE, safeExternal } from "@/lib/catalog";
+import { CULTURE, safeExternal, mergeScreenCredits } from "@/lib/catalog";
 
 describe("saved culture", () => {
   it("retains distinct movie, TV and person identities", () => {
@@ -41,5 +41,18 @@ describe("culture identity and sources", () => {
     expect(safeExternal("javascript:alert(1)")).toBeUndefined();
     expect(safeExternal("http://example.com")).toBeUndefined();
     expect(safeExternal("https://example.com")).toBe("https://example.com/");
+  });
+});
+
+describe("combined filmography", () => {
+  it("preserves acting and production roles without merging movie and TV identities", () => {
+    const credits = mergeScreenCredits([
+      { id: 10, media_type: "movie", title: "Film", poster_path: null, character: "Lead" },
+      { id: 10, media_type: "movie", title: "Film", poster_path: null, job: "Producer" },
+      { id: 10, media_type: "tv", name: "Series", poster_path: null, character: "Guest" },
+    ]);
+    expect(credits).toHaveLength(2);
+    expect(credits[0]).toMatchObject({ character: "Lead", job: "Producer" });
+    expect(credits[1].media_type).toBe("tv");
   });
 });

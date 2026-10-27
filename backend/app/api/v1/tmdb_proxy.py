@@ -12,6 +12,7 @@ from fastapi.responses import Response
 import httpx
 
 from app.config import settings
+from app.services.catalog_publication import public_person, public_credit
 
 log = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ async def movie_videos(tmdb_id: int):
 @router.get("/tmdb/movie/{tmdb_id}")
 async def movie_details(tmdb_id: int):
     data = await _cached_get(f"/movie/{tmdb_id}", {"append_to_response": "release_dates,keywords,credits,recommendations,videos"})
-    if data.get("adult"):
+    if not public_credit(data):
         raise HTTPException(404, "Title unavailable")
     return data
 
@@ -221,7 +222,7 @@ async def tv_top_rated(page: int = Query(1)):
 @router.get("/tmdb/tv/{tmdb_id}")
 async def tv_details(tmdb_id: int):
     data = await _cached_get(f"/tv/{tmdb_id}", {"append_to_response": "keywords,content_ratings,credits,recommendations,videos"})
-    if data.get("adult"):
+    if not public_credit(data):
         raise HTTPException(404, "Title unavailable")
     return data
 
@@ -293,21 +294,53 @@ async def tv_watch_providers(tmdb_id: int):
 
 @router.get("/tmdb/trending/{media_type}/{window}")
 async def catalog_trending(media_type: Literal["movie", "tv", "person"], window: Literal["day", "week"], page: int = Query(1, ge=1, le=100)):
-    return await _cached_get(f"/trending/{media_type}/{window}", {"page": str(page)})
+    data = await _cached_get(f"/trending/{media_type}/{window}", {"page": str(page)})
+    return await _publication_page(data, people_only=media_type == "person")
 
 
 @router.get("/tmdb/search/multi")
 async def catalog_search(query: str = Query(..., min_length=2, max_length=100), page: int = Query(1, ge=1, le=100)):
-    return await _cached_get("/search/multi", {"query": query, "page": str(page), "include_adult": "false"}, ttl=300)
+    data = await _cached_get("/search/multi", {"query": query, "page": str(page), "include_adult": "false"}, ttl=300)
+    return await _publication_page(data)
 
 
 @router.get("/tmdb/person/{person_id}")
 async def person_details(person_id: int):
     if person_id < 1:
         raise HTTPException(422, "Invalid person identity")
-    return await _cached_get(f"/person/{person_id}", {"append_to_response": "combined_credits,external_ids"}, ttl=21600)
+    data = await _cached_get(f"/person/{person_id}", {"append_to_response": "combined_credits,external_ids"}, ttl=21600)
+    if not public_person(data):
+        raise HTTPException(404, "Profile unavailable")
+    credits = data.get("combined_credits") or {}
+    return {**data, "combined_credits": {
+        "cast": [item for item in credits.get("cast", []) if public_credit(item)],
+        "crew": [item for item in credits.get("crew", []) if public_credit(item)],
+    }}
 
 
 @router.get("/tmdb/catalog/{media_type}/{collection}")
 async def catalog_collection(media_type: Literal["movie", "tv"], collection: Literal["popular", "top_rated"], page: int = Query(1, ge=1, le=100)):
-    return await _cached_get(f"/{media_type}/{collection}", {"page": str(page)})
+    data = await _cached_get(f"/{media_type}/{collection}", {"page": str(page)})
+    return await _publication_page(data)
+
+
+_PEOPLE_LIMIT = asyncio.Semaphore(4)
+
+
+async def _publication_page(data: dict, people_only: bool = False) -> dict:
+    async def publish(item: dict):
+        if item.get("adult"):
+            return None
+        if not people_only and item.get("media_type") != "person":
+            return item if public_credit(item) else None
+        try:
+            async with _PEOPLE_LIMIT:
+                details = await person_details(int(item["id"]))
+            credits = details.get("combined_credits") or {}
+            known_for = sorted([*credits.get("cast", []), *credits.get("crew", [])],
+                               key=lambda work: work.get("vote_count") or 0, reverse=True)[:3]
+            return {**item, "known_for": known_for}
+        except (HTTPException, ValueError, KeyError, TypeError):
+            return None
+    results = await asyncio.gather(*(publish(item) for item in data.get("results", [])[:20]))
+    return {**data, "results": [item for item in results if item is not None]}
