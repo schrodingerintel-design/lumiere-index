@@ -160,7 +160,7 @@ async def movie_videos(tmdb_id: int):
 @router.get("/tmdb/movie/{tmdb_id}")
 async def movie_details(tmdb_id: int):
     data = await _cached_get(f"/movie/{tmdb_id}", {"append_to_response": "release_dates,keywords,credits,recommendations,videos"})
-    if data.get("adult"):
+    if not public_credit(data):
         raise HTTPException(404, "Title unavailable")
     return data
 
@@ -222,7 +222,7 @@ async def tv_top_rated(page: int = Query(1)):
 @router.get("/tmdb/tv/{tmdb_id}")
 async def tv_details(tmdb_id: int):
     data = await _cached_get(f"/tv/{tmdb_id}", {"append_to_response": "keywords,content_ratings,credits,recommendations,videos"})
-    if data.get("adult"):
+    if not public_credit(data):
         raise HTTPException(404, "Title unavailable")
     return data
 
@@ -320,7 +320,8 @@ async def person_details(person_id: int):
 
 @router.get("/tmdb/catalog/{media_type}/{collection}")
 async def catalog_collection(media_type: Literal["movie", "tv"], collection: Literal["popular", "top_rated"], page: int = Query(1, ge=1, le=100)):
-    return await _cached_get(f"/{media_type}/{collection}", {"page": str(page)})
+    data = await _cached_get(f"/{media_type}/{collection}", {"page": str(page)})
+    return await _publication_page(data)
 
 
 _PEOPLE_LIMIT = asyncio.Semaphore(4)
@@ -331,7 +332,7 @@ async def _publication_page(data: dict, people_only: bool = False) -> dict:
         if item.get("adult"):
             return None
         if not people_only and item.get("media_type") != "person":
-            return item
+            return item if public_credit(item) else None
         try:
             async with _PEOPLE_LIMIT:
                 details = await person_details(int(item["id"]))

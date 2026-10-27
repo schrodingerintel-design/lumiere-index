@@ -119,6 +119,10 @@ def test_people_publication_does_not_trust_provider_adult_flag_alone():
     assert not public_person({**base, "biography": "An adult film actress."})
     assert not public_person({**base, "adult": True})
     assert not public_person({"name": "No catalog evidence", "biography": "An actor."})
+    # Source flags and descriptions can both be wrong; sparse explicit
+    # credits do not become publishable just because the flag is false.
+    assert not public_person({**base, "biography": "An actress and model.",
+                              "combined_credits": {"cast": [{"title": "Explicit XXX film", "adult": False, "vote_count": 1000}]}})
 
 
 @pytest.mark.asyncio
@@ -129,6 +133,6 @@ async def test_trending_and_search_omit_unpublishable_people(monkeypatch):
         return {"id": person_id, "combined_credits": {"cast": [{"title": "Film", "vote_count": 100}]}}
     monkeypatch.setattr(tmdb_proxy, "person_details", details)
     data = {"results": [{"id": 1, "media_type": "person"}, {"id": 2, "media_type": "person"},
-                        {"id": 3, "media_type": "movie", "adult": False}]}
+                        {"id": 3, "media_type": "movie", "adult": False, "title": "A public film"}]}
     result = await tmdb_proxy._publication_page(data)
     assert [item["id"] for item in result["results"]] == [1, 3]

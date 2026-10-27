@@ -11,10 +11,15 @@ _ADULT_PROFILE = re.compile(
     r"pink[- ]film|\bAV (?:idol|actress|actor)\b|Japanese adult|"
     r"sex[- ](?:worker|performer)", re.IGNORECASE,
 )
+_EXPLICIT_TITLE = re.compile(
+    r"\b(?:porn(?:ography|ographic)?|hentai|xxx|breasts?|busty|orgasm|"
+    r"masturbat\w*|blowjob|sex\s*tape|sexual\s*intercourse|penis|vagina)\b", re.IGNORECASE,
+)
 
 
 def public_credit(item: dict) -> bool:
-    return not item.get("adult") and bool(item.get("title") or item.get("name"))
+    title = item.get("title") or item.get("name") or ""
+    return not item.get("adult") and bool(title) and not _EXPLICIT_TITLE.search(title)
 
 
 def public_person(data: dict) -> bool:
@@ -29,4 +34,4 @@ def public_person(data: dict) -> bool:
     works = [*credits.get("cast", []), *credits.get("crew", [])]
     # Do not publish empty people pages or profiles without substantive
     # screen-credit evidence. This is not a public popularity threshold.
-    return any(public_credit(item) and (item.get("vote_count") or 0) >= 10 for item in works)
+    return any(public_credit(item) and (item.get("vote_count") or 0) >= 100 for item in works)
