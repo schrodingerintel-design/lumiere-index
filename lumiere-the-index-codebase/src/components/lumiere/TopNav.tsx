@@ -1,3 +1,4 @@
+import { BetaBadge } from "./BetaBadge";
 import { useLibrary } from "@/lib/library";
 import { Link } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -36,7 +37,10 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
     <>
       <header className="social-nav">
         <div className="social-nav-inner">
-          <BrandLink />
+          <div className="flex shrink-0 items-center gap-2">
+            <BrandLink />
+            <BetaBadge />
+          </div>
           <nav className="desktop-links" aria-label="Primary">
             {PRIMARY_LINKS.map((link) => (
               <Link

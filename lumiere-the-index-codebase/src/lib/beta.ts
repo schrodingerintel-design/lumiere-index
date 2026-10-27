@@ -24,10 +24,22 @@ export interface BetaRelease {
   changes: string[];
 }
 
-export const BETA_VERSION = "1.3";
+export const BETA_VERSION = "2.0";
 
 /** Newest first. Keep entries user-facing and short. */
 export const BETA_RELEASES: BetaRelease[] = [
+  {
+    version: "2.0",
+    date: "2026-10-28",
+    headline: "A bigger world of culture. A new home for the buzz.",
+    changes: [
+      "Lumière Buzz leads discovery with cinematic stories, save and share actions, and a Rising filter.",
+      "Explore films, TV, people, games, creators, and music through connected title and profile pages.",
+      "Full cast and crew and regional streaming availability now stay on the title page. The chart-history graph has been removed.",
+      "Sharing previews use current branding. Source coverage and sentiment sample limits are clearer.",
+      "This is a public beta. Source coverage is still developing; no new social-source integrations are implied by this release.",
+    ],
+  },
   {
     version: "1.3",
     date: "2026-09-21",
