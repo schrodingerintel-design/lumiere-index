@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Layout } from "@/components/lumiere/Layout";
-import { CultureNav } from "@/components/lumiere/CultureNav";
+import { CatalogPager } from "@/components/lumiere/CatalogPager";
 import { PersonCard, CatalogStatus, ProviderCredit } from "@/components/lumiere/Catalog";
-import { getPeople } from "@/lib/catalog";
+import { getPeopleWindow } from "@/lib/catalog";
 import { canonicalLink } from "@/lib/site";
 export const Route = createFileRoute("/people")({
   head: () => ({
@@ -20,18 +20,19 @@ export const Route = createFileRoute("/people")({
   }),
   loader: ({ context }) =>
     context.queryClient.prefetchQuery({
-      queryKey: ["people", "week", 1],
-      queryFn: () => getPeople("week", 1),
+      queryKey: ["people", "week", 1, 40],
+      queryFn: () => getPeopleWindow("week", 1, 40),
     }),
   component: People,
 });
 function People() {
-  const [window, setWindow] = useState<"day" | "week">("week");
+  const [window, setWindow] = useState<"day" | "week" | "popular">("week");
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState(40);
   const [department, setDepartment] = useState("Everyone");
   const query = useQuery({
-    queryKey: ["people", window, page],
-    queryFn: () => getPeople(window, page),
+    queryKey: ["people", window, page, size],
+    queryFn: () => getPeopleWindow(window, page, size),
     staleTime: 1800000,
   });
   const people = (query.data?.results || []).filter(
@@ -47,7 +48,7 @@ function People() {
         </header>
         <div className="catalog-toolbar">
           <div className="discovery-filters" role="group" aria-label="Trend period">
-            {(["day", "week"] as const).map((period) => (
+            {(["day", "week", "popular"] as const).map((period) => (
               <button
                 key={period}
                 aria-pressed={window === period}
@@ -56,7 +57,7 @@ function People() {
                   setPage(1);
                 }}
               >
-                This {period}
+                {period === "popular" ? "Popular people" : `This ${period}`}
               </button>
             ))}
           </div>
@@ -69,6 +70,17 @@ function People() {
             </select>
           </label>
         </div>
+        <CatalogPager
+          page={page}
+          pages={query.data?.total_pages || 1}
+          size={size}
+          busy={query.isFetching}
+          onPage={setPage}
+          onSize={(value) => {
+            setSize(value);
+            setPage(1);
+          }}
+        />
         <CatalogStatus
           loading={query.isLoading}
           error={query.isError}
@@ -80,25 +92,17 @@ function People() {
             <PersonCard key={person.id} person={person} />
           ))}
         </div>
-        <div className="catalog-pagination">
-          <button
-            disabled={page === 1 || query.isFetching}
-            className="soft-button"
-            onClick={() => setPage((n) => n - 1)}
-          >
-            Previous
-          </button>
-          <span>Page {page}</span>
-          <button
-            disabled={
-              !query.data || query.isFetching || page >= Math.min(100, query.data.total_pages)
-            }
-            className="soft-button"
-            onClick={() => setPage((n) => n + 1)}
-          >
-            Next page
-          </button>
-        </div>
+        <CatalogPager
+          page={page}
+          pages={query.data?.total_pages || 1}
+          size={size}
+          busy={query.isFetching}
+          onPage={setPage}
+          onSize={(value) => {
+            setSize(value);
+            setPage(1);
+          }}
+        />
         <ProviderCredit />
       </div>
     </Layout>

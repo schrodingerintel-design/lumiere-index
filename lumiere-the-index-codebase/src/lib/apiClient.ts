@@ -550,10 +550,14 @@ export const getTmdbWatchProviders = (tmdbId: number) =>
   apiFetch<TmdbWatchProviders>(`/api/v1/tmdb/movie/${tmdbId}/watch/providers`);
 
 export const getTmdbUpcoming = (page: number = 1) =>
-  apiFetch<{ results: TmdbMovie[] }>(`/api/v1/tmdb/movie/upcoming?page=${page}`);
+  apiFetch<{ results: TmdbMovie[]; page: number; total_pages: number }>(
+    `/api/v1/tmdb/movie/upcoming?page=${page}`,
+  );
 
 export const getTmdbNowPlaying = (page: number = 1) =>
-  apiFetch<{ results: TmdbMovie[] }>(`/api/v1/tmdb/movie/now_playing?page=${page}`);
+  apiFetch<{ results: TmdbMovie[]; page: number; total_pages: number }>(
+    `/api/v1/tmdb/movie/now_playing?page=${page}`,
+  );
 
 /**
  * The release calendar renders a title, a poster, a date and a popularity

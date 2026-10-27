@@ -73,8 +73,14 @@ export interface CatalogPage<T> {
   total_pages: number;
   total_results?: number;
 }
-export const getPeople = (window: "day" | "week" = "week", page = 1) =>
-  apiFetch<CatalogPage<Person>>(`/api/v1/tmdb/trending/person/${window}?page=${page}`);
+export const getPeople = (window: "day" | "week" | "popular" = "week", page = 1) =>
+  apiFetch<CatalogPage<Person>>(
+    window === "popular"
+      ? `/api/v1/tmdb/people/popular?page=${page}`
+      : `/api/v1/tmdb/trending/person/${window}?page=${page}`,
+    undefined,
+    20000,
+  );
 export const getPerson = (id: string) => apiFetch<Person>(`/api/v1/tmdb/person/${id}`);
 export const getScreen = (type: ScreenType, id: string) =>
   apiFetch<ScreenDetail>(`/api/v1/tmdb/${type}/${id}`);
@@ -84,9 +90,11 @@ export const getCatalog = (type: ScreenType, collection = "trending", page = 1) 
       ? `/api/v1/tmdb/trending/${type}/week?page=${page}`
       : `/api/v1/tmdb/catalog/${type}/${collection}?page=${page}`,
   );
-export const searchCatalog = (query: string) =>
+export const searchCatalog = (query: string, page = 1) =>
   apiFetch<CatalogPage<ScreenTitle | (Person & { media_type: "person" })>>(
-    `/api/v1/tmdb/search/multi?query=${encodeURIComponent(query)}`,
+    `/api/v1/tmdb/search/multi?query=${encodeURIComponent(query)}&page=${page}`,
+    undefined,
+    20000,
   );
 export const titleOf = (title: ScreenTitle) => title.title || title.name || "Untitled";
 export const yearOf = (title: ScreenTitle) =>
@@ -159,3 +167,44 @@ export interface WikiProfile {
 export const getCultureReference = (slug: string) =>
   apiFetch<WikiProfile>(`/api/v1/culture/wiki/${slug}`, undefined, 15000);
 export const sourceOf = (entry: CultureEntry) => `https://en.wikipedia.org/wiki/${entry.wiki}`;
+
+export const CATALOG_MAX_PAGES = 500;
+export const CATALOG_PAGE_SIZES = [20, 40, 60, 100] as const;
+/** Fetch only the selected window; never download the entire catalog. */
+export async function catalogWindow<T extends { id: number }>(
+  fetchPage: (page: number) => Promise<CatalogPage<T>>,
+  page: number,
+  size: number,
+): Promise<CatalogPage<T>> {
+  if (!CATALOG_PAGE_SIZES.includes(size as 20 | 40 | 60 | 100))
+    throw new Error("Unsupported page size");
+  const width = size / 20;
+  const start = (page - 1) * width + 1;
+  if (!Number.isInteger(page) || page < 1 || start > CATALOG_MAX_PAGES)
+    throw new Error("Page unavailable");
+  const first = await fetchPage(start);
+  const lastPage = Math.min(CATALOG_MAX_PAGES, Math.max(1, first.total_pages));
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, Math.min(width - 1, lastPage - start)) }, (_, index) =>
+      fetchPage(start + index + 1),
+    ),
+  );
+  return {
+    ...first,
+    page,
+    total_pages: Math.ceil(lastPage / width),
+    results: [
+      ...new Map(
+        [first, ...rest].flatMap((result) => result.results).map((item) => [item.id, item]),
+      ).values(),
+    ],
+  };
+}
+export const getCatalogWindow = (
+  type: ScreenType,
+  collection: string,
+  page: number,
+  size: number,
+) => catalogWindow((sourcePage) => getCatalog(type, collection, sourcePage), page, size);
+export const getPeopleWindow = (window: "day" | "week" | "popular", page: number, size: number) =>
+  catalogWindow((sourcePage) => getPeople(window, sourcePage), page, size);

@@ -91,15 +91,15 @@ def test_observation_volume_differentiates_identical_row_counts(db_session):
 def test_attention_raw_matches_observation_map_via_daily_scores(db_session):
     """The DailyScore path (post-rollup) must carry observation volume too."""
     src = _add_source(db_session)
-    from datetime import date
+    from datetime import datetime, timezone
     big = _add_film(db_session, "ds-big", "DS Big")
     small = _add_film(db_session, "ds-small", "DS Small")
     db_session.add(DailyScore(
-        film_id=big.id, day=date.today(), mentions_count=1,
+        film_id=big.id, day=datetime.now(timezone.utc).date(), mentions_count=1,
         observations_sum=500, sentiment_avg=0.0,
     ))
     db_session.add(DailyScore(
-        film_id=small.id, day=date.today(), mentions_count=1,
+        film_id=small.id, day=datetime.now(timezone.utc).date(), mentions_count=1,
         observations_sum=5, sentiment_avg=0.0,
     ))
     db_session.commit()

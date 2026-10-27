@@ -22,7 +22,7 @@ export function CultureHighlights() {
             <Link to="/people">All people</Link>
           </div>
           <div className="people-grid people-rail">
-            {people.data.results.slice(0, 8).map((person) => (
+            {people.data.results.map((person) => (
               <PersonCard key={person.id} person={person} />
             ))}
           </div>
@@ -37,11 +37,9 @@ export function CultureHighlights() {
           <Link to="/explore">Explore culture</Link>
         </div>
         <div className="culture-grid">
-          {["elden-ring", "mkbhd", "beyonce"]
-            .map((slug) => CULTURE.find((entry) => entry.slug === slug)!)
-            .map((entry) => (
-              <CultureCard key={entry.slug} entry={entry} />
-            ))}
+          {CULTURE.map((entry) => (
+            <CultureCard key={entry.slug} entry={entry} />
+          ))}
         </div>
       </section>
     </div>

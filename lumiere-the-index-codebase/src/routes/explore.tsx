@@ -71,7 +71,7 @@ function Explore() {
             retry={() => void people.refetch()}
           />
           <div className="people-grid people-rail">
-            {people.data?.results.slice(0, 8).map((person) => (
+            {people.data?.results.map((person) => (
               <PersonCard key={person.id} person={person} />
             ))}
           </div>
@@ -90,7 +90,7 @@ function Explore() {
           <div className="screen-grid">
             {films.data?.results
               .filter((film) => !film.adult)
-              .slice(0, 6)
+              .slice(0, 20)
               .map((film) => (
                 <ScreenCard key={film.id} film={film} type="movie" />
               ))}
@@ -107,7 +107,7 @@ function Explore() {
             </div>
             <div className="culture-grid">
               {CULTURE.filter((entry) => entry.kind === category.kind)
-                .slice(0, 3)
+
                 .map((entry) => (
                   <CultureCard key={entry.slug} entry={entry} />
                 ))}

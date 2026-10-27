@@ -2862,3 +2862,26 @@
     transition: none;
   }
 }
+
+.catalog-pagination-expanded {
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.catalog-pagination-expanded label,
+.catalog-pagination-expanded form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.catalog-pagination-expanded input,
+.catalog-pagination-expanded select {
+  background: var(--background);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+}
+.catalog-pagination-expanded input {
+  width: 5rem;
+}

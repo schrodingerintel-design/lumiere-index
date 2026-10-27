@@ -8,21 +8,22 @@ import { searchFilms } from "@/lib/apiClient";
 export function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [debounced, setDebounced] = useState("");
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 300);
     return () => clearTimeout(timer);
   }, [query]);
   const results = useQuery({
-    queryKey: ["catalog", "search", debounced],
-    queryFn: () => searchCatalog(debounced),
+    queryKey: ["catalog", "search", debounced, page],
+    queryFn: () => searchCatalog(debounced, page),
     enabled: open && debounced.length >= 2,
     staleTime: 300000,
     retry: false,
   });
   const index = useQuery({
     queryKey: ["films", "search", debounced],
-    queryFn: () => searchFilms(debounced),
+    queryFn: () => searchFilms(debounced, 50),
     enabled: open && debounced.length >= 2,
     staleTime: 300000,
     retry: false,
@@ -36,10 +37,9 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             .includes(debounced.toLowerCase()),
         )
       : CULTURE.filter((entry) => ["elden-ring", "mkbhd", "beyonce"].includes(entry.slug));
-  const list = (results.data?.results || [])
-    .filter((item) => !("adult" in item && item.adult))
-    .slice(0, 16);
+  const list = (results.data?.results || []).filter((item) => !("adult" in item && item.adult));
   function close() {
+    setPage(1);
     setQuery("");
     setDebounced("");
     onClose();
@@ -77,7 +77,10 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             id="culture-search"
             className="global-search-input"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
             placeholder="Films, people, games, music…"
             autoComplete="off"
           />
@@ -86,7 +89,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             {index.data && index.data.length > 0 && (
               <section>
                 <h2>On The Index</h2>
-                {index.data.slice(0, 4).map((film) => (
+                {index.data.map((film) => (
                   <Link
                     key={film.slug}
                     to="/films/$slug"
@@ -153,6 +156,27 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                 })}
               </section>
             )}
+            {!!results.data && (
+              <div className="catalog-pagination">
+                <button
+                  className="soft-button"
+                  disabled={page <= 1 || results.isFetching}
+                  onClick={() => setPage((value) => value - 1)}
+                >
+                  Previous results
+                </button>
+                <span>
+                  Page {page} of {Math.max(1, Math.min(500, results.data.total_pages))}
+                </span>
+                <button
+                  className="soft-button"
+                  disabled={page >= Math.min(500, results.data.total_pages) || results.isFetching}
+                  onClick={() => setPage((value) => value + 1)}
+                >
+                  More results
+                </button>
+              </div>
+            )}
             {local.length > 0 && (
               <section>
                 <h2>
@@ -160,7 +184,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
                     ? "Games, creators & music"
                     : "Explore something different"}
                 </h2>
-                {local.slice(0, 12).map((entry) => (
+                {local.map((entry) => (
                   <Link
                     key={entry.slug}
                     to="/culture/$slug"

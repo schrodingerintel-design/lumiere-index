@@ -51,15 +51,16 @@ function BuzzCard({ film, lead = false }: { film: TrendingFilmOut; lead?: boolea
 }
 export function BuzzFeed({ compact = false }: { compact?: boolean }) {
   const [risingOnly, setRisingOnly] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(24);
   const query = useQuery({
-    queryKey: ["trending", "home", 12],
-    queryFn: () => getTrendingFilms(12),
+    queryKey: compact ? ["trending", "home", 12] : ["trending", "films", 200],
+    queryFn: () => getTrendingFilms(compact ? 12 : 200),
     staleTime: 300000,
   });
   const titles = (query.data || []).filter(
     (film) => !risingOnly || (film.attention_delta_pct != null && film.attention_delta_pct > 0),
   );
-  const visible = compact ? titles.slice(0, 4) : titles;
+  const visible = compact ? titles.slice(0, 8) : titles.slice(0, visibleCount);
   return (
     <section className={`buzz-feed ${compact ? "buzz-feed-home" : ""}`} aria-label="Lumière Buzz">
       <div className="buzz-feed-heading">
@@ -109,6 +110,11 @@ export function BuzzFeed({ compact = false }: { compact?: boolean }) {
               : "New stories will appear as activity is recorded."}
           </p>
         </div>
+      )}
+      {!compact && visibleCount < titles.length && (
+        <button className="soft-button" onClick={() => setVisibleCount((value) => value + 24)}>
+          Show more stories · {titles.length - visibleCount} remaining
+        </button>
       )}
       {!compact && (
         <p className="buzz-coverage-note">

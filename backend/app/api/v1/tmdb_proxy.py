@@ -143,12 +143,12 @@ async def search_tv(
 
 
 @router.get("/tmdb/movie/upcoming")
-async def movie_upcoming(page: int = Query(1)):
+async def movie_upcoming(page: int = Query(1, ge=1, le=500)):
     return await _cached_get("/movie/upcoming", {"page": str(page)})
 
 
 @router.get("/tmdb/movie/now_playing")
-async def movie_now_playing(page: int = Query(1)):
+async def movie_now_playing(page: int = Query(1, ge=1, le=500)):
     return await _cached_get("/movie/now_playing", {"page": str(page)})
 
 
@@ -176,7 +176,7 @@ async def discover_movie(
     with_genres: str | None = Query(None),
     with_original_language: str | None = Query(None),
     sort_by: str = Query("popularity.desc"),
-    page: int = Query(1),
+    page: int = Query(1, ge=1, le=500),
 ):
     params: dict[str, str] = {"sort_by": sort_by, "page": str(page)}
     if with_genres:
@@ -190,7 +190,7 @@ async def discover_movie(
 async def discover_tv(
     with_genres: str | None = Query(None),
     sort_by: str = Query("popularity.desc"),
-    page: int = Query(1),
+    page: int = Query(1, ge=1, le=500),
 ):
     params: dict[str, str] = {"sort_by": sort_by, "page": str(page)}
     if with_genres:
@@ -199,23 +199,23 @@ async def discover_tv(
 
 
 @router.get("/tmdb/tv/on_the_air")
-async def tv_on_the_air(page: int = Query(1)):
+async def tv_on_the_air(page: int = Query(1, ge=1, le=500)):
     """Shows currently airing within the next 7 days."""
     return await _cached_get("/tv/on_the_air", {"page": str(page)})
 
 
 @router.get("/tmdb/tv/airing_today")
-async def tv_airing_today(page: int = Query(1)):
+async def tv_airing_today(page: int = Query(1, ge=1, le=500)):
     return await _cached_get("/tv/airing_today", {"page": str(page)})
 
 
 @router.get("/tmdb/tv/popular")
-async def tv_popular(page: int = Query(1)):
+async def tv_popular(page: int = Query(1, ge=1, le=500)):
     return await _cached_get("/tv/popular", {"page": str(page)})
 
 
 @router.get("/tmdb/tv/top_rated")
-async def tv_top_rated(page: int = Query(1)):
+async def tv_top_rated(page: int = Query(1, ge=1, le=500)):
     return await _cached_get("/tv/top_rated", {"page": str(page)})
 
 
@@ -293,15 +293,21 @@ async def tv_watch_providers(tmdb_id: int):
 
 
 @router.get("/tmdb/trending/{media_type}/{window}")
-async def catalog_trending(media_type: Literal["movie", "tv", "person"], window: Literal["day", "week"], page: int = Query(1, ge=1, le=100)):
+async def catalog_trending(media_type: Literal["movie", "tv", "person"], window: Literal["day", "week"], page: int = Query(1, ge=1, le=500)):
     data = await _cached_get(f"/trending/{media_type}/{window}", {"page": str(page)})
     return await _publication_page(data, people_only=media_type == "person")
 
 
 @router.get("/tmdb/search/multi")
-async def catalog_search(query: str = Query(..., min_length=2, max_length=100), page: int = Query(1, ge=1, le=100)):
+async def catalog_search(query: str = Query(..., min_length=2, max_length=100), page: int = Query(1, ge=1, le=500)):
     data = await _cached_get("/search/multi", {"query": query, "page": str(page), "include_adult": "false"}, ttl=300)
     return await _publication_page(data)
+
+
+@router.get("/tmdb/people/popular")
+async def popular_people(page: int = Query(1, ge=1, le=500)):
+    data = await _cached_get("/person/popular", {"page": str(page)})
+    return await _publication_page(data, people_only=True)
 
 
 @router.get("/tmdb/person/{person_id}")
@@ -319,7 +325,10 @@ async def person_details(person_id: int):
 
 
 @router.get("/tmdb/catalog/{media_type}/{collection}")
-async def catalog_collection(media_type: Literal["movie", "tv"], collection: Literal["popular", "top_rated"], page: int = Query(1, ge=1, le=100)):
+async def catalog_collection(media_type: Literal["movie", "tv"], collection: Literal["popular", "top_rated", "now_playing", "upcoming", "airing_today", "on_the_air"], page: int = Query(1, ge=1, le=500)):
+    allowed = {"movie": {"popular", "top_rated", "now_playing", "upcoming"}, "tv": {"popular", "top_rated", "airing_today", "on_the_air"}}
+    if collection not in allowed[media_type]:
+        raise HTTPException(422, "Collection unavailable for this media type")
     data = await _cached_get(f"/{media_type}/{collection}", {"page": str(page)})
     return await _publication_page(data)
 

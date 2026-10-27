@@ -48,8 +48,7 @@ function ScreenDetail() {
     (video) =>
       video.site === "YouTube" && video.type === "Trailer" && /^[a-zA-Z0-9_-]{11}$/.test(video.key),
   );
-  const recommendations =
-    film.recommendations?.results.filter((item) => !item.adult).slice(0, 12) || [];
+  const recommendations = film.recommendations?.results.filter((item) => !item.adult) || [];
   return (
     <Layout>
       <div
@@ -113,7 +112,7 @@ function ScreenDetail() {
                   <div>
                     <dt>Writing</dt>
                     <dd>
-                      {writers.slice(0, 6).map((person) => (
+                      {writers.map((person) => (
                         <Link key={person.id} to="/people/$id" params={{ id: String(person.id) }}>
                           {person.name}
                         </Link>

@@ -136,3 +136,16 @@ async def test_trending_and_search_omit_unpublishable_people(monkeypatch):
                         {"id": 3, "media_type": "movie", "adult": False, "title": "A public film"}]}
     result = await tmdb_proxy._publication_page(data)
     assert [item["id"] for item in result["results"]] == [1, 3]
+
+
+def test_catalog_page_500_is_supported_but_501_is_not(monkeypatch):
+    from app.main import app
+    async def cached(path, params=None, ttl=1800):
+        return {"page": int(params["page"]), "total_pages": 500, "results": []}
+    monkeypatch.setattr(tmdb_proxy, "_cached_get", cached)
+    client = TestClient(app)
+    assert client.get("/api/v1/tmdb/catalog/movie/popular?page=500").status_code == 200
+    assert client.get("/api/v1/tmdb/catalog/movie/popular?page=501").status_code == 422
+    assert client.get("/api/v1/tmdb/catalog/tv/upcoming").status_code == 422
+    assert client.get("/api/v1/tmdb/catalog/tv/airing_today?page=500").status_code == 200
+    assert client.get("/api/v1/trending/films?limit=201").status_code == 422

@@ -33,6 +33,7 @@ export const BETA_RELEASES: BetaRelease[] = [
     date: "2026-10-28",
     headline: "A bigger world of culture. A new home for the buzz.",
     changes: [
+      "Expanded film, TV, people, search, genre, and release browsing with larger page sizes and deeper catalog access. Top 100 charts stay capped at 100.",
       "Lumière Buzz leads discovery with cinematic stories, save and share actions, and a Rising filter.",
       "Explore films, TV, people, games, creators, and music through connected title and profile pages.",
       "Full cast and crew and regional streaming availability now stay on the title page. The chart-history graph has been removed.",
