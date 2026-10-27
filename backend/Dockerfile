@@ -14,5 +14,5 @@ COPY . .
 
 EXPOSE 8000
 
-# Run migrations and seed data on first boot, then start the server.
-CMD ["sh", "-c", "alembic upgrade head && python seed.py; uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 75"]
+# Run schema migrations, then serve. Production never generates demo audience data.
+CMD ["sh", "-c", "alembic upgrade head; exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 75"]

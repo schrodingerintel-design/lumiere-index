@@ -12,6 +12,7 @@ import { MomentumMark } from "@/components/lumiere/Momentum";
 export const Route = createFileRoute("/weekly-100")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex,follow" },
       { title: "Weekly Top 100 · The Index" },
       {
         name: "description",
@@ -82,9 +83,9 @@ function Weekly100() {
         </div>
         <h1 className="mt-2 font-display text-5xl lg:text-6xl">Weekly Top 100</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          The movies and TV shows that performed best throughout the week.
-          Sustained performance all week beats a one-day spike. Movies and TV
-          shows compete on one chart; each entry is labeled.
+          The movies and TV shows that performed best throughout the week. Sustained performance all
+          week beats a one-day spike. Movies and TV shows compete on one chart; each entry is
+          labeled.
         </p>
       </section>
 
@@ -186,7 +187,10 @@ function Weekly100() {
                           <FilmPosterThumbnail film={e} className="h-14 w-10 sm:h-12 sm:w-9" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="truncate font-display text-[15px] font-medium sm:text-lg" title={e.title}>
+                              <span
+                                className="truncate font-display text-[15px] font-medium sm:text-lg"
+                                title={e.title}
+                              >
                                 {e.title}
                               </span>
                               <span className="sm:hidden">
@@ -220,8 +224,7 @@ function Weekly100() {
           </ul>
           {!isLoading && !error && entries.length === 0 && (
             <div className="border-b border-foreground/10 bg-surface p-6 text-center text-sm text-muted-foreground">
-              The first Weekly Top 100 publishes after the next full week of
-              measurements.
+              The first Weekly Top 100 publishes after the next full week of measurements.
             </div>
           )}
         </div>

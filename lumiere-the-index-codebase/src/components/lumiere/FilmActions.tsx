@@ -38,12 +38,12 @@ export function FilmActions({
         aria-label={`${saved ? "Remove" : "Save"} ${title}${saved ? " from" : " to"} watchlist`}
         className={saved ? "is-saved" : ""}
       >
-        {saved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
-        {!compact && <span>{saved ? "Saved" : "Watchlist"}</span>}
+        {!compact && (saved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />)}
+        <span>{saved ? "Saved" : "Save"}</span>
       </button>
       <button type="button" onClick={() => void share()} aria-label={`Share ${title}`}>
-        {shared ? <Check size={17} /> : <Share2 size={17} />}
-        {!compact && <span>{shared ? "Link copied" : "Share"}</span>}
+        {!compact && (shared ? <Check size={17} /> : <Share2 size={17} />)}
+        <span>{shared ? "Copied" : "Share"}</span>
       </button>
       <span className="sr-only" role="status">
         {shared ? "Film link copied" : ""}

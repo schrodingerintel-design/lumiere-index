@@ -677,7 +677,10 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
     catalog_ids = _catalog_source_ids(db)
     def _sent_count(label: str) -> int:
         q = select(func.count()).where(
-            Mention.film_id == film.id, Mention.sentiment_label == label
+            Mention.film_id == film.id, Mention.sentiment_label == label,
+            Mention.created_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30),
+            ~Mention.external_id.startswith("seed_", autoescape=True),
+            Mention.text.isnot(None), Mention.text != ""
         )
         if catalog_ids:
             q = q.where(~Mention.source_id.in_(catalog_ids))
@@ -687,15 +690,17 @@ def film_detail(slug: str, db: Session = Depends(get_db)):
     neg = _sent_count("negative")
     
     total = pos + neu + neg
-    if total >= 1:
+    if total >= 20:
         sentiment = SentimentBreakdown(
             positive=round(pos * 100 / total, 1),
             neutral=round(neu * 100 / total, 1),
             negative=round(neg * 100 / total, 1),
             sufficient_data=True,
+            sample_size=total,
+            window_days=30,
         )
     else:
-        sentiment = SentimentBreakdown()
+        sentiment = SentimentBreakdown(sample_size=total, window_days=30)
     base = _to_ranked(film, r) if r else RankedFilm(
         id=film.id, slug=film.slug, title=film.title,
         original_title=film.original_title, content_type=film.content_type,

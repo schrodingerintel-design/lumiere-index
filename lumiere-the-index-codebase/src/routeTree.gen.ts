@@ -13,18 +13,29 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CompareRouteImport } from './routes/compare'
+import { Route as CreatorsRouteImport } from './routes/creators'
+import { Route as ExploreRouteImport } from './routes/explore'
+import { Route as GamesRouteImport } from './routes/games'
 import { Route as GenresRouteImport } from './routes/genres'
+import { Route as LibraryRouteImport } from './routes/library'
 import { Route as MethodologyRouteImport } from './routes/methodology'
+import { Route as MoviesRouteImport } from './routes/movies'
+import { Route as MusicRouteImport } from './routes/music'
 import { Route as NewEntriesRouteImport } from './routes/new-entries'
+import { Route as PeopleRouteImport } from './routes/people'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RisingRouteImport } from './routes/rising'
+import { Route as SeriesRouteImport } from './routes/series'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as Top100RouteImport } from './routes/top-100'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as Tv100RouteImport } from './routes/tv-100'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as Weekly100RouteImport } from './routes/weekly-100'
+import { Route as CultureSlugRouteImport } from './routes/culture.$slug'
 import { Route as FilmsSlugRouteImport } from './routes/films.$slug'
+import { Route as PeopleIdRouteImport } from './routes/people.$id'
+import { Route as ScreenTypeIdRouteImport } from './routes/screen.$type.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,9 +57,29 @@ const CompareRoute = CompareRouteImport.update({
   path: '/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorsRoute = CreatorsRouteImport.update({
+  id: '/creators',
+  path: '/creators',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExploreRoute = ExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GamesRoute = GamesRouteImport.update({
+  id: '/games',
+  path: '/games',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GenresRoute = GenresRouteImport.update({
   id: '/genres',
   path: '/genres',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MethodologyRoute = MethodologyRouteImport.update({
@@ -56,9 +87,24 @@ const MethodologyRoute = MethodologyRouteImport.update({
   path: '/methodology',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoviesRoute = MoviesRouteImport.update({
+  id: '/movies',
+  path: '/movies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MusicRoute = MusicRouteImport.update({
+  id: '/music',
+  path: '/music',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewEntriesRoute = NewEntriesRouteImport.update({
   id: '/new-entries',
   path: '/new-entries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleRoute = PeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -69,6 +115,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const RisingRoute = RisingRouteImport.update({
   id: '/rising',
   path: '/rising',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesRoute = SeriesRouteImport.update({
+  id: '/series',
+  path: '/series',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -101,9 +152,24 @@ const Weekly100Route = Weekly100RouteImport.update({
   path: '/weekly-100',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CultureSlugRoute = CultureSlugRouteImport.update({
+  id: '/culture/$slug',
+  path: '/culture/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FilmsSlugRoute = FilmsSlugRouteImport.update({
   id: '/films/$slug',
   path: '/films/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleIdRoute = PeopleIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PeopleRoute,
+} as any)
+const ScreenTypeIdRoute = ScreenTypeIdRouteImport.update({
+  id: '/screen/$type/$id',
+  path: '/screen/$type/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -112,36 +178,58 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
+  '/creators': typeof CreatorsRoute
+  '/explore': typeof ExploreRoute
+  '/games': typeof GamesRoute
   '/genres': typeof GenresRoute
+  '/library': typeof LibraryRoute
   '/methodology': typeof MethodologyRoute
+  '/movies': typeof MoviesRoute
+  '/music': typeof MusicRoute
   '/new-entries': typeof NewEntriesRoute
+  '/people': typeof PeopleRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/rising': typeof RisingRoute
+  '/series': typeof SeriesRoute
   '/terms': typeof TermsRoute
   '/top-100': typeof Top100Route
   '/trending': typeof TrendingRoute
   '/tv-100': typeof Tv100Route
   '/watchlist': typeof WatchlistRoute
   '/weekly-100': typeof Weekly100Route
+  '/culture/$slug': typeof CultureSlugRoute
   '/films/$slug': typeof FilmsSlugRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/screen/$type/$id': typeof ScreenTypeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
+  '/creators': typeof CreatorsRoute
+  '/explore': typeof ExploreRoute
+  '/games': typeof GamesRoute
   '/genres': typeof GenresRoute
+  '/library': typeof LibraryRoute
   '/methodology': typeof MethodologyRoute
+  '/movies': typeof MoviesRoute
+  '/music': typeof MusicRoute
   '/new-entries': typeof NewEntriesRoute
+  '/people': typeof PeopleRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/rising': typeof RisingRoute
+  '/series': typeof SeriesRoute
   '/terms': typeof TermsRoute
   '/top-100': typeof Top100Route
   '/trending': typeof TrendingRoute
   '/tv-100': typeof Tv100Route
   '/watchlist': typeof WatchlistRoute
   '/weekly-100': typeof Weekly100Route
+  '/culture/$slug': typeof CultureSlugRoute
   '/films/$slug': typeof FilmsSlugRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/screen/$type/$id': typeof ScreenTypeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,18 +237,29 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/calendar': typeof CalendarRoute
   '/compare': typeof CompareRoute
+  '/creators': typeof CreatorsRoute
+  '/explore': typeof ExploreRoute
+  '/games': typeof GamesRoute
   '/genres': typeof GenresRoute
+  '/library': typeof LibraryRoute
   '/methodology': typeof MethodologyRoute
+  '/movies': typeof MoviesRoute
+  '/music': typeof MusicRoute
   '/new-entries': typeof NewEntriesRoute
+  '/people': typeof PeopleRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/rising': typeof RisingRoute
+  '/series': typeof SeriesRoute
   '/terms': typeof TermsRoute
   '/top-100': typeof Top100Route
   '/trending': typeof TrendingRoute
   '/tv-100': typeof Tv100Route
   '/watchlist': typeof WatchlistRoute
   '/weekly-100': typeof Weekly100Route
+  '/culture/$slug': typeof CultureSlugRoute
   '/films/$slug': typeof FilmsSlugRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/screen/$type/$id': typeof ScreenTypeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -169,54 +268,87 @@ export interface FileRouteTypes {
     | '/about'
     | '/calendar'
     | '/compare'
+    | '/creators'
+    | '/explore'
+    | '/games'
     | '/genres'
+    | '/library'
     | '/methodology'
+    | '/movies'
+    | '/music'
     | '/new-entries'
+    | '/people'
     | '/privacy'
     | '/rising'
+    | '/series'
     | '/terms'
     | '/top-100'
     | '/trending'
     | '/tv-100'
     | '/watchlist'
     | '/weekly-100'
+    | '/culture/$slug'
     | '/films/$slug'
+    | '/people/$id'
+    | '/screen/$type/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/calendar'
     | '/compare'
+    | '/creators'
+    | '/explore'
+    | '/games'
     | '/genres'
+    | '/library'
     | '/methodology'
+    | '/movies'
+    | '/music'
     | '/new-entries'
+    | '/people'
     | '/privacy'
     | '/rising'
+    | '/series'
     | '/terms'
     | '/top-100'
     | '/trending'
     | '/tv-100'
     | '/watchlist'
     | '/weekly-100'
+    | '/culture/$slug'
     | '/films/$slug'
+    | '/people/$id'
+    | '/screen/$type/$id'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/calendar'
     | '/compare'
+    | '/creators'
+    | '/explore'
+    | '/games'
     | '/genres'
+    | '/library'
     | '/methodology'
+    | '/movies'
+    | '/music'
     | '/new-entries'
+    | '/people'
     | '/privacy'
     | '/rising'
+    | '/series'
     | '/terms'
     | '/top-100'
     | '/trending'
     | '/tv-100'
     | '/watchlist'
     | '/weekly-100'
+    | '/culture/$slug'
     | '/films/$slug'
+    | '/people/$id'
+    | '/screen/$type/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -224,18 +356,28 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   CalendarRoute: typeof CalendarRoute
   CompareRoute: typeof CompareRoute
+  CreatorsRoute: typeof CreatorsRoute
+  ExploreRoute: typeof ExploreRoute
+  GamesRoute: typeof GamesRoute
   GenresRoute: typeof GenresRoute
+  LibraryRoute: typeof LibraryRoute
   MethodologyRoute: typeof MethodologyRoute
+  MoviesRoute: typeof MoviesRoute
+  MusicRoute: typeof MusicRoute
   NewEntriesRoute: typeof NewEntriesRoute
+  PeopleRoute: typeof PeopleRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   RisingRoute: typeof RisingRoute
+  SeriesRoute: typeof SeriesRoute
   TermsRoute: typeof TermsRoute
   Top100Route: typeof Top100Route
   TrendingRoute: typeof TrendingRoute
   Tv100Route: typeof Tv100Route
   WatchlistRoute: typeof WatchlistRoute
   Weekly100Route: typeof Weekly100Route
+  CultureSlugRoute: typeof CultureSlugRoute
   FilmsSlugRoute: typeof FilmsSlugRoute
+  ScreenTypeIdRoute: typeof ScreenTypeIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -268,11 +410,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/creators': {
+      id: '/creators'
+      path: '/creators'
+      fullPath: '/creators'
+      preLoaderRoute: typeof CreatorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explore': {
+      id: '/explore'
+      path: '/explore'
+      fullPath: '/explore'
+      preLoaderRoute: typeof ExploreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/games': {
+      id: '/games'
+      path: '/games'
+      fullPath: '/games'
+      preLoaderRoute: typeof GamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/genres': {
       id: '/genres'
       path: '/genres'
       fullPath: '/genres'
       preLoaderRoute: typeof GenresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/methodology': {
@@ -282,11 +452,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MethodologyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/movies': {
+      id: '/movies'
+      path: '/movies'
+      fullPath: '/movies'
+      preLoaderRoute: typeof MoviesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/music': {
+      id: '/music'
+      path: '/music'
+      fullPath: '/music'
+      preLoaderRoute: typeof MusicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/new-entries': {
       id: '/new-entries'
       path: '/new-entries'
       fullPath: '/new-entries'
       preLoaderRoute: typeof NewEntriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people': {
+      id: '/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof PeopleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -301,6 +492,13 @@ declare module '@tanstack/react-router' {
       path: '/rising'
       fullPath: '/rising'
       preLoaderRoute: typeof RisingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/series': {
+      id: '/series'
+      path: '/series'
+      fullPath: '/series'
+      preLoaderRoute: typeof SeriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -345,6 +543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Weekly100RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/culture/$slug': {
+      id: '/culture/$slug'
+      path: '/culture/$slug'
+      fullPath: '/culture/$slug'
+      preLoaderRoute: typeof CultureSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/films/$slug': {
       id: '/films/$slug'
       path: '/films/$slug'
@@ -352,26 +557,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FilmsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/people/$id': {
+      id: '/people/$id'
+      path: '/$id'
+      fullPath: '/people/$id'
+      preLoaderRoute: typeof PeopleIdRouteImport
+      parentRoute: typeof PeopleRoute
+    }
+    '/screen/$type/$id': {
+      id: '/screen/$type/$id'
+      path: '/screen/$type/$id'
+      fullPath: '/screen/$type/$id'
+      preLoaderRoute: typeof ScreenTypeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface PeopleRouteChildren {
+  PeopleIdRoute: typeof PeopleIdRoute
+}
+
+const PeopleRouteChildren: PeopleRouteChildren = {
+  PeopleIdRoute: PeopleIdRoute,
+}
+
+const PeopleRouteWithChildren =
+  PeopleRoute._addFileChildren(PeopleRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   CalendarRoute: CalendarRoute,
   CompareRoute: CompareRoute,
+  CreatorsRoute: CreatorsRoute,
+  ExploreRoute: ExploreRoute,
+  GamesRoute: GamesRoute,
   GenresRoute: GenresRoute,
+  LibraryRoute: LibraryRoute,
   MethodologyRoute: MethodologyRoute,
+  MoviesRoute: MoviesRoute,
+  MusicRoute: MusicRoute,
   NewEntriesRoute: NewEntriesRoute,
+  PeopleRoute: PeopleRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   RisingRoute: RisingRoute,
+  SeriesRoute: SeriesRoute,
   TermsRoute: TermsRoute,
   Top100Route: Top100Route,
   TrendingRoute: TrendingRoute,
   Tv100Route: Tv100Route,
   WatchlistRoute: WatchlistRoute,
   Weekly100Route: Weekly100Route,
+  CultureSlugRoute: CultureSlugRoute,
   FilmsSlugRoute: FilmsSlugRoute,
+  ScreenTypeIdRoute: ScreenTypeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

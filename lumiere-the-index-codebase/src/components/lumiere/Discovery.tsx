@@ -49,8 +49,7 @@ export function HomeIntro() {
             What&rsquo;s happening across film and TV
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Rankings, movers and new entries: what the culture is paying
-            attention to right now.
+            Rankings, movers and new entries: what the culture is paying attention to right now.
           </p>
         </div>
         <span className="mb-1 inline-flex shrink-0 items-center gap-2 border border-foreground/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -83,7 +82,10 @@ function TrendingPosterCard({ film }: { film: TrendingFilmOut }) {
       params={{ slug: film.film_slug }}
       className="group relative block w-[124px] shrink-0 snap-start sm:w-[152px]"
     >
-      <div className="relative aspect-[2/3] overflow-hidden bg-ink" style={{ background: gradient }}>
+      <div
+        className="relative aspect-[2/3] overflow-hidden bg-ink"
+        style={{ background: gradient }}
+      >
         {film.poster_url && (
           <img
             src={film.poster_url}
@@ -99,9 +101,7 @@ function TrendingPosterCard({ film }: { film: TrendingFilmOut }) {
           {String(film.rank).padStart(2, "0")}
         </div>
         <div className="absolute inset-x-0 bottom-0 p-2.5">
-          <div className="truncate font-display text-sm font-semibold text-white">
-            {film.title}
-          </div>
+          <div className="truncate font-display text-sm font-semibold text-white">{film.title}</div>
           <div className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.12em] text-white/70">
             {film.trend_reason}
           </div>
@@ -111,7 +111,13 @@ function TrendingPosterCard({ film }: { film: TrendingFilmOut }) {
   );
 }
 
-function RailControls({ scrollLeft, scrollRight }: { scrollLeft: () => void; scrollRight: () => void }) {
+function RailControls({
+  scrollLeft,
+  scrollRight,
+}: {
+  scrollLeft: () => void;
+  scrollRight: () => void;
+}) {
   return (
     <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
       <button
@@ -144,7 +150,10 @@ export function TrendingRail() {
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
     const distance = scrollRef.current.clientWidth * 0.75;
-    scrollRef.current.scrollBy({ left: direction === "left" ? -distance : distance, behavior: "smooth" });
+    scrollRef.current.scrollBy({
+      left: direction === "left" ? -distance : distance,
+      behavior: "smooth",
+    });
   };
 
   const films = data ?? [];
@@ -166,10 +175,7 @@ export function TrendingRail() {
             >
               All trending →
             </Link>
-            <RailControls
-              scrollLeft={() => scroll("left")}
-              scrollRight={() => scroll("right")}
-            />
+            <RailControls scrollLeft={() => scroll("left")} scrollRight={() => scroll("right")} />
           </div>
         </div>
         {error ? (
@@ -226,8 +232,7 @@ function weeklyToRanked(entry: WeeklyEntry): RankedFilm {
     id: entry.film_id,
     slug: entry.slug,
     title: entry.title,
-    content_type:
-      entry.content_type === "TV_SHOW" ? ("TV_SHOW" as const) : ("MOVIE" as const),
+    content_type: entry.content_type === "TV_SHOW" ? ("TV_SHOW" as const) : ("MOVIE" as const),
     director: entry.director,
     year: entry.year,
     country_origin: null,
@@ -306,7 +311,7 @@ export function TodaysIndex() {
         <SectionHeading
           kicker="The Index · updated every 12 hours"
           title="Today&rsquo;s Index"
-          copy={"The official rankings. Rank is position on the chart; movement is the change since the previous publish."}
+          copy={"The official rankings. Rank and movement since the previous chart."}
           seeAllHref={current.href}
           seeAllLabel={current.fullLabel}
           action={
@@ -314,10 +319,7 @@ export function TodaysIndex() {
               <ShareCardButton
                 variant="chart"
                 card={{
-                  title:
-                    tab === "movie"
-                      ? "Movie 100 · Top 10"
-                      : "TV 100 · Top 10",
+                  title: tab === "movie" ? "Movie 100 · Top 10" : "TV 100 · Top 10",
                   subtitle:
                     tab === "movie"
                       ? "The films generating the strongest measured cultural momentum today."
@@ -336,24 +338,26 @@ export function TodaysIndex() {
           aria-label="Official charts"
           className="no-scrollbar mb-4 flex items-center gap-1 overflow-x-auto border-b border-foreground/10"
         >
-          {(Object.keys(TAB_META) as TabId[]).map((id) => {
-            const active = tab === id;
-            return (
-              <button
-                key={id}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setTab(id)}
-                className={`relative -mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 px-3.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors sm:h-10 sm:px-4 ${
-                  active
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {TAB_META[id].label}
-              </button>
-            );
-          })}
+          {(Object.keys(TAB_META) as TabId[])
+            .filter((id) => id !== "weekly" || weeklyEntries.length > 0)
+            .map((id) => {
+              const active = tab === id;
+              return (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTab(id)}
+                  className={`relative -mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 px-3.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors sm:h-10 sm:px-4 ${
+                    active
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {TAB_META[id].label}
+                </button>
+              );
+            })}
         </div>
 
         <div
@@ -425,7 +429,10 @@ export function TodaysIndex() {
                             {Math.abs(entry.rank_delta)}
                           </span>
                         ) : (
-                          <span className="font-mono text-sm text-muted-foreground" title="Held its rank">
+                          <span
+                            className="font-mono text-sm text-muted-foreground"
+                            title="Held its rank"
+                          >
                             —
                           </span>
                         )}
@@ -439,9 +446,11 @@ export function TodaysIndex() {
               </ul>
             ) : (
               <p className="px-1 py-8 text-sm text-muted-foreground">
-                The weekly chart is being prepared for this week. Past weeks are
-                on the{" "}
-                <Link to="/weekly-100" className="underline underline-offset-2 hover:text-foreground">
+                The weekly chart is being prepared for this week. Past weeks are on the{" "}
+                <Link
+                  to="/weekly-100"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
                   full Weekly 100
                 </Link>{" "}
                 page.
@@ -470,7 +479,7 @@ export function TodaysIndex() {
             {tab === "weekly"
               ? "Weekly 100 rewards sustained performance all week over a one-day spike."
               : tab === "movie"
-                ? "A public rank exists only between #1 and #100."
+                ? "Movie 100 · latest published chart."
                 : "TV shows rank on their own chart, separate from films."}
           </span>
         </div>

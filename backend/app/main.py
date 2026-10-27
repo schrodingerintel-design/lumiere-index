@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres, index, telemetry
+from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres, index, telemetry, culture
 from app.utils.logging_config import setup_logging
 from app.utils.rate_limit import SimpleRateLimiterMiddleware
 
@@ -84,21 +84,9 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         log.warning("startup: catalog identity repair failed (non-fatal) — %s", exc)
 
-    # If the database has no films or ranking snapshots, run seed immediately.
-    try:
-        from app.db import SessionLocal
-        from sqlalchemy import select, func
-        from app.models import Film, Ranking
-        with SessionLocal() as db:
-            film_cnt = db.scalar(select(func.count(Film.id))) or 0
-            rank_cnt = db.scalar(select(func.count(Ranking.id))) or 0
-            if film_cnt == 0 or rank_cnt == 0:
-                log.info("startup: database empty (films=%s, rankings=%s) — auto-seeding...", film_cnt, rank_cnt)
-                import seed
-                seed.run()
-                log.info("startup: auto-seed complete")
-    except Exception as exc:
-        log.warning("startup: auto-seed check failed (non-fatal) — %s", exc)
+    # An empty production database must stay honest: never populate it with
+    # invented ranks, engagement, or audience reviews. Catalog sync below
+    # supplies metadata; measured signals create the first chart naturally.
 
     global _sync_task, _scheduler_task
     _sync_task = None
@@ -169,7 +157,7 @@ async def db_outage_fast_fail(request, call_next):
     if path in ("/health", "/healthz", "/readyz") or path.startswith("/api/v1/admin"):
         return await call_next(request)
 
-    if db_health.is_open():
+    if db_health.is_open() and not path.startswith(("/api/v1/tmdb/", "/api/v1/culture/")):
         return JSONResponse(
             status_code=503,
             headers={"Retry-After": "30"},
@@ -288,3 +276,5 @@ def readyz(response: Response):
     if not ready:
         response.status_code = 503
     return payload
+
+app.include_router(culture.router, prefix="/api/v1", tags=["culture"])

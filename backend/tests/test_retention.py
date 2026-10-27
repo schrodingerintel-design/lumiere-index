@@ -163,7 +163,8 @@ def test_collapse_is_idempotent(db):
     assert second["rows_deleted"] == 0
 
 
-def test_prune_raw_signals_windows(db):
+def test_prune_raw_signals_windows(db, monkeypatch):
+    monkeypatch.setattr("app.services.retention._utcnow", lambda: NOW.replace(tzinfo=timezone.utc))
     film, _ = _seed_chart_history(db)
     src = db.query(Source).first()
     from app.models import Mention, MetricSnapshot, PendingMention

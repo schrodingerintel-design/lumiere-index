@@ -1,3 +1,4 @@
+import { CultureNav } from "./CultureNav";
 import { Toaster } from "sonner";
 import { useState, type ReactNode } from "react";
 import { TopNav, MobileMenu } from "./TopNav";
@@ -21,6 +22,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </a>
       <TopNav onMenu={() => setMenuOpen(true)} onSearch={openSearch} />
       <main id="main-content" className="flex-1">
+        <CultureNav />
         {children}
       </main>
       <Footer />

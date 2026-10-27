@@ -32,9 +32,9 @@ def _setup_with_mentions():
     session.add(src)
     session.commit()
 
-    # Add 10 mentions: 6 positive, 2 neutral, 2 negative
-    for i in range(10):
-        label = "positive" if i < 6 else ("neutral" if i < 8 else "negative")
+    # Add 20 recent real text mentions: 12 positive, 4 neutral, 4 negative
+    for i in range(20):
+        label = "positive" if i < 12 else ("neutral" if i < 16 else "negative")
         score = 0.8 if label == "positive" else (-0.7 if label == "negative" else 0.0)
         m = Mention(
             film_id=f.id, source_id=src.id, external_id=f"ext_{i}",

@@ -12,10 +12,15 @@ const COMPANY_LINKS = [
 ] as const;
 
 const EXPLORE_LINKS = [
+  { to: "/movies", label: "Films" },
+  { to: "/series", label: "TV series" },
+  { to: "/people", label: "People" },
+  { to: "/games", label: "Games" },
+  { to: "/creators", label: "Creators" },
+  { to: "/music", label: "Music" },
   { to: "/", label: "The Index" },
   { to: "/top-100", label: "Movie 100" },
   { to: "/tv-100", label: "TV 100" },
-  { to: "/weekly-100", label: "Weekly Top 100" },
   { to: "/rising", label: "Biggest Movers" },
   { to: "/new-entries", label: "New Entries" },
   { to: "/trending", label: "Trending" },
@@ -34,8 +39,7 @@ export function Footer() {
               <BetaBadge />
             </div>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Find your next obsession. Follow the stories moving film and TV culture, and share the
-              ones that stay with you.
+              Film, TV, games, music, and the people shaping culture.
             </p>
             {/* Official channels */}
             <div className="mt-5 flex items-center gap-2">
