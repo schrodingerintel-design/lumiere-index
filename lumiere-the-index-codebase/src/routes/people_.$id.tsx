@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Layout } from "@/components/lumiere/Layout";
 import { ScreenCard, SaveItem, ShareItem, ProviderCredit } from "@/components/lumiere/Catalog";
-import { getPerson, imageOf, safeExternal } from "@/lib/catalog";
+import { getPerson, imageOf, safeExternal, mergeScreenCredits } from "@/lib/catalog";
 import { canonicalLink } from "@/lib/site";
 import { RouteError } from "@/lib/route-error";
 
@@ -40,11 +40,7 @@ function PersonDetail() {
     ...(person.combined_credits?.cast || []),
     ...(person.combined_credits?.crew || []),
   ];
-  const unique = [
-    ...new Map(
-      credits.filter((item) => !item.adult).map((item) => [`${item.media_type}:${item.id}`, item]),
-    ).values(),
-  ];
+  const unique = mergeScreenCredits(credits.filter((item) => !item.adult));
   const filtered = unique
     .filter(
       (item) =>

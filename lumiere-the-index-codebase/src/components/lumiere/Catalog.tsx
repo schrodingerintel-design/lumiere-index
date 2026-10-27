@@ -80,13 +80,7 @@ export function ScreenCard({ film, type }: { film: ScreenTitle; type: ScreenType
         </Link>
         <p>
           {yearOf(film)}
-          {film.character
-            ? ` · ${film.character}`
-            : film.job
-              ? ` · ${film.job}`
-              : type === "tv"
-                ? " · TV"
-                : " · Film"}
+          {` · ${[film.character, film.job].filter(Boolean).join(" · ") || (type === "tv" ? "TV" : "Film")}`}
         </p>
         <SaveItem
           item={{
