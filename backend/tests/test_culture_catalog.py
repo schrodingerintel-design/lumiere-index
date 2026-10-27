@@ -109,3 +109,26 @@ async def test_adult_catalog_detail_is_not_exposed(monkeypatch):
         with pytest.raises(HTTPException) as error:
             await endpoint(1)
         assert error.value.status_code == 404
+
+
+def test_people_publication_does_not_trust_provider_adult_flag_alone():
+    from app.services.catalog_publication import public_person
+    base = {"id": 1, "name": "Example", "adult": False,
+            "combined_credits": {"cast": [{"title": "A film", "adult": False, "vote_count": 100}]}}
+    assert public_person({**base, "biography": "An actor known for film and television."})
+    assert not public_person({**base, "biography": "An adult film actress."})
+    assert not public_person({**base, "adult": True})
+    assert not public_person({"name": "No catalog evidence", "biography": "An actor."})
+
+
+@pytest.mark.asyncio
+async def test_trending_and_search_omit_unpublishable_people(monkeypatch):
+    async def details(person_id):
+        if person_id == 2:
+            raise HTTPException(404, "Profile unavailable")
+        return {"id": person_id, "combined_credits": {"cast": [{"title": "Film", "vote_count": 100}]}}
+    monkeypatch.setattr(tmdb_proxy, "person_details", details)
+    data = {"results": [{"id": 1, "media_type": "person"}, {"id": 2, "media_type": "person"},
+                        {"id": 3, "media_type": "movie", "adult": False}]}
+    result = await tmdb_proxy._publication_page(data)
+    assert [item["id"] for item in result["results"]] == [1, 3]
