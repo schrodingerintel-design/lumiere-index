@@ -20,7 +20,15 @@ export const Route = createFileRoute("/privacy")({
   errorComponent: RouteError,
 });
 
-function Section({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
+function Section({
+  num,
+  title,
+  children,
+}: {
+  num: string;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <h2 className="font-serif text-xl text-foreground">
@@ -51,22 +59,22 @@ function Privacy() {
 
       <Section num="1." title="Introduction">
         <p>
-          Welcome to The Index (“The Index”, “we”, “our”, or “us”). This Privacy Policy
-          explains how we collect, use, protect, and process information when you access or use
-          The Index products, websites, applications, and services.
+          Welcome to The Index (“The Index”, “we”, “our”, or “us”). This Privacy Policy explains how
+          we collect, use, protect, and process information when you access or use The Index
+          products, websites, applications, and services.
         </p>
         <p>By using The Index, you agree to the practices described in this Privacy Policy.</p>
       </Section>
 
       <Section num="2." title="Information We Collect">
         <p className="font-medium text-foreground">Information You Provide</p>
-        <p>When you use The Index, we may collect information you voluntarily provide, including:</p>
+        <p>
+          When you use The Index, we may collect information you voluntarily provide, including:
+        </p>
         <List
           items={[
             "Name",
             "Email address",
-            "Account details",
-            "Profile information",
             "Preferences",
             "Saved movies or shows",
             "Feedback and communications with us",
@@ -103,7 +111,9 @@ function Privacy() {
             "Trending discussions",
           ]}
         />
-        <p>This information is used to create rankings, charts, analytics, and discovery features.</p>
+        <p>
+          This information is used to create rankings, charts, analytics, and discovery features.
+        </p>
       </Section>
 
       <Section num="3." title="How We Use Information">
@@ -129,8 +139,8 @@ function Privacy() {
         </p>
         <p>Personal user information is not used to artificially influence rankings.</p>
         <p>
-          Rankings are generated using the Index's methodology and may incorporate publicly available
-          information and aggregated platform data.
+          Rankings are generated using the Index's methodology and may incorporate publicly
+          available information and aggregated platform data.
         </p>
       </Section>
 
@@ -150,8 +160,52 @@ function Privacy() {
 
       <Section num="6." title="Third-Party Services">
         <p>The Index may use third-party services for:</p>
-        <List items={["Hosting.", "Analytics.", "Authentication.", "Payments.", "Data processing.", "Infrastructure."]} />
+        <List items={["Hosting.", "Analytics.", "Data processing.", "Infrastructure."]} />
         <p>These providers may process information only as necessary to provide their services.</p>
+      </Section>
+
+      <Section num="6a." title="Advertising and Google">
+        <p>
+          When Google advertising is enabled, third-party vendors, including Google, may use cookies
+          to serve ads based on your prior visits to this site or other websites. Google advertising
+          cookies allow Google and its partners to personalize advertising across sites.
+        </p>
+        <p>
+          You can manage personalized Google advertising in{" "}
+          <a
+            className="text-primary underline"
+            href="https://myadcenter.google.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            My Ad Center
+          </a>
+          . You may also visit{" "}
+          <a
+            className="text-primary underline"
+            href="https://www.aboutads.info/choices/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            AboutAds choices
+          </a>{" "}
+          to manage participating vendors. Learn more about{" "}
+          <a
+            className="text-primary underline"
+            href="https://policies.google.com/technologies/partner-sites"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            how Google uses information from partner sites
+          </a>
+          .
+        </p>
+        <p>
+          Use Ad choices in the footer to change this site's advertising preference. Rejecting
+          advertising prevents our optional advertising script from loading. Your film watchlist and
+          saved culture library use local storage on your device; they are not an account or a
+          cloud-synced profile.
+        </p>
       </Section>
 
       <Section num="7." title="Data Sharing">
@@ -189,16 +243,17 @@ function Privacy() {
 
       <Section num="10." title="Children's Privacy">
         <p>
-          The Index is not intended for users below the minimum age required by applicable laws. We do
-          not knowingly collect personal information from children without appropriate authorization.
+          The Index is not intended for users below the minimum age required by applicable laws. We
+          do not knowingly collect personal information from children without appropriate
+          authorization.
         </p>
       </Section>
 
       <Section num="11." title="International Users">
         <p>
-          The Index operates globally. Your information may be processed in countries where our service
-          providers operate. We take reasonable steps to ensure appropriate protection of personal
-          information.
+          The Index operates globally. Your information may be processed in countries where our
+          service providers operate. We take reasonable steps to ensure appropriate protection of
+          personal information.
         </p>
       </Section>
 
@@ -219,7 +274,9 @@ function Privacy() {
           <br />
           Website: lumiereindex.com
         </p>
-        <p className="text-xs text-muted-foreground">© The Index · by Lumière. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">
+          © The Index · by Lumière. All rights reserved.
+        </p>
       </Section>
     </StaticPage>
   );

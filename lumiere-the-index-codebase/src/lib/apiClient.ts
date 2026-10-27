@@ -34,8 +34,7 @@ export function getApiBase(): string {
   // runtime lookup so server rendering falls through to the prod backend.
   if (import.meta.env.PROD) {
     if (typeof window !== "undefined") {
-      const runtime = (window as unknown as { __API_BASE_URL__?: string })
-        .__API_BASE_URL__;
+      const runtime = (window as unknown as { __API_BASE_URL__?: string }).__API_BASE_URL__;
       if (runtime) return runtime;
     }
     // Known production backend. (The page origin only hosts the SSR function,
@@ -118,18 +117,18 @@ function emitApiLog(record: ApiLogRecord): void {
   }
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = API_TIMEOUT_MS,
+): Promise<T> {
   const base = getApiBase();
   const url = `${base.replace(/\/+$/, "")}${path}`;
   const requestId = newRequestId();
   const startedAt = Date.now();
   const timestamp = new Date(startedAt).toISOString();
 
-  const log = (
-    outcome: ApiOutcome,
-    status: number,
-    exceptionType: string | null,
-  ) =>
+  const log = (outcome: ApiOutcome, status: number, exceptionType: string | null) =>
     emitApiLog({
       requestId,
       endpoint: path,
@@ -153,7 +152,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
         ...(init?.headers ?? {}),
       },
       signal: AbortSignal.any([
-        AbortSignal.timeout(API_TIMEOUT_MS),
+        AbortSignal.timeout(timeoutMs),
         ...(init?.signal ? [init.signal] : []),
       ]),
     });
@@ -247,6 +246,8 @@ export interface SentimentBreakdown {
   neutral: number | null;
   negative: number | null;
   sufficient_data: boolean;
+  sample_size?: number;
+  window_days?: number;
 }
 
 /** Per-source observation funnel for one film. */
@@ -326,7 +327,6 @@ export interface LiveStats {
   snapshot_at: string;
 }
 
-
 // ─── TMDB Types ───────────────────────────────────────────────────────────────
 
 export interface TmdbMovie {
@@ -343,7 +343,7 @@ export interface TmdbMovie {
 
 export interface TmdbSearchResult {
   results: TmdbMovie[];
-}// ─── Backend API ──────────────────────────────────────────────────────────────
+} // ─── Backend API ──────────────────────────────────────────────────────────────
 export const getTopFilms = (
   limit: number = 10,
   offset: number = 0,
@@ -354,9 +354,12 @@ export const getTopFilms = (
   );
 
 export const getGenreFilms = (tag: string, limit: number = 100, offset: number = 0) =>
-  apiFetch<RankedFilm[]>(`/api/v1/genres/${encodeURIComponent(tag)}/films?limit=${limit}&offset=${offset}`);
+  apiFetch<RankedFilm[]>(
+    `/api/v1/genres/${encodeURIComponent(tag)}/films?limit=${limit}&offset=${offset}`,
+  );
 
-export const getGenres = () => apiFetch<{ tag: string; label: string; count: number }[]>(`/api/v1/genres`);
+export const getGenres = () =>
+  apiFetch<{ tag: string; label: string; count: number }[]>(`/api/v1/genres`);
 
 /** Recently released films, highest index score first (home page + Top 100). */
 export const getNewReleaseFilms = (limit: number = 100, offset: number = 0) =>
@@ -390,9 +393,7 @@ export interface MoverFilm {
 
 /** Biggest Movers — largest rank changes between published Daily Indexes. */
 export const getBiggestMovers = (limit: number = 10) =>
-  apiFetch<{ gainers: MoverFilm[]; decliners: MoverFilm[] }>(
-    `/api/v1/index/movers?limit=${limit}`,
-  );
+  apiFetch<{ gainers: MoverFilm[]; decliners: MoverFilm[] }>(`/api/v1/index/movers?limit=${limit}`);
 
 // ── Weekly Top 100 (published weekly snapshot, movies + TV combined) ────────
 
@@ -488,9 +489,6 @@ export const getTrendingFilms = (limit: number = 20) =>
 export const getLiveStats = () => apiFetch<LiveStats>("/api/v1/stats/live");
 
 export const getMetaRefresh = () => apiFetch<RefreshMeta>("/api/v1/meta/refresh");
-
-
-
 
 export const subscribeNewsletter = (email: string) =>
   apiFetch<{ ok: boolean }>("/api/v1/newsletter/subscribe", {

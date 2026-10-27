@@ -1,3 +1,6 @@
+import { CultureHighlights } from "@/components/lumiere/CultureHighlights";
+import { getPeople } from "@/lib/catalog";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { Layout } from "@/components/lumiere/Layout";
@@ -29,11 +32,11 @@ const NOW_PLAYING_PAGES = 2;
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "The Index · Find your next film obsession" },
+      { title: "The Index · Film, TV, games, music & culture" },
       {
         name: "description",
         content:
-          "Discover the films and shows audiences are talking about. Follow the buzz, save your next watch, and share your discoveries on The Index.",
+          "Discover film, television, people, games, creators, and music. Explore stories, credits, original guides, and audience charts.",
       },
       ogUrlMeta("/"),
     ],
@@ -45,6 +48,7 @@ export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
     const { queryClient } = context;
     await Promise.all([
+      queryClient.prefetchQuery({ queryKey: ["people", "week", 1], queryFn: () => getPeople() }),
       queryClient.prefetchQuery({
         queryKey: ["meta", "refresh"],
         queryFn: () => getMetaRefresh(),
@@ -86,13 +90,19 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
+  const chart = useQuery({
+    queryKey: ["films", "top", HOME_CHART_SIZE],
+    queryFn: () => getTopFilms(HOME_CHART_SIZE),
+    staleTime: 300000,
+  });
   return (
     <Layout>
       <SocialDiscovery />
+      <CultureHighlights />
       <div className="community-charts">
         <TodaysIndex />
       </div>
-      <AdSlot placement="home-after-top10" />
+      {!!chart.data?.length && <AdSlot placement="home-after-top10" />}
       <ComingSoon />
       <GenreSections />
     </Layout>

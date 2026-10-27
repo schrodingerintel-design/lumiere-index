@@ -1,278 +1,200 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Film, Loader2, Search, Sparkles, X } from "lucide-react";
-import { searchFilms, getTopFilms } from "@/lib/apiClient";
-import { FilmPosterThumbnail } from "./FilmPosterThumbnail";
-import { MomentumInline } from "./Momentum";
-
-/** Returns `value` only after it has been stable for `delay` ms. */
-function useDebouncedValue<T>(value: T, delay = 250): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return debounced;
-}
-
-/** True when any result title contains the query — mirrors the backend's
- *  ilike direct-match. When false, the results came from the fuzzy fallback,
- *  so the UI tells the user there was no exact match. */
-function hasExactMatch(results: { title: string }[], query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return results.some((f) => f.title.toLowerCase().includes(q));
-}
+import { searchCatalog, CULTURE, imageOf, titleOf, yearOf, type ScreenTitle } from "@/lib/catalog";
+import { searchFilms } from "@/lib/apiClient";
 
 export function SearchModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [query, setQuery] = useState("");
-  const [highlighted, setHighlighted] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
-  const listId = "index-search-listbox";
-  const inputId = "index-search-input";
-
-  const debounced = useDebouncedValue(query.trim(), 250);
-
-  const { data, isFetching, isError } = useQuery({
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+  const results = useQuery({
+    queryKey: ["catalog", "search", debounced],
+    queryFn: () => searchCatalog(debounced),
+    enabled: open && debounced.length >= 2,
+    staleTime: 300000,
+    retry: false,
+  });
+  const index = useQuery({
     queryKey: ["films", "search", debounced],
     queryFn: () => searchFilms(debounced),
-    enabled: debounced.length >= 2,
-    staleTime: 30_000,
+    enabled: open && debounced.length >= 2,
+    staleTime: 300000,
+    retry: false,
   });
-
-  // Popular searches — surfaced as clickable chips when the box is empty so
-  // users never face a blank modal.
-  const { data: popular = [] } = useQuery({
-    queryKey: ["films", "top", 10],
-    queryFn: () => getTopFilms(10),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const results = data ?? [];
-  const exact = hasExactMatch(results, debounced);
-  const showFuzzyNote = debounced.length >= 2 && results.length > 0 && !exact;
-
-  const closeAndClear = () => {
+  const local =
+    debounced.length >= 2
+      ? CULTURE.filter((entry) =>
+          [entry.title, entry.credit, entry.format, ...entry.tags]
+            .join(" ")
+            .toLowerCase()
+            .includes(debounced.toLowerCase()),
+        )
+      : CULTURE.filter((entry) => ["elden-ring", "mkbhd", "beyonce"].includes(entry.slug));
+  const list = (results.data?.results || [])
+    .filter((item) => !("adult" in item && item.adult))
+    .slice(0, 16);
+  function close() {
     setQuery("");
-    setHighlighted(0);
+    setDebounced("");
     onClose();
-  };
-
-  const pickSuggestion = (title: string) => {
-    setQuery(title);
-    setHighlighted(0);
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHighlighted((h) => Math.min(h + 1, Math.max(results.length - 1, 0)));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlighted((h) => Math.max(h - 1, 0));
-    } else if (e.key === "Enter") {
-      const target = results[Math.min(highlighted, results.length - 1)];
-      if (target) {
-        e.preventDefault();
-        navigate({ to: "/films/$slug", params: { slug: target.slug } });
-        closeAndClear();
-      }
-    }
-  };
-
-  // Reset state when the modal closes.
-  useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setHighlighted(0);
-    } else {
-      // Focus the input on open for keyboard users.
-      const t = setTimeout(() => inputRef.current?.focus(), 30);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
-
+  }
   return (
     <Dialog.Root
       open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose();
+      onOpenChange={(value) => {
+        if (!value) close();
       }}
     >
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm" />
         <Dialog.Content
-          aria-label="Search films"
-          className="fixed left-1/2 top-[12vh] z-50 w-full max-w-xl -translate-x-1/2 px-4 outline-none animate-fade-up"
+          className="global-search-dialog"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            inputRef.current?.focus();
+          }}
         >
-          {/* Solid surface — search results must be readable, not a glass demo. */}
-          <div className="overflow-hidden rounded-lg border border-foreground/15 bg-surface shadow-2xl">
-            {/* ── Search input ── */}
-            <div className="relative border-b border-foreground/10">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <input
-                ref={inputRef}
-                id={inputId}
-                type="text"
-                value={query}
-                role="combobox"
-                aria-expanded={debounced.length >= 2 && results.length > 0}
-                aria-controls={listId}
-                aria-activedescendant={results.length > 0 ? `search-option-${highlighted}` : undefined}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setHighlighted(0);
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Search films & shows…"
-                aria-label="Search films"
-                autoComplete="off"
-                className="w-full border-0 bg-transparent py-4 pl-12 pr-12 text-base outline-none placeholder:text-muted-foreground focus-visible:bg-foreground/[0.02]"
-              />
-              {query ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setHighlighted(0);
-                    inputRef.current?.focus();
-                  }}
-                  className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-
-            {/* ── Results ── */}
-            <div className="max-h-80 overflow-y-auto">
-              {debounced.length >= 2 ? (
-                isFetching && results.length === 0 ? (
-                  <div className="flex items-center gap-2 px-5 py-4 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Searching…
-                  </div>
-                ) : isError ? (
-                  <div className="px-5 py-4 text-sm text-down">
-                    Search failed. Please try again.
-                  </div>
-                ) : results.length === 0 ? (
-                  <div className="px-5 py-6 text-center">
-                    <Film className="mx-auto h-6 w-6 opacity-30" />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      No titles match &ldquo;{debounced}&rdquo;.
-                    </p>
-                    {popular.length > 0 && (
-                      <p className="mt-4 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
-                        Try one of these instead
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    {showFuzzyNote && (
-                      <div className="border-b border-foreground/10 bg-primary/5 px-5 py-3">
-                        <p className="text-xs text-primary">
-                          No exact match for &ldquo;{debounced}&rdquo;. Showing similar
-                          results.
-                        </p>
-                      </div>
-                    )}
-                    <ul className="py-1" role="listbox" id={listId} aria-label="Search results">
-                      {results.map((film, i) => (
-                        <li
-                          key={film.id}
-                          id={`search-option-${i}`}
-                          role="option"
-                          aria-selected={i === highlighted}
-                          onMouseEnter={() => setHighlighted(i)}
-                        >
-                          <Link
-                            to="/films/$slug"
-                            params={{ slug: film.slug }}
-                            onClick={closeAndClear}
-                            aria-label={`${film.title}${film.year ? `, ${film.year}` : ""}${film.rank > 0 ? `, ranked #${film.rank}` : ""}`}
-                            className={`flex min-h-[44px] items-center gap-3 px-5 py-2.5 transition focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
-                              i === highlighted ? "bg-foreground/10" : ""
-                            }`}
-                          >
-                            <FilmPosterThumbnail film={film} />
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-medium" title={film.title}>{film.title}</div>
-                              <div className="truncate text-xs text-muted-foreground">
-                                {film.year ?? "Year TBA"}
-                                {film.rank > 0 && <> &middot; #{film.rank} on The Index</>}
-                              </div>
-                            </div>
-                            {film.rank > 0 && (
-                              <span className="shrink-0">
-                                <MomentumInline state={film.momentum} />
-                              </span>
-                            )}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )
-              ) : (
-                <div className="px-5 py-4">
-                  <p className="text-sm text-muted-foreground">
-                    {debounced.length === 1
-                      ? "Type at least 2 characters to search."
-                      : "Start typing to search the Index."}
-                  </p>
-
-                  {/* Keyword suggestions — clickable chips from the top films */}
-                  {debounced.length === 0 && popular.length > 0 && (
-                    <div className="mt-3">
-                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
-                        <Sparkles className="h-3 w-3" />
-                        Popular searches
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {popular.slice(0, 8).map((film) => (
-                          <button
-                            key={film.slug}
-                            type="button"
-                            onClick={() => pickSuggestion(film.title)}
-                            className="rounded-full border border-foreground/15 bg-foreground/5 px-3 py-1.5 text-xs text-foreground/90 transition hover:border-primary/50 hover:text-primary"
-                          >
-                            {film.title}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+          <div className="global-search-heading">
+            <Dialog.Title>Find your next obsession.</Dialog.Title>
+            <Dialog.Close aria-label="Close search" className="soft-button">
+              Close
+            </Dialog.Close>
+          </div>
+          <Dialog.Description className="sr-only">
+            Search films, television, people, games, creators, and music.
+          </Dialog.Description>
+          <label className="sr-only" htmlFor="culture-search">
+            Search culture
+          </label>
+          <input
+            ref={inputRef}
+            id="culture-search"
+            className="global-search-input"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Films, people, games, music…"
+            autoComplete="off"
+          />
+          <div className="global-search-results">
+            {(results.isFetching || index.isFetching) && <p role="status">Searching…</p>}
+            {index.data && index.data.length > 0 && (
+              <section>
+                <h2>On The Index</h2>
+                {index.data.slice(0, 4).map((film) => (
+                  <Link
+                    key={film.slug}
+                    to="/films/$slug"
+                    params={{ slug: film.slug }}
+                    onClick={close}
+                  >
+                    {film.poster_url && <img src={film.poster_url} alt="" />}
+                    <span>
+                      <strong>{film.title}</strong>
+                      <small>
+                        {film.year} ·{" "}
+                        {film.rank > 0
+                          ? `#${film.rank} ${film.content_type === "TV_SHOW" ? "TV 100" : "Movie 100"}`
+                          : "Catalog title"}
+                      </small>
+                    </span>
+                    <span>Open</span>
+                  </Link>
+                ))}
+              </section>
+            )}
+            {list.length > 0 && (
+              <section>
+                <h2>Film, television & people</h2>
+                {list.map((item) => {
+                  if ("media_type" in item && item.media_type === "person") {
+                    return (
+                      <Link
+                        key={`person:${item.id}`}
+                        to="/people/$id"
+                        params={{ id: String(item.id) }}
+                        onClick={close}
+                      >
+                        {item.profile_path && (
+                          <img src={imageOf(item.profile_path, "w185")} alt="" />
+                        )}
+                        <span>
+                          <strong>{item.name}</strong>
+                          <small>Person · {item.known_for_department || "Film & TV"}</small>
+                        </span>
+                        <span>Open</span>
+                      </Link>
+                    );
+                  }
+                  const film = item as ScreenTitle;
+                  const type = film.media_type === "tv" ? "tv" : "movie";
+                  return (
+                    <Link
+                      key={`${type}:${film.id}`}
+                      to="/screen/$type/$id"
+                      params={{ type, id: String(film.id) }}
+                      onClick={close}
+                    >
+                      {film.poster_path && <img src={imageOf(film.poster_path, "w185")} alt="" />}
+                      <span>
+                        <strong>{titleOf(film)}</strong>
+                        <small>
+                          {type === "tv" ? "TV" : "Film"} · {yearOf(film)}
+                        </small>
+                      </span>
+                      <span>Open</span>
+                    </Link>
+                  );
+                })}
+              </section>
+            )}
+            {local.length > 0 && (
+              <section>
+                <h2>
+                  {debounced.length >= 2
+                    ? "Games, creators & music"
+                    : "Explore something different"}
+                </h2>
+                {local.slice(0, 12).map((entry) => (
+                  <Link
+                    key={entry.slug}
+                    to="/culture/$slug"
+                    params={{ slug: entry.slug }}
+                    onClick={close}
+                  >
+                    <span>
+                      <strong>{entry.title}</strong>
+                      <small>
+                        {entry.format} · {entry.credit}
+                      </small>
+                    </span>
+                    <span>Open</span>
+                  </Link>
+                ))}
+              </section>
+            )}
+            {debounced.length >= 2 &&
+              !results.isFetching &&
+              !index.isFetching &&
+              !list.length &&
+              !local.length &&
+              !index.data?.length && (
+                <p>
+                  {results.isError
+                    ? "The film and people catalog is unavailable right now. You can still search games, creators, and music."
+                    : "No matches. Try a different name or title."}
+                </p>
               )}
-            </div>
-
-            {/* ── Footer hints ── */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-foreground/10 px-5 py-3">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Search The Index
-              </span>
-              <div className="hidden items-center gap-3 text-[10px] text-muted-foreground sm:flex">
-                <kbd className="rounded border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 font-mono">
-                  &uarr;&darr;
-                </kbd>
-                <span>Navigate</span>
-                <kbd className="rounded border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 font-mono">
-                  &crarr;
-                </kbd>
-                <span>Select</span>
-                <kbd className="rounded border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 font-mono">
-                  Esc
-                </kbd>
-                <span>Close</span>
-              </div>
-            </div>
+            {results.isError && (
+              <button className="soft-button" onClick={() => void results.refetch()}>
+                Retry film & people search
+              </button>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

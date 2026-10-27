@@ -39,9 +39,7 @@ export function FilmConversationCard({ film }: { film: RankedFilm }) {
         <span className="art-rank">
           #{film.rank} <span>{film.content_type === "TV_SHOW" ? "TV 100" : "Movie 100"}</span>
         </span>
-        <span className="art-open">
-          <ArrowUpRight size={20} />
-        </span>
+
         {film.genre_tag && <span className="art-genre">{film.genre_tag}</span>}
       </Link>
       <div className="conversation-body">
@@ -132,13 +130,11 @@ export function SocialDiscovery() {
     <div className="social-home" style={palette}>
       <section className="discovery-welcome">
         <div>
-          <span className="eyebrow">
-            <Sparkles size={14} /> For the love of film & TV
-          </span>
+          <span className="eyebrow">Film, TV, games, music & people</span>
           <h1>
-            Good stories bring us together<span>.</span>
+            Culture is better together<span>.</span>
           </h1>
-          <p>Find your next obsession. Follow the buzz. Pass it on.</p>
+          <p>Discover a film. Follow a creator. Find your next obsession.</p>
         </div>
         <Link to="/watchlist" className="soft-button welcome-watchlist">
           <Bookmark size={17} /> Your watchlist <ArrowUpRight size={16} />
@@ -158,10 +154,10 @@ export function SocialDiscovery() {
           )}
           <div className="spotlight-scrim" />
           <div className="spotlight-top">
-            <span className="spotlight-label">
-              <Flame size={15} /> In the spotlight
-            </span>
-            <span className="spotlight-edition">Audience powered. Always.</span>
+            <span className="spotlight-label">In the spotlight</span>
+            <Link className="spotlight-edition" to="/explore">
+              Explore all culture
+            </Link>
           </div>
           <div className="spotlight-copy">
             {hero ? (
@@ -225,7 +221,6 @@ export function SocialDiscovery() {
             <span className="eyebrow">
               <span className="status-dot" /> The culture pulse
             </span>
-            <TrendingUp size={18} />
           </div>
           <h2>Making moves.</h2>
           <p>The biggest climbs in the latest chart.</p>
@@ -271,9 +266,7 @@ export function SocialDiscovery() {
             All chart movers <ArrowRight size={16} />
           </Link>
           <div className="pulse-footnote">
-            Real audience signals.
-            <br />
-            <strong>Zero critic weight.</strong>
+            <strong>Audience attention, charted.</strong>
             <Link to="/methodology">
               How it works <ArrowUpRight size={13} />
             </Link>
@@ -289,7 +282,6 @@ export function SocialDiscovery() {
         <div className="buzz-topics no-scrollbar">
           {trending.data?.slice(0, 6).map((film) => (
             <Link key={film.film_slug} to="/films/$slug" params={{ slug: film.film_slug }}>
-              <span>#</span>
               {film.title}
             </Link>
           ))}

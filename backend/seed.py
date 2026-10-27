@@ -4,6 +4,7 @@ Idempotent: safe to run on every container start.
 """
 from datetime import datetime, timezone, timedelta, date
 import random
+import os
 from slugify import slugify
 from sqlalchemy import select, func
 
@@ -115,6 +116,9 @@ MOVEMENTS = [14, 11, 8, 7, 5, 4, 3, 2, 2, 1, 0, 0, 0, 0, -1, -2, -3, -5, -7, -9]
 
 
 def run() -> None:
+    if os.getenv("LUMIERE_DEMO_DATA") != "1":
+        print("Demo seed skipped. Set LUMIERE_DEMO_DATA=1 only for local demonstrations.")
+        return
     print("Seed: starting...")
     with SessionLocal() as db:
         film_count = db.scalar(select(func.count(Film.id))) or 0

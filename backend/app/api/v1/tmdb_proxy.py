@@ -5,7 +5,7 @@ import logging
 import random
 import re
 import time
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
@@ -37,6 +37,8 @@ async def _cached_get(path: str, params: dict[str, str] | None = None, ttl: int 
     if hit and time.monotonic() - hit[0] < ttl:
         return hit[1]
     data = await _proxy_get(path, params)
+    if len(_TTL_CACHE) >= 512:
+        _TTL_CACHE.pop(next(iter(_TTL_CACHE)))
     _TTL_CACHE[key] = (time.monotonic(), data)
     return data
 
@@ -83,7 +85,7 @@ async def _proxy_get(path: str, params: dict[str, str] | None = None):
                 delay = _retry_delay(attempt, res.headers.get("retry-after"))
                 log.warning(
                     "tmdb_proxy: %s%s -> %s (attempt %d/%d), retrying in %.2fs",
-                    path, p, res.status_code, attempt, _MAX_ATTEMPTS, delay,
+                    path, params, res.status_code, attempt, _MAX_ATTEMPTS, delay,
                 )
                 await asyncio.sleep(delay)
                 continue
@@ -104,7 +106,7 @@ async def _proxy_get(path: str, params: dict[str, str] | None = None):
                 delay = _retry_delay(attempt)
                 log.warning(
                     "tmdb_proxy: %s%s transport error (%s), attempt %d/%d, retrying in %.2fs",
-                    path, p, type(exc).__name__, attempt, _MAX_ATTEMPTS, delay,
+                    path, params, type(exc).__name__, attempt, _MAX_ATTEMPTS, delay,
                 )
                 await asyncio.sleep(delay)
                 continue
@@ -156,7 +158,10 @@ async def movie_videos(tmdb_id: int):
 
 @router.get("/tmdb/movie/{tmdb_id}")
 async def movie_details(tmdb_id: int):
-    return await _proxy_get(f"/movie/{tmdb_id}", {"append_to_response": "release_dates,keywords"})
+    data = await _cached_get(f"/movie/{tmdb_id}", {"append_to_response": "release_dates,keywords,credits,recommendations,videos"})
+    if data.get("adult"):
+        raise HTTPException(404, "Title unavailable")
+    return data
 
 
 @router.get("/tmdb/movie/{tmdb_id}/watch/providers")
@@ -215,7 +220,10 @@ async def tv_top_rated(page: int = Query(1)):
 
 @router.get("/tmdb/tv/{tmdb_id}")
 async def tv_details(tmdb_id: int):
-    return await _proxy_get(f"/tv/{tmdb_id}", {"append_to_response": "keywords,content_ratings"})
+    data = await _cached_get(f"/tv/{tmdb_id}", {"append_to_response": "keywords,content_ratings,credits,recommendations,videos"})
+    if data.get("adult"):
+        raise HTTPException(404, "Title unavailable")
+    return data
 
 
 # ── Image proxy ──────────────────────────────────────────────────────────────
@@ -281,3 +289,25 @@ async def tv_videos(tmdb_id: int):
 async def tv_watch_providers(tmdb_id: int):
     """Streaming / rent / buy availability for a show, keyed by country code."""
     return await _proxy_get(f"/tv/{tmdb_id}/watch/providers")
+
+
+@router.get("/tmdb/trending/{media_type}/{window}")
+async def catalog_trending(media_type: Literal["movie", "tv", "person"], window: Literal["day", "week"], page: int = Query(1, ge=1, le=100)):
+    return await _cached_get(f"/trending/{media_type}/{window}", {"page": str(page)})
+
+
+@router.get("/tmdb/search/multi")
+async def catalog_search(query: str = Query(..., min_length=2, max_length=100), page: int = Query(1, ge=1, le=100)):
+    return await _cached_get("/search/multi", {"query": query, "page": str(page), "include_adult": "false"}, ttl=300)
+
+
+@router.get("/tmdb/person/{person_id}")
+async def person_details(person_id: int):
+    if person_id < 1:
+        raise HTTPException(422, "Invalid person identity")
+    return await _cached_get(f"/person/{person_id}", {"append_to_response": "combined_credits,external_ids"}, ttl=21600)
+
+
+@router.get("/tmdb/catalog/{media_type}/{collection}")
+async def catalog_collection(media_type: Literal["movie", "tv"], collection: Literal["popular", "top_rated"], page: int = Query(1, ge=1, le=100)):
+    return await _cached_get(f"/{media_type}/{collection}", {"page": str(page)})

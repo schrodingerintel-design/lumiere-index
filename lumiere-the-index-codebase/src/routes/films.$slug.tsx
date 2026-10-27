@@ -802,6 +802,35 @@ function FilmDetailView() {
             </div>
           </div>
 
+          {film.tmdb_id && (
+            <Link
+              to="/screen/$type/$id"
+              params={{ type: isTvShow ? "tv" : "movie", id: String(film.tmdb_id) }}
+              className="primary-button mb-6"
+            >
+              Cast, crew & full title details
+            </Link>
+          )}
+          {film.signal_funnel && film.signal_funnel.sources.length > 0 && (
+            <section className="signal-evidence">
+              <h2>Behind this chart position</h2>
+              <div>
+                {film.signal_funnel.sources.map((source) => (
+                  <div key={source.source_key}>
+                    <strong>{source.source_key}</strong>
+                    <span>{source.records.toLocaleString("en")} records</span>
+                    {source.last_collected_at && (
+                      <small>Collected {source.last_collected_at.slice(0, 10)}</small>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p>
+                Last 30 days. Counts from different sources measure different kinds of activity and
+                are not interchangeable audience totals.
+              </p>
+            </section>
+          )}
           {/* Audience sentiment */}
           <div className="border border-foreground/10 bg-surface p-5">
             <div className="flex items-center justify-between">
@@ -809,9 +838,13 @@ function FilmDetailView() {
                 Audience Sentiment Breakdown
               </div>
               <span className="font-mono text-[10px] text-muted-foreground">
-                {hasSentimentData ? "Verified" : "Awaiting Data"}
+                {hasSentimentData ? "Measured sample" : "Not enough recent reviews"}
               </span>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {sentiment?.sample_size ?? 0} classified text mentions · last{" "}
+              {sentiment?.window_days ?? 30} days. This sample does not represent all viewers.
+            </p>
             {hasSentimentData ? (
               <>
                 <div

@@ -41,8 +41,8 @@ function About() {
       <p>
         Entertainment moves faster than ever. A film can become a worldwide conversation overnight
         through theaters, streaming, social platforms, and communities. Yet understanding what is
-        truly trending has become fragmented across countless platforms. The Index brings
-        that picture together in one place.
+        truly trending has become fragmented across countless platforms. The Index brings that
+        picture together in one place.
       </p>
 
       <div>
@@ -55,6 +55,40 @@ function About() {
         <p>
           Our goal is not to decide what people should watch. Our goal is to show what the world is
           watching, discussing, and discovering.
+        </p>
+      </div>
+
+      <div>
+        <h2 className="font-serif text-2xl text-foreground">Explore culture</h2>
+        <p>
+          Browse films, television, actors and filmmakers, games, online creators, and music. Film
+          and television catalog pages connect titles to cast, crew, trailers, and filmographies.
+          Games, creators, and music profiles pair original Lumière guides with attributed reference
+          material.
+        </p>
+        <p>
+          The Movie 100 and TV 100 measure attention collected by Lumière. TMDB trending lists
+          describe activity on TMDB, not a global popularity poll. Editorial selections are not
+          rankings.
+        </p>
+        <p>
+          Catalog data and film/TV imagery come from{" "}
+          <a
+            href="https://www.themoviedb.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline"
+          >
+            TMDB
+          </a>
+          . This product uses the TMDB API but is not endorsed or certified by TMDB. Reference
+          excerpts from Wikipedia are attributed to their contributors under CC BY-SA 4.0; image
+          credits and licenses are shown alongside the images. Send corrections or rights inquiries
+          to{" "}
+          <a href="mailto:privacy@lumiereindex.com" className="text-primary underline">
+            privacy@lumiereindex.com
+          </a>
+          .
         </p>
       </div>
 
@@ -114,9 +148,8 @@ function About() {
       <div>
         <h2 className="font-serif text-2xl text-foreground">Beta changelog</h2>
         <p className="mt-3">
-          The Index is in public beta: new signals, charts and fixes ship
-          continuously. Every version is announced in the β chip beside the logo
-          and summarized here, newest first.
+          The Index is in public beta: new signals, charts and fixes ship continuously. Every
+          version is announced in the β chip beside the logo and summarized here, newest first.
         </p>
         <div className="mt-5 space-y-6">
           {BETA_RELEASES.map((release) => (
@@ -128,7 +161,10 @@ function About() {
               <ul className="mt-2 space-y-1.5">
                 {release.changes.map((change, i) => (
                   <li key={i} className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
-                    <span aria-hidden className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-primary/60" />
+                    <span
+                      aria-hidden
+                      className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-primary/60"
+                    />
                     <span>{change}</span>
                   </li>
                 ))}

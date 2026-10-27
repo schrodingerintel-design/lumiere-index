@@ -1,3 +1,4 @@
+import { useLibrary } from "@/lib/library";
 import { Link } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Bookmark, Compass, Menu, Search, TrendingUp, X } from "lucide-react";
@@ -6,14 +7,19 @@ import { useWatchlist } from "@/lib/watchlist";
 
 const PRIMARY_LINKS = [
   { to: "/", label: "Discover", exact: true },
-  { to: "/trending", label: "The buzz", exact: false },
-  { to: "/top-100", label: "The charts", exact: false },
-  { to: "/genres", label: "Explore", exact: false },
+  { to: "/movies", label: "Films", exact: false },
+  { to: "/series", label: "TV", exact: false },
+  { to: "/people", label: "People", exact: false },
+  { to: "/explore", label: "Explore", exact: false },
 ] as const;
 const CHART_LINKS = [
+  { to: "/games", label: "Games" },
+  { to: "/creators", label: "Creators" },
+  { to: "/music", label: "Music" },
+  { to: "/genres", label: "Film genres" },
+  { to: "/trending", label: "Index trends" },
   { to: "/top-100", label: "Movie 100" },
   { to: "/tv-100", label: "TV 100" },
-  { to: "/weekly-100", label: "Weekly 100" },
   { to: "/rising", label: "Biggest movers" },
   { to: "/new-entries", label: "New entries" },
   { to: "/calendar", label: "Now & next" },
@@ -23,6 +29,8 @@ const CHART_LINKS = [
 
 export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () => void }) {
   const { slugs } = useWatchlist();
+  const { items } = useLibrary();
+  const savedCount = slugs.length + items.length;
   return (
     <>
       <header className="social-nav">
@@ -45,15 +53,15 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
               type="button"
               className="nav-search"
               onClick={onSearch}
-              aria-label="Search films and shows"
+              aria-label="Search titles and people"
             >
               <Search size={17} />
-              <span>Find your next obsession</span>
+              <span>Search culture</span>
             </button>
-            <Link to="/watchlist" className="nav-watchlist">
+            <Link to="/library" className="nav-watchlist">
               <Bookmark size={17} />
-              <span>Watchlist</span>
-              {slugs.length > 0 && <small>{slugs.length}</small>}
+              <span>Saved</span>
+              {savedCount > 0 && <small>{savedCount}</small>}
             </Link>
             <button
               type="button"
@@ -71,17 +79,17 @@ export function TopNav({ onMenu, onSearch }: { onMenu: () => void; onSearch: () 
           <Compass size={20} />
           Discover
         </Link>
-        <Link to="/trending" activeProps={{ className: "nav-active" }}>
+        <Link to="/explore" activeProps={{ className: "nav-active" }}>
           <TrendingUp size={20} />
-          The buzz
+          Explore
         </Link>
         <button onClick={onSearch}>
           <Search size={20} />
           Search
         </button>
-        <Link to="/watchlist" activeProps={{ className: "nav-active" }}>
+        <Link to="/library" activeProps={{ className: "nav-active" }}>
           <Bookmark size={20} />
-          Watchlist
+          Saved
         </Link>
       </nav>
     </>
@@ -113,9 +121,9 @@ export function MobileMenu({
               <X size={20} />
             </Dialog.Close>
           </div>
-          <Dialog.Title className="mt-8 text-2xl">Find your corner of film culture.</Dialog.Title>
+          <Dialog.Title className="mt-8 text-2xl">Find your corner of culture.</Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-muted-foreground">
-            Discover, explore the charts, and make your next movie plan.
+            Film, TV, people, games, creators, and music.
           </Dialog.Description>
           <nav aria-label="All destinations">
             {[...PRIMARY_LINKS, ...CHART_LINKS, { to: "/watchlist", label: "Your watchlist" }].map(
