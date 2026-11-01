@@ -29,7 +29,8 @@ log = logging.getLogger(__name__)
 # ── cadence (seconds) — mirrors the Celery beat schedule ─────────────────────
 _INTERVALS = {
     "ingest_reddit": 600,
-    "ingest_news": 900,
+    "ingest_news": 72 * 3600,
+    "refresh_game_discovery": 3600,  # checks durable 72h AI cooldown; staggers after news
     "ingest_youtube": 1800,
     "ingest_tiktok": 1800,
     "ingest_wikipedia": 3600,
@@ -118,6 +119,7 @@ async def _loop() -> None:
         "ingest_trends": 90,
         "ingest_letterboxd": 120,
         "ingest_news": 150,
+        "refresh_game_discovery": 18 * 60,
         "ingest_youtube": 180,
         "ingest_tiktok": 210,
         "rollup_daily": 240,

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { canonicalLink, ogUrlMeta } from "@/lib/site";
 import { StaticPage } from "@/components/lumiere/StaticPage";
 import { RouteError } from "@/lib/route-error";
@@ -116,7 +116,41 @@ function Privacy() {
         </p>
       </Section>
 
+      <section id="data-sources">
+        <a href="https://www.themoviedb.org">
+          <img src="/tmdb-logo.svg" width="110" height="40" alt="TMDB" />
+        </a>
+        <h2>Data sources & limitations</h2>
+        <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+        <p>
+          Catalog metadata, credits, artwork, and audience ratings come from TMDB. Ratings and
+          provider trending lists are distinct from Lumière rankings. Each chart title exposes the
+          available collection totals, source coverage, and published rank history. Missing
+          measurements remain unavailable.
+        </p>
+        <p>
+          Streaming availability is provided by JustWatch via TMDB. It varies by country and can
+          change between retrievals. Wikipedia reference text is attributed to its contributors
+          under CC BY-SA 4.0; images retain their individual credits and licenses.
+        </p>
+        <p>
+          Lumière applies its own deterministic ranking rules to collected inputs. Coverage is
+          incomplete and a high rank does not establish broad audience consensus. Source totals
+          describe collection records, not unique viewers. Per-snapshot reproduction manifests are
+          not currently available in the public API.
+        </p>
+        <Link to="/methodology">Read the ranking methodology</Link>
+      </section>
+
       <Section num="3." title="How We Use Information">
+        <p>
+          Game catalog information and imagery are provided by RAWG. We send catalog requests from
+          our backend; your browsing history and search text on the games page are not sent to RAWG.
+          Game discovery is cached for 72 hours. When enabled, automated editorial selections use
+          public catalog metadata with Google Gemini. These selections are recommendations, not
+          measurements of live player counts or changes in popularity. Required data and image
+          credits remain beside the content they cover.
+        </p>
         <p>We use collected information to:</p>
         <List
           items={[

@@ -223,10 +223,7 @@ export function ProviderCredit() {
       <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">
         TMDB
       </a>{" "}
-      ·{" "}
-      <Link to="/about" hash="data-sources">
-        Data sources & credits
-      </Link>
+      · <Link to="/privacy">Privacy</Link>
     </p>
   );
 }

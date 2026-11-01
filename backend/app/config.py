@@ -1,11 +1,20 @@
 import os
 
-from pydantic import Field, AliasChoices
+from pydantic import Field, AliasChoices, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    rawg_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("RAWG_API_KEY", "rawg_api_key"))
+
+    # AI credentials stay exclusively in the backend environment.
+    gemini_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY", "AI_API_KEY", "gemini_api_key"))
+    gemini_model: str = Field(default="gemini-3.5-flash-lite", validation_alias=AliasChoices("GEMINI_MODEL", "gemini_model"))
+    ai_enabled: bool = Field(default=True, validation_alias=AliasChoices("LUMIERE_AI_ENABLED", "ai_enabled"))
+    ai_daily_limit: int = Field(default=30, ge=0, le=200, validation_alias=AliasChoices("LUMIERE_AI_DAILY_LIMIT", "ai_daily_limit"))
+    ai_news_daily_limit: int = Field(default=3, ge=0, le=20, validation_alias=AliasChoices("LUMIERE_AI_NEWS_DAILY_LIMIT", "ai_news_daily_limit"))
 
     api_host: str = "0.0.0.0"
     api_port: int = 8000

@@ -178,3 +178,21 @@ def publish_weekly_index() -> str | None:
         result = _publish(db)
         _backfill(db, weeks=6)
         return result.isoformat() if result else None
+
+
+@celery.task
+def refresh_game_discovery() -> int:
+    import asyncio
+    from fastapi import HTTPException
+    from app.services.game_discovery import games_snapshot, rank_games
+
+    async def run():
+        await games_snapshot()
+        with SessionLocal() as db:
+            try:
+                return await rank_games(db)
+            except HTTPException as exc:
+                if exc.status_code == 429:
+                    return 0  # A shared cooldown or quota is active; no immediate retries.
+                raise
+    return asyncio.run(run())

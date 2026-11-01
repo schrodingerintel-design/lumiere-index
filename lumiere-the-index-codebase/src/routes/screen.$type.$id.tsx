@@ -151,7 +151,7 @@ function ScreenDetail() {
                     <small>/10</small>
                   </strong>
                   <span>
-                    Audience rating · <a href="#data-sources">source</a>
+                    Audience rating · TMDB
                     <br />
                     {new Intl.NumberFormat("en").format(film.vote_count || 0)} votes
                   </span>
@@ -221,15 +221,7 @@ function ScreenDetail() {
             (film.release_date || film.first_air_date || "") > new Date().toISOString().slice(0, 10)
           }
         />
-        <section className="catalog-section" id="data-sources">
-          <h2>Data sources</h2>
-          <p>
-            Audience ratings, votes, credits, and catalog information are supplied by TMDB. They are
-            separate from Lumière chart rankings. No Index ranking or measured trend evidence is
-            attached to this catalog page.
-          </p>
-          <Link to="/about">About our data & methodology</Link>
-        </section>
+
         {recommendations.length > 0 && (
           <section className="catalog-section">
             <h2>More like this</h2>

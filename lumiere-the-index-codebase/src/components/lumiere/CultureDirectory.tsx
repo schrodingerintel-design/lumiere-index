@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Layout } from "./Layout";
 import { CultureNav } from "./CultureNav";
 import { CultureCard } from "./Catalog";
+import { GameDiscovery } from "./GameDiscovery";
 import { CULTURE, CULTURE_CATEGORIES } from "@/lib/catalog";
 export function CultureDirectory({ kind }: { kind: "games" | "creators" | "music" }) {
   const [tag, setTag] = useState("All");
@@ -22,6 +23,7 @@ export function CultureDirectory({ kind }: { kind: "games" | "creators" | "music
           <h1>{category.heading}</h1>
           <p>{category.copy}</p>
         </header>
+        {kind === "games" && <GameDiscovery />}
         <div className="catalog-toolbar">
           <div className="discovery-filters" role="group" aria-label="Filter by interest">
             {tags.map((item) => (
@@ -47,10 +49,7 @@ export function CultureDirectory({ kind }: { kind: "games" | "creators" | "music
         {!entries.length && (
           <p className="catalog-empty">No matching profiles. Try another search or filter.</p>
         )}
-        <p className="provider-credit">
-          Selections are curated, not a popularity ranking. Each profile includes a Lumière viewing
-          or listening guide and links to its reference sources. Updated October 26, 2026.
-        </p>
+        <p className="provider-credit">Curated Lumière guides · Updated October 26, 2026.</p>
       </div>
     </Layout>
   );

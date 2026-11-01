@@ -40,31 +40,7 @@ function About() {
         Explore films, TV, people, games, creators, and music. Movie 100 and TV 100 track attention
         in our collected sources; a chart position is not a review or a measure of artistic quality.
       </p>
-      <section id="data-sources">
-        <a href="https://www.themoviedb.org">
-          <img src="/tmdb-logo.svg" width="110" height="40" alt="TMDB" />
-        </a>
-        <h2>Data sources & limitations</h2>
-        <p>This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
-        <p>
-          Catalog metadata, credits, artwork, and audience ratings come from TMDB. Ratings and
-          provider trending lists are distinct from Lumière rankings. Each chart title exposes the
-          available collection totals, source coverage, and published rank history. Missing
-          measurements remain unavailable.
-        </p>
-        <p>
-          Streaming availability is provided by JustWatch via TMDB. It varies by country and can
-          change between retrievals. Wikipedia reference text is attributed to its contributors
-          under CC BY-SA 4.0; images retain their individual credits and licenses.
-        </p>
-        <p>
-          Lumière applies its own deterministic ranking rules to collected inputs. Coverage is
-          incomplete and a high rank does not establish broad audience consensus. Source totals
-          describe collection records, not unique viewers. Per-snapshot reproduction manifests are
-          not currently available in the public API.
-        </p>
-        <Link to="/methodology">Read the ranking methodology</Link>
-      </section>
+
       <section>
         <h2>What the charts measure</h2>
         <p>
