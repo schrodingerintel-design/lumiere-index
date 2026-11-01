@@ -53,6 +53,8 @@ def log_throttled(
 
 
 def setup_logging() -> None:
+    # Provider query strings can contain API credentials. Never emit httpx request URLs.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,

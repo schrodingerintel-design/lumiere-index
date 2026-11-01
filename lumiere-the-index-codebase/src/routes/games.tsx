@@ -8,7 +8,7 @@ export const Route = createFileRoute("/games")({
       {
         name: "description",
         content:
-          "Explore games through original Lumière guides, source-linked profiles, and connections across culture.",
+          "Discover popular games, the Lumière games edit, and original guides across gaming culture.",
       },
     ],
     links: [canonicalLink("/games")],

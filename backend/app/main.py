@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres, index, telemetry, culture
+from app.api.v1 import films, trending, meta, newsletter, tmdb_proxy, admin, genres, index, telemetry, culture, games
 from app.utils.logging_config import setup_logging
 from app.utils.rate_limit import SimpleRateLimiterMiddleware
 
@@ -157,7 +157,7 @@ async def db_outage_fast_fail(request, call_next):
     if path in ("/health", "/healthz", "/readyz") or path.startswith("/api/v1/admin"):
         return await call_next(request)
 
-    if db_health.is_open() and not path.startswith(("/api/v1/tmdb/", "/api/v1/culture/")):
+    if db_health.is_open() and not path.startswith(("/api/v1/tmdb/", "/api/v1/culture/", "/api/v1/games/")):
         return JSONResponse(
             status_code=503,
             headers={"Retry-After": "30"},
@@ -278,3 +278,5 @@ def readyz(response: Response):
     return payload
 
 app.include_router(culture.router, prefix="/api/v1", tags=["culture"])
+
+app.include_router(games.router, prefix="/api/v1", tags=["games"])

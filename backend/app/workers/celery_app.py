@@ -8,7 +8,8 @@ celery.conf.timezone = "UTC"
 
 celery.conf.beat_schedule = {
     "ingest-reddit": {"task": "app.workers.tasks.ingest_reddit", "schedule": 600.0},
-    "ingest-news": {"task": "app.workers.tasks.ingest_news", "schedule": 900.0},
+    "refresh-game-discovery": {"task": "app.workers.tasks.refresh_game_discovery", "schedule": 3600.0},
+    "ingest-news": {"task": "app.workers.tasks.ingest_news", "schedule": 72 * 3600.0},
     "ingest-youtube": {"task": "app.workers.tasks.ingest_youtube", "schedule": 1800.0},
     "ingest-tiktok": {"task": "app.workers.tasks.ingest_tiktok", "schedule": 1800.0},
     "ingest-wikipedia": {"task": "app.workers.tasks.ingest_wikipedia", "schedule": 3600.0},
