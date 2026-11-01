@@ -17,7 +17,6 @@ const PRIMARY_LINKS = [
 const CHART_LINKS = [
   { to: "/games", label: "Games" },
   { to: "/creators", label: "Creators" },
-  { to: "/music", label: "Music" },
   { to: "/genres", label: "Film genres" },
   { to: "/trending", label: "Lumière Buzz" },
   { to: "/top-100", label: "Movie 100" },
@@ -128,7 +127,7 @@ export function MobileMenu({
           </div>
           <Dialog.Title className="mt-8 text-2xl">Find your corner of culture.</Dialog.Title>
           <Dialog.Description className="mt-2 text-sm text-muted-foreground">
-            Film, TV, people, games, creators, and music.
+            Film, TV, people, games, and creators.
           </Dialog.Description>
           <nav aria-label="All destinations">
             {[...PRIMARY_LINKS, ...CHART_LINKS, { to: "/watchlist", label: "Your watchlist" }].map(

@@ -35,7 +35,7 @@ export const BETA_RELEASES: BetaRelease[] = [
     changes: [
       "Expanded film, TV, people, search, genre, and release browsing with larger page sizes and deeper catalog access. Top 100 charts stay capped at 100.",
       "Lumière Buzz leads discovery with cinematic stories, save and share actions, and a Rising filter.",
-      "Explore films, TV, people, games, creators, and music through connected title and profile pages.",
+      "Explore films, TV, people, games, and creators through connected title and profile pages.",
       "Full cast and crew and regional streaming availability now stay on the title page. The chart-history graph has been removed.",
       "Sharing previews use current branding. Source coverage and sentiment sample limits are clearer.",
       "This is a public beta. Source coverage is still developing; no new social-source integrations are implied by this release.",

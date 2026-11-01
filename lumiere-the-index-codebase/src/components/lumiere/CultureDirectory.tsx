@@ -4,7 +4,7 @@ import { CultureNav } from "./CultureNav";
 import { CultureCard } from "./Catalog";
 import { GameDiscovery } from "./GameDiscovery";
 import { CULTURE, CULTURE_CATEGORIES } from "@/lib/catalog";
-export function CultureDirectory({ kind }: { kind: "games" | "creators" | "music" }) {
+export function CultureDirectory({ kind }: { kind: "games" | "creators" }) {
   const [tag, setTag] = useState("All");
   const [search, setSearch] = useState("");
   const category = CULTURE_CATEGORIES.find((item) => item.kind === kind)!;

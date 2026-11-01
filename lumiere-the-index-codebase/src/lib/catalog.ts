@@ -147,13 +147,6 @@ export const CULTURE_CATEGORIES = [
     heading: "Creators",
     copy: "Video, comedy, technology, and the craft behind online culture.",
   },
-  {
-    kind: "music",
-    label: "Music",
-    path: "/music",
-    heading: "Music",
-    copy: "Artists, performance, production, and the worlds around a record.",
-  },
 ] as const;
 export interface WikiProfile {
   extract: string | null;

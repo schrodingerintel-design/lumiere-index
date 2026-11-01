@@ -118,7 +118,7 @@ export function SocialDiscovery() {
     <div className="social-home" style={palette}>
       <section className="discovery-welcome">
         <div>
-          <span className="eyebrow">Film, TV, games, music & people</span>
+          <span className="eyebrow">Film, TV, games & people</span>
           <h1>
             Step into the buzz<span>.</span>
           </h1>

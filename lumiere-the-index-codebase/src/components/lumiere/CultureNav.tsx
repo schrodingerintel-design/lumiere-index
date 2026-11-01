@@ -5,7 +5,6 @@ const links = [
   { to: "/people", label: "People" },
   { to: "/games", label: "Games" },
   { to: "/creators", label: "Creators" },
-  { to: "/music", label: "Music" },
   { to: "/top-100", label: "The charts" },
 ] as const;
 export function CultureNav() {

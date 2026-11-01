@@ -1,17 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CultureDirectory } from "@/components/lumiere/CultureDirectory";
-import { canonicalLink } from "@/lib/site";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
 export const Route = createFileRoute("/music")({
-  head: () => ({
-    meta: [
-      { title: "Music · The Index" },
-      {
-        name: "description",
-        content:
-          "Explore music through original Lumière guides, source-linked profiles, and connections across culture.",
-      },
-    ],
-    links: [canonicalLink("/music")],
-  }),
-  component: () => <CultureDirectory kind="music" />,
+  beforeLoad: () => {
+    throw redirect({ to: "/explore", statusCode: 301 });
+  },
 });
