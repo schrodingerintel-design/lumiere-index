@@ -36,7 +36,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             .toLowerCase()
             .includes(debounced.toLowerCase()),
         )
-      : CULTURE.filter((entry) => ["elden-ring", "mkbhd", "beyonce"].includes(entry.slug));
+      : CULTURE.filter((entry) => ["elden-ring", "mkbhd", "hades"].includes(entry.slug));
   const list = (results.data?.results || []).filter((item) => !("adult" in item && item.adult));
   function close() {
     setPage(1);
@@ -67,7 +67,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             </Dialog.Close>
           </div>
           <Dialog.Description className="sr-only">
-            Search films, television, people, games, creators, and music.
+            Search films, television, people, games, and creators.
           </Dialog.Description>
           <label className="sr-only" htmlFor="culture-search">
             Search culture
@@ -81,7 +81,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
               setQuery(event.target.value);
               setPage(1);
             }}
-            placeholder="Films, people, games, music…"
+            placeholder="Films, people, games, creators…"
             autoComplete="off"
           />
           <div className="global-search-results">
@@ -180,9 +180,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
             {local.length > 0 && (
               <section>
                 <h2>
-                  {debounced.length >= 2
-                    ? "Games, creators & music"
-                    : "Explore something different"}
+                  {debounced.length >= 2 ? "Games & creators" : "Explore something different"}
                 </h2>
                 {local.map((entry) => (
                   <Link
@@ -210,7 +208,7 @@ export function SearchModal({ open, onClose }: { open: boolean; onClose: () => v
               !index.data?.length && (
                 <p>
                   {results.isError
-                    ? "The film and people catalog is unavailable right now. You can still search games, creators, and music."
+                    ? "The film and people catalog is unavailable right now. You can still search games and creators."
                     : "No matches. Try a different name or title."}
                 </p>
               )}

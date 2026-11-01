@@ -37,8 +37,8 @@ function About() {
         Lumière Index connects entertainment discovery with charts of recorded cultural attention.
       </p>
       <p>
-        Explore films, TV, people, games, creators, and music. Movie 100 and TV 100 track attention
-        in our collected sources; a chart position is not a review or a measure of artistic quality.
+        Explore films, TV, people, games, and creators. Movie 100 and TV 100 track attention in our
+        collected sources; a chart position is not a review or a measure of artistic quality.
       </p>
 
       <section>

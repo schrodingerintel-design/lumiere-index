@@ -33,8 +33,7 @@ function CultureDetail() {
     staleTime: 21600000,
     retry: false,
   });
-  const categoryPath =
-    entry.kind === "games" ? "/games" : entry.kind === "music" ? "/music" : "/creators";
+  const categoryPath = entry.kind === "games" ? "/games" : "/creators";
   const related = CULTURE.find((item) => item.slug === entry.related);
   return (
     <Layout>
@@ -95,13 +94,7 @@ function CultureDetail() {
             <span className="eyebrow">The Lumière guide</span>
             <h2>{entry.headline}</h2>
             <p>{entry.intro}</p>
-            <h3>
-              {entry.kind === "games"
-                ? "What to look for"
-                : entry.kind === "music"
-                  ? "A closer listen"
-                  : "Watch with a closer eye"}
-            </h3>
+            <h3>{entry.kind === "games" ? "What to look for" : "Watch with a closer eye"}</h3>
             <p>{entry.angle}</p>
             <p className="guide-date">Updated October 26, 2026 · Lumière</p>
             {reference.data?.extract && (

@@ -14,10 +14,10 @@ import { canonicalLink } from "@/lib/site";
 export const Route = createFileRoute("/explore")({
   head: () => ({
     meta: [
-      { title: "Explore film, TV, people, games & music · The Index" },
+      { title: "Explore film, TV, people, games & creators · The Index" },
       {
         name: "description",
-        content: "A place for film, television, games, music, and the people shaping culture.",
+        content: "A place for film, television, games, and the people shaping culture.",
       },
     ],
     links: [canonicalLink("/explore")],

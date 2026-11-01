@@ -32,14 +32,14 @@ const NOW_PLAYING_PAGES = 2;
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "The Index · Film, TV, games, music & culture" },
+      { title: "The Index · Film, TV, games & culture" },
       {
         name: "description",
         content:
-          "Discover film, television, people, games, creators, and music. Explore stories, credits, original guides, and audience charts.",
+          "Discover film, television, people, games, and creators. Explore stories, credits, original guides, and audience charts.",
       },
       ...titleSocialMeta(
-        "Film, TV, games, music & culture",
+        "Film, TV, games & culture",
         "Discover titles, people, original culture guides, and the Lumière charts.",
         "/",
       ),

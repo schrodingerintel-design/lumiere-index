@@ -17,7 +17,6 @@ const EXPLORE_LINKS = [
   { to: "/people", label: "People" },
   { to: "/games", label: "Games" },
   { to: "/creators", label: "Creators" },
-  { to: "/music", label: "Music" },
   { to: "/", label: "The Index" },
   { to: "/top-100", label: "Movie 100" },
   { to: "/tv-100", label: "TV 100" },
@@ -39,7 +38,7 @@ export function Footer() {
               <BetaBadge />
             </div>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Film, TV, games, music, and the people shaping culture.
+              Film, TV, games, and the people shaping culture.
             </p>
             {/* Official channels */}
             <div className="mt-5 flex items-center gap-2">
