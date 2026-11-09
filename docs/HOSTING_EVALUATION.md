@@ -39,14 +39,14 @@ a real account.** Do not finalise Vercel, and do not start the migration until t
 
 Measured result of the spike:
 
-| Measurement | Value |
-| --- | --- |
-| Next build | succeeded, 31.2 s compile, 9.7 s typecheck |
-| Routes emitted | `/`, `/_not-found`, `/admin/[[...segments]]`, `/api/[...slug]`, `/api/graphql`, `/api/graphql-playground` |
-| OpenNext bundling | succeeded (`worker.js`, static assets, cache assets, server function) |
-| Worker upload size | **19,950 KiB uncompressed, 4,463 KiB gzipped** |
-| Workers size limit | 64 MiB uncompressed (no compressed limit) |
-| Warnings | esbuild `direct-eval` warnings from bundled tooling; non-fatal |
+| Measurement        | Value                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| Next build         | succeeded, 31.2 s compile, 9.7 s typecheck                                                                |
+| Routes emitted     | `/`, `/_not-found`, `/admin/[[...segments]]`, `/api/[...slug]`, `/api/graphql`, `/api/graphql-playground` |
+| OpenNext bundling  | succeeded (`worker.js`, static assets, cache assets, server function)                                     |
+| Worker upload size | **19,950 KiB uncompressed, 4,463 KiB gzipped**                                                            |
+| Workers size limit | 64 MiB uncompressed (no compressed limit)                                                                 |
+| Warnings           | esbuild `direct-eval` warnings from bundled tooling; non-fatal                                            |
 
 So the bundle fits with roughly 3× headroom, which removes the historical "Next + Payload is too
 big for Workers" objection for this application.
@@ -55,21 +55,21 @@ big for Workers" objection for this application.
 
 ## 3. The seven checks
 
-| # | Check | Result |
-| --- | --- | --- |
-| 1 | Payload works reliably in Workers | **Conditional pass** — builds and runs, with three known runtime workarounds |
-| 2 | Neon connections and migrations | **Pass** — via Hyperdrive, migrations from CI, not the Worker |
-| 3 | Jobs Queue and scheduled publishing | **Pass** — better than Vercel Hobby; native cron on the $5 plan |
-| 4 | Preview deployments on isolated Neon branches | **Conditional** — supported, but per-PR Neon branching is custom CI work |
-| 5 | Node APIs and dependencies | **Conditional** — `nodejs_compat` covers the rest; `sharp` is the casualty |
-| 6 | Free-tier limits and realistic cost | **Cloudflare cheaper; neither platform is free for a commercial launch** |
-| 7 | Deployment, debugging, rollback, monitoring | **Pass** with tradeoffs |
+| #   | Check                                         | Result                                                                       |
+| --- | --------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1   | Payload works reliably in Workers             | **Conditional pass** — builds and runs, with three known runtime workarounds |
+| 2   | Neon connections and migrations               | **Pass** — via Hyperdrive, migrations from CI, not the Worker                |
+| 3   | Jobs Queue and scheduled publishing           | **Pass** — better than Vercel Hobby; native cron on the $5 plan              |
+| 4   | Preview deployments on isolated Neon branches | **Conditional** — supported, but per-PR Neon branching is custom CI work     |
+| 5   | Node APIs and dependencies                    | **Conditional** — `nodejs_compat` covers the rest; `sharp` is the casualty   |
+| 6   | Free-tier limits and realistic cost           | **Cloudflare cheaper; neither platform is free for a commercial launch**     |
+| 7   | Deployment, debugging, rollback, monitoring   | **Pass** with tradeoffs                                                      |
 
 ### 3.1 Payload in the Workers runtime — conditional pass
 
 - Cloudflare's own engineering blog ran Payload 3 on Workers with **Postgres through the official
   `@payloadcms/db-postgres` adapter**, using `pool: { connectionString: env.HYPERDRIVE.connectionString,
-  maxUses: 1 }`. Postgres support is therefore not hypothetical.
+maxUses: 1 }`. Postgres support is therefore not hypothetical.
 - The admin panel is a large React app; the spike shows it bundles, and the runtime has no
   filesystem dependency in the admin path.
 - **Known breakages** (documented by Payload users through 2026, not by us):
@@ -109,7 +109,7 @@ big for Workers" objection for this application.
 - Cloudflare **Cron Triggers** call a `scheduled()` handler on the Worker, which can invoke
   `payload.jobs.run()` directly or hit the protected runner endpoint. Limits: **5 cron triggers
   on Free, 250 on Paid**, 30 s CPU per invocation for sub-hourly schedules.
-- This is *better* than the Vercel Hobby compromise recorded in the architecture: a five-minute
+- This is _better_ than the Vercel Hobby compromise recorded in the architecture: a five-minute
   publish check becomes a native, first-party scheduler instead of an external service with no
   SLA. Our queue-level idempotency, overdue detection and manual fallback remain unchanged and
   still matter for the failure cases.
@@ -120,7 +120,7 @@ big for Workers" objection for this application.
 
 - **Worker Previews** (Wrangler ≥ 4.135) give every non-production branch its own preview URL,
   with **preview-specific vars, secrets and bindings** defined in the `previews` block, and a
-  deployment history per preview. That satisfies "preview never touches production data" *if*
+  deployment history per preview. That satisfies "preview never touches production data" _if_
   we point the preview's database at a separate Neon branch.
 - What is **not** automatic: creating a Neon branch per pull request and wiring its connection
   string into that preview. That needs a small GitHub Action (Neon API: create branch on PR open,
@@ -156,17 +156,17 @@ which no Next.js + Payload SSR render will fit into; it is a preview tier for th
 production one. Workers Paid is **$5/month** for the account and includes 10 million requests and
 30 million CPU-ms, with 5 minutes of CPU available per invocation.
 
-| Line item | Vercel (commercial) | Cloudflare |
-| --- | --- | --- |
-| Platform floor | $20/seat/month (Pro) | $5/month (Workers Paid, whole account) |
-| Included requests | Usage credit then metered | 10M/month, then $0.30/M |
-| Included CPU | Not applicable (duration-based) | 30M CPU-ms, then $0.02/M |
-| Cron / scheduling | Daily-only on Hobby; per-minute needs Pro | 250 cron triggers included |
-| Database (Neon Free) | $0 | $0 |
-| Connection pooling | Built into Neon | Hyperdrive, included (Free: 100k queries/day; Paid: unlimited) |
-| Object storage | Vercel Blob (metered) or external S3/R2 | R2: free egress, 10 GB-month free tier |
-| Image optimisation | Included on Pro | Cloudflare Images: 5,000 unique transforms/month free, then $0.50/1,000 |
-| Realistic month, launch traffic | **≈ $20–25** | **≈ $5–10** |
+| Line item                       | Vercel (commercial)                       | Cloudflare                                                              |
+| ------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
+| Platform floor                  | $20/seat/month (Pro)                      | $5/month (Workers Paid, whole account)                                  |
+| Included requests               | Usage credit then metered                 | 10M/month, then $0.30/M                                                 |
+| Included CPU                    | Not applicable (duration-based)           | 30M CPU-ms, then $0.02/M                                                |
+| Cron / scheduling               | Daily-only on Hobby; per-minute needs Pro | 250 cron triggers included                                              |
+| Database (Neon Free)            | $0                                        | $0                                                                      |
+| Connection pooling              | Built into Neon                           | Hyperdrive, included (Free: 100k queries/day; Paid: unlimited)          |
+| Object storage                  | Vercel Blob (metered) or external S3/R2   | R2: free egress, 10 GB-month free tier                                  |
+| Image optimisation              | Included on Pro                           | Cloudflare Images: 5,000 unique transforms/month free, then $0.50/1,000 |
+| Realistic month, launch traffic | **≈ $20–25**                              | **≈ $5–10**                                                             |
 
 Realistic judgement: at launch traffic (tens of thousands of page views, a few hundred images),
 Cloudflare lands around **$5–8/month** and Vercel around **$20–25/month** — a saving of roughly
@@ -191,17 +191,17 @@ difference between viable and not viable; the operational risk is the larger var
 
 ## 4. What must change if Cloudflare is chosen
 
-| Change | Why | Effort |
-| --- | --- | --- |
-| Next.js 16.3.3 → **16.4.5** | OpenNext requires `>=16.4.5`; 16.3.3 is also affected by CVE-2026-94545 | Small, required on any host |
-| Add `@opennextjs/cloudflare`, `wrangler`, `open-next.config.ts`, `wrangler.jsonc` | Workers deployment | Small |
-| Request-scoped Postgres pool over Hyperdrive (`maxUses: 1`) | Prevents cross-request promise corruption | Small but subtle; must be tested |
-| Workers-safe password hashing for Payload auth | PBKDF2 limits in the isolate | Medium; verify before Phase 4 |
-| Cloudflare Images transforms instead of Payload `imageSizes`/sharp | Native binary unavailable | Medium; replaces part of Phase 3 |
-| R2 storage via `@payloadcms/storage-s3` (R2 endpoint) | Object storage through a binding or S3 API | Small |
-| Cron trigger calling the jobs runner | Native scheduling | Small |
-| Per-PR Neon branch automation | Isolated previews | ~1 day of CI work |
-| ISR/incremental cache binding (R2 or KV) | OpenNext needs a cache for ISR | Small |
+| Change                                                                            | Why                                                                     | Effort                           |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| Next.js 16.3.3 → **16.4.5**                                                       | OpenNext requires `>=16.4.5`; 16.3.3 is also affected by CVE-2026-94545 | Small, required on any host      |
+| Add `@opennextjs/cloudflare`, `wrangler`, `open-next.config.ts`, `wrangler.jsonc` | Workers deployment                                                      | Small                            |
+| Request-scoped Postgres pool over Hyperdrive (`maxUses: 1`)                       | Prevents cross-request promise corruption                               | Small but subtle; must be tested |
+| Workers-safe password hashing for Payload auth                                    | PBKDF2 limits in the isolate                                            | Medium; verify before Phase 4    |
+| Cloudflare Images transforms instead of Payload `imageSizes`/sharp                | Native binary unavailable                                               | Medium; replaces part of Phase 3 |
+| R2 storage via `@payloadcms/storage-s3` (R2 endpoint)                             | Object storage through a binding or S3 API                              | Small                            |
+| Cron trigger calling the jobs runner                                              | Native scheduling                                                       | Small                            |
+| Per-PR Neon branch automation                                                     | Isolated previews                                                       | ~1 day of CI work                |
+| ISR/incremental cache binding (R2 or KV)                                          | OpenNext needs a cache for ISR                                          | Small                            |
 
 What does **not** change: Neon ownership and the Free plan, the Postgres schema, every Payload
 collection, the RBAC matrix, the workflow state machine, the jobs-queue idempotency design, the
@@ -237,7 +237,7 @@ decision**; Payload 3.93.0 supports `>=16.3.3 <17`.
   times (later attributed partly to D1); Neon behind Hyperdrive was reported to behave well.
 - Whether our specific Payload version's password hashing works unmodified in `workerd` or needs
   the `@noble/hashes` substitution.
-- Query volume through Hyperdrive under Paid is unlimited, but the *cost* of the underlying Neon
+- Query volume through Hyperdrive under Paid is unlimited, but the _cost_ of the underlying Neon
   Free plan compute is a separate ceiling: a Worker with a warm isolate keeps querying Neon and
   can exhaust Neon's 100 compute-hours before the Workers bill moves. This should be watched
   during Gate B.
