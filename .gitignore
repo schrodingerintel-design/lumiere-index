@@ -1,21 +1,23 @@
-# Freebuff desktop state (conversation DB) — never commit
-.freebuff/
+node_modules
+.next
+out
+build
+dist
+coverage
+*.tsbuildinfo
+next-env.d.ts
+.turbo
+.vercel
 
-# Local environment files — never commit (any depth)
+# local environment
 .env
-.env.local
 .env.*
 !.env.example
 
-# Logs
+# media written by the local upload adapter in development
+public/media
+
+# logs and editor noise
 *.log
-logs/
-
-# OS / editor junk
+npm-debug.log*
 .DS_Store
-Thumbs.db
-.idea/
-.vscode/
-
-# Lovable template metadata
-.lovable/
