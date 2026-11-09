@@ -1,6 +1,6 @@
 # Lumière Index — Architecture
 
-Status: **proposed, awaiting founder approval** (2026-11-09).
+Status: **rev. 2 — founder decisions of 2026-11-09 incorporated; awaiting final sign-off.**
 Owner: Lumiere Media and Entertainment Technologies.
 Publication: Lumière Index — *News that matters.*
 
@@ -29,17 +29,19 @@ stays recoverable at tag `legacy/index-beta2` (see [§18](#18-git-history-and-gi
 | # | Decision | Choice | Status | Evidence |
 |---|---|---|---|---|
 | D1 | Framework | Next.js App Router + Payload CMS 3 embedded in one app | accepted by founder | Payload 3 is a Next-native CMS; one deployable, one auth system |
-| D2 | Database | Neon Postgres (serverless, branching) | accepted by founder, confirmed here | [§4](#4-database-neon-postgres) |
+| D2 | Database | Neon Postgres, founder-owned account, **Free plan**, env-var connection | accepted by founder | [§4](#4-database-neon-postgres) |
+| D2b | Cost policy | $0 recurring baseline; no paid tier without a written cost decision | accepted by founder | [§4.6](#46-cost-governance-and-free-tier-guardrails) |
 | D3 | DB adapter | `@payloadcms/db-postgres` (not `db-vercel-postgres`) | proposed | portable; explicit connection string; not tied to Vercel env names |
 | D4 | Authentication | Payload's own email/password auth on `Users` | proposed | no third-party auth needed; sessions and password hashing are built in |
 | D5 | Authorisation | Custom Payload `access` functions + server-action checks | proposed | collection and field level, never UI-only |
-| D6 | Media storage | Vercel Blob via `@payloadcms/storage-vercel-blob` | **OPEN** (alternative: R2 via S3 adapter) | [§7](#7-media-and-uploads) |
-| D7 | Scheduling | Payload Jobs Queue + protected runner endpoint | proposed | [§6](#6-scheduling-and-the-jobs-queue) |
-| D8 | Cron cadence | Vercel Pro per-minute **or** external scheduler fallback | **OPEN** | verified Vercel limits, [§6.4](#64-verified-vercel-cron-limits) |
+| D6 | Media storage | provider-agnostic seam; vendor chosen in Phase 3 | deferred by founder | [§7](#7-media-and-uploads) |
+| D7 | Scheduling | Payload Jobs Queue as source of truth + protected, idempotent runner | accepted by founder | [§6](#6-scheduling-and-the-jobs-queue) |
+| D8 | Cron cadence | external free scheduler, five-minute target, no SLA; Vercel stays Hobby, portable to Pro | accepted by founder | [§6.4](#64-verified-vercel-cron-limits-and-the-chosen-approach) |
 | D9 | Timezone | UTC storage, per-user display timezone, publisher-set default | accepted by founder | [§8](#8-time-and-timezones) |
 | D10 | Newsletter delivery | Provider not yet chosen; delivery is **not** claimed | **OPEN** | [§12](#12-newsletter) |
 | D11 | Hosting | Vercel, single project, production branch `main` | accepted by founder | brief §4 |
 | D12 | Licence | none yet; all rights reserved by default | **OPEN** | no `LICENSE` exists today |
+| D13 | Manual publish fallback | authorised editors can publish an overdue article through the same guarded task path | accepted by founder | [§6.3](#63-failure-handling-overdue-detection-and-manual-fallback) |
 
 ---
 
@@ -50,8 +52,8 @@ Verified against Payload's published requirements on 2026-11-09.
 | Layer | Choice | Constraint / note |
 |---|---|---|
 | Runtime | Node.js 24 LTS pinned in `.nvmrc`, CI and Vercel | Payload requires `^22.23.4 \|\| >=24.22.1` |
-| Framework | Next.js `16.2.6+` (App Router) | Payload supports 15.2.9–15.2.x, 15.3.9–15.3.x, 15.4.11–15.4.x, **16.2.6+**. Fallback to 15.4.11+ if a Next 16 incompatibility appears |
-| CMS | `payload` `3.93.x` | v4 is pre-release only; **do not** adopt v4 in this build |
+| Framework | Next.js `16.4.5` (App Router) | registry-checked 2026-11-09; inside Payload's supported 16.2.6+ range. Fallback to 15.4.11+ only if a Next 16 incompatibility appears |
+| CMS | `payload` `3.93.0` | registry-checked 2026-11-09; `@payloadcms/db-postgres` 3.93.0 declares `payload: 3.93.0`, so the family is pinned together. v4 is pre-release only — **do not** adopt it in this build |
 | DB adapter | `@payloadcms/db-postgres` | Drizzle-based; works with any Postgres |
 | Editor | Payload Lexical rich text | configured with a restricted feature set (§9) |
 | Styling | Tailwind CSS 4 + design tokens | token-driven, no component library dependency tree |
@@ -96,14 +98,14 @@ weekly, and no major upgrades without a preview deploy and a green suite.
 | Scale to zero | after 5 min idle, cannot be disabled | first request after idle pays a cold start (typically a few hundred ms) |
 | On limit breach | compute suspends until the next billing period; **no data loss**, no overage billing | must be monitored, and upgraded before launch |
 
-**Paid plan (Launch):** usage-based with no minimum. Neon's own worked example — a 0.25 CU
-compute active 4 h/day — comes to roughly **$3–5/month** of compute. Storage is billed
-separately per GB-month; the published rate differs between Neon's plan page and FAQ, so
-the exact figure must be confirmed in the console at signup rather than quoted here.
+**Paid plan (Launch):** usage-based with no minimum fee. Neon's own worked example puts a
+0.25 CU compute active 4 h/day at roughly **$3–5/month**. It is **not** enabled, and will not
+be enabled, without an explicit cost decision — see [§4.6](#46-cost-governance-and-free-tier-guardrails).
 
-**Recommendation:** build on Free, move to Launch before launch day (removes the
-compute-suspension cliff and enables disabling scale-to-zero if cold starts prove
-unacceptable), and never rely on the Free plan for production traffic.
+**Founder decision (2026-11-09): stay on the $0 Free plan.** The database lives in the
+founder's independently owned Neon account, is connected to Vercel purely through environment
+variables, and runs with no paid compute, no paid feature and no automatic upgrade switched
+on. Launching and validating the publication comes before any recurring infrastructure cost.
 
 ### 4.3 Connection strategy
 
@@ -118,25 +120,57 @@ unacceptable), and never rely on the Free plan for production traffic.
 - **Migrations are expand/contract**: additive in one release, destructive in a later one,
   so a Vercel rollback never meets an incompatible schema.
 
-### 4.4 Integration path
+### 4.4 Integration path — resolved
 
-**OPEN** — two supported routes, both giving preview branching:
+**Decision: Neon-managed, in the founder's own Neon account, on the Free plan, wired to
+Vercel through environment variables** (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`). No
+marketplace-managed billing, no Vercel-managed organisation, no paid add-ons.
 
-- *Neon-managed* (recommended): create the Neon account directly, connect it to the Vercel
-  project through the Marketplace "Connectable Accounts" flow. Billing stays with Neon, the
-  database is independent of the Vercel plan, and the Neon console stays available.
-- *Vercel-managed*: provision from Vercel's Storage tab with unified billing; simpler, but
-  the database then lives inside a Vercel-managed organisation.
+This keeps the database independent of the Vercel plan (so Vercel can stay on Hobby), keeps
+billing in one place the founder controls, and keeps the Neon console — branches, usage
+graphs, alerts — available to us. Preview branching stays under our control rather than being
+implied by an integration.
 
-Either way the variable names we consume are the same (`DATABASE_URL`,
-`DATABASE_URL_UNPOOLED`), so this choice does not affect application code.
+The Vercel Marketplace integration remains available later as a convenience if it ever
+reduces work, but it is not part of the design: the application only ever reads the two
+connection strings above, so changing how they are delivered is configuration, not code.
 
 ### 4.5 Backups and recovery
 
 Neon's instant restore/PITR is a paid-plan capability. Until the plan is upgraded:
 a nightly `pg_dump` from a scheduled GitHub Action into encrypted object storage, with a
 **quarterly restore drill** recorded in `docs/DEPLOYMENT.md`. A backup that has never been
-restored is not a backup.
+restored is not a backup. The dump job itself must run inside the free GitHub Actions
+allowance, and every candidate for storage must be evaluated for cost before it is enabled.
+
+### 4.6 Cost governance and free-tier guardrails
+
+The operating principle is **minimum recurring infrastructure cost until the publication
+earns its keep**: launch and validate first, pay second. Nothing in this rebuild is allowed
+to quietly introduce a subscription.
+
+1. **$0 baseline.** Free tier on every provider unless a paid capability is demonstrably
+   required by a launched feature, its cost is presented in advance, and the founder
+   approves it in writing.
+2. **No silent upgrades.** Paid compute sizes, autoscaling, disabling scale-to-zero, PITR,
+   extra projects and marketplace "upgrade" prompts stay off. Any pull request that turns
+   one on must state the monthly cost and carry explicit approval.
+3. **Monitoring before limits.** Usage alerts and a planned response for each free-tier cap
+   (§4.2) ship in Phase 1, not after launch.
+4. **Graceful degradation, not surprise billing.** If a cap is reached, the public site keeps
+   serving cached pages and the admin shows a clear operator message naming the exhausted
+   resource and the documented consequence, rather than the architecture escalating to a paid
+   tier on its own.
+5. **Portability.** Every free-tier dependency is used through a standard interface (a
+   Postgres connection string, an S3-compatible API, an HTTP mail API), so changing provider
+   or tier is configuration, not a rewrite.
+
+| Guardrail | Where | Behaviour |
+|---|---|---|
+| Compute-hour and storage usage | daily task + `/api/health` | log usage; alert the founder at 70% and 90% of each free-tier cap |
+| Limit-breach detection | health check | operator banner naming the exhausted resource and its documented consequence |
+| Storage growth trend | weekly task | DB and media growth reported so the 1 GB cap never arrives unannounced |
+| Cold-start measurement | Phase 6 performance pass | measure; if unacceptable, present the cost of the fix as a decision, never as an action |
 
 ---
 
@@ -204,6 +238,7 @@ Tasks (one file each, in `payload/tasks/`):
 | `sendSubscriberConfirmation` | `email` | 3 | double opt-in email (Phase 5) |
 | `revalidateContent` | `default` | 2 | invalidate cache tags after publish/unpublish |
 | `sendWorkflowNotification` | `email` | 2 | notify editors of submissions/approvals (Phase 5) |
+| `checkOverduePublishing` | `publishing` | 1 | flag scheduled articles past their slot and a stale runner (§6.3) |
 
 `autoRun` is **never** used: Payload's own docs state it must not be used on serverless
 platforms. Running and scheduling are triggered through the endpoints Payload mounts:
@@ -234,60 +269,86 @@ it is protected at four levels:
    `article:<id>:<versionId>`; scheduling twice updates the existing job rather than
    queueing a second one.
 
-### 6.3 Failure handling
+### 6.3 Failure handling, overdue detection and manual fallback
 
 Retries use the task's `retries` setting with exponential backoff. After the final failure:
 the article moves to `publish_failed`, the job keeps its error in the admin, a
 `workflowEvents` row records `actor: system`, and (Phase 5) the managing editors are
-notified. Nothing is retried forever, and no failure is silent — the admin dashboard shows
-a count of failed jobs, and `/api/health` reports queue depth.
+notified. Nothing retries forever, and no failure is silent — the admin dashboard shows a
+count of failed jobs, and `/api/health` reports queue depth.
 
-### 6.4 Verified Vercel cron limits (checked 2026-11-09)
+Because the scheduler is external and has no SLA, three further safeguards are part of the
+design rather than an afterthought:
+
+- **Overdue detection.** `checkOverduePublishing` runs on the same five-minute cadence and
+  lists any article still `scheduled` more than 10 minutes past its slot. The admin shows a
+  persistent overdue count with the offending articles, and `/api/health` exposes it. This
+  catches the failure a queue cannot see: the scheduler never firing at all.
+- **Manual publishing fallback.** A Publisher — or a Managing Editor given the delegated
+  capability — can publish a specific overdue article from the admin. It executes the same
+  task code path (version pin, guarded transition, unique publication event, audit row with
+the human actor), so the manual route cannot double-publish or release an unapproved
+  version.
+- **Runner heartbeat.** Every successful scheduler invocation records a timestamp; the admin
+  marks the scheduler "stale" when the last heartbeat is older than 15 minutes. An outage is
+  visible to editors instead of silent.
+
+### 6.4 Scheduler: verified Vercel limits and the chosen approach
 
 | | Hobby | Pro / Enterprise |
 |---|---|---|
 | Cron jobs per project | 100 | 100 |
-| Minimum interval | **once per day** — more frequent expressions fail the deployment | once per minute |
+| Minimum interval | **once per day** — sub-daily expressions fail the deployment | once per minute |
 | Scheduling precision | anywhere within the scheduled hour (±59 min) | per minute |
 | Timezone | UTC only | UTC only |
 | Built-in retries / alerts | none | none |
 
-Consequences, stated plainly:
+**Founder decision (2026-11-09): external scheduler on the free tier.** Vercel stays on
+Hobby; the five-minute trigger comes from outside Vercel. The consequences are stated openly
+rather than hidden:
 
-- Minute-accurate scheduled publishing **requires the Pro plan**. On Hobby the platform
-  rejects `*/5 * * * *` at deploy time, so this is not a soft limitation.
-- Vercel cron has no retries and no failure alerts, which is exactly why the retry and
-  failure logging live in Payload's queue rather than in the trigger.
-- Because the trigger only *runs* the queue, a missed or late cron invocation delays
-  publication but never duplicates it — the next run picks up the same job.
-
-**OPEN — cadence plan.** Options, in order of preference:
-
-1. **Vercel Pro, one cron per minute on `/api/payload-jobs/run?queue=publishing`.** Cleanest,
-   supported path; publishing lands within a minute of the scheduled time.
-2. **Hobby + external scheduler** (GitHub Actions `schedule` at the minimum 5-minute
-   granularity, or any external cron) hitting the same endpoint with `CRON_SECRET`.
-   Free, but GitHub's scheduler is routinely delayed under load and offers no SLA; we would
-   publish "within roughly 5–15 minutes" and document that publicly-visible reality rather
-   than claim precision we do not have.
-3. **Daily-only scheduling on Hobby.** Acceptable for a launch with no intraday publishing,
-   but it contradicts an editorial desk that schedules morning and evening slots.
-
-Recommendation: option 1 at launch; option 2 as the interim path while building.
+- **No SLA — and it is documented.** The 5–15 minute window is a *target*, not a guarantee.
+  If the scheduler is delayed, publication is late; it is never duplicated (§6.2) and always
+  visible (§6.3). `docs/DEPLOYMENT.md` and the editorial guide say so explicitly.
+- **Not exclusive to GitHub Actions.** GitHub's scheduled workflows are known to be delayed
+  or skipped under load, so the architecture requires only "some external service calling one
+  URL on a schedule". GitHub Actions is one option; a dedicated cron service, a small
+  always-on host, or an uptime monitor's scheduled check are equally valid. The application
+  has no knowledge of which is used, and swapping them is a dashboard change.
+- **Two endpoints, one secret.** The scheduler calls
+  `GET /api/payload-jobs/run?queue=publishing` (which handles schedules too) and optionally
+  `GET /api/payload-jobs/handle-schedules`, authenticating with
+  `Authorization: Bearer ${CRON_SECRET}` through `jobs.access.run`. A request without it is
+  rejected before any job runs.
+- **Portable by construction.** Moving to Vercel Pro later means adding one `vercel.json`
+  cron entry pointing at the same endpoint and switching the external scheduler off. No
+  task, schema, queue or publication-logic change is involved — the trigger is the only
+  moving part.
+- **Observable.** Heartbeat, overdue and queue-depth signals (§6.3) mean a scheduler outage
+  surfaces in the admin within fifteen minutes instead of being discovered by an editor
+  wondering why the morning story never went live.
 
 ---
 
 ## 7. Media and uploads
 
-Vercel has no persistent filesystem, so media must live in object storage.
+Vercel has no persistent filesystem, so production media must live in object storage. v1
+keeps the storage vendor **out of the architecture**: no provider is a hard dependency.
 
-- **Recommended:** `@payloadcms/storage-vercel-blob` with `BLOB_READ_WRITE_TOKEN`.
-  Same platform, same billing, no extra vendor. Note Payload's documented constraint that
-  Vercel server uploads are limited to 4.5 MB, so client-side uploads are enabled
-  (`clientUploads: true` with Payload's upload route) and the collection caps size at 12 MB.
-- **Alternative (OPEN):** Cloudflare R2 through `@payloadcms/storage-s3` with an R2
-  endpoint. Cheaper egress at scale, but a second vendor and a second set of credentials.
-  Payload's `storage-r2` adapter is Workers-only and is *not* the right package here.
+- The application talks to one Payload upload collection; the storage adapter is selected by
+  configuration (`MEDIA_STORAGE_ADAPTER`), so the article model, templates, SEO tags and URL
+  building are identical whichever vendor is used.
+- Local development uses the filesystem adapter. Production requires a cloud adapter and
+  refuses to start with the local one.
+- **Decision deferred to Phase 3** by founder instruction, when the two candidates are
+  compared on: total cost at realistic volume, delivery performance and CDN behaviour,
+  quality of Payload integration, upload limits (Payload documents a 4.5 MB server-upload
+  limit on Vercel, mitigated by client-side uploads), image optimisation and transform
+  support, backup and durability story, and operational complexity.
+  - Candidate A — **Vercel Blob** (`@payloadcms/storage-vercel-blob`): one vendor, one bill.
+  - Candidate B — **Cloudflare R2** (`@payloadcms/storage-s3` against an R2 endpoint):
+    cheaper egress at scale, a second vendor. Payload's `storage-r2` adapter is Workers-only
+    and is *not* the right package for this deployment.
 
 Media collection rules:
 
@@ -509,7 +570,12 @@ PAYLOAD_SECRET             # per-environment, 32+ random bytes
 NEXT_PUBLIC_SITE_URL       # https://lumiereindex.com / preview URL
 PREVIEW_SECRET             # draft-mode token signing
 CRON_SECRET                # runner endpoint auth (also read by Vercel cron)
-BLOB_READ_WRITE_TOKEN      # media (Phase 3)
+MEDIA_STORAGE_ADAPTER      # Phase 3: local | vercel-blob | s3 — no vendor hard dependency
+BLOB_READ_WRITE_TOKEN      # only if the Phase 3 decision is Vercel Blob
+S3_ENDPOINT                # only if the Phase 3 decision is R2/S3
+S3_BUCKET                  # only if the Phase 3 decision is R2/S3
+S3_ACCESS_KEY_ID           # only if the Phase 3 decision is R2/S3
+S3_SECRET_ACCESS_KEY       # only if the Phase 3 decision is R2/S3
 RESEND_API_KEY / EMAIL_FROM  # Phase 5 only
 ```
 
@@ -535,6 +601,8 @@ RESEND_API_KEY / EMAIL_FROM  # Phase 5 only
   expand/contract.
 - **Production deployment stays on hold** until the founder approves Phase 7. The existing
   production site is not touched by Phase 1–6 work.
+- **No paid plan is enabled by this design.** Vercel stays on Hobby, Neon stays on Free, and
+  any tier change is a cost decision with written approval (§4.6).
 - Domain cutover (`lumiereindex.com`) is a Phase 7 step with a lowered TTL beforehand,
   a verified preview of the final build, and an explicit go/no-go.
 
@@ -588,9 +656,19 @@ Anything that only pays off at ten times the current scale is deferred.
 This is a remote, hard-to-reverse change, so it happens in one planned window **after**
 the new baseline exists and is green — not now.
 
-1. **Gate 0 — disconnect Lovable** (or revoke its write access) *before* the first new
-   commit lands on the default branch. Otherwise its editor can push the retired app back
-   over the new tree. Verify by watching for a bot push after the next commit.
+1. **Gate 0 — Lovable disconnected and verified, before any baseline commit.** The founder
+   disconnects the Lovable project (or revokes its GitHub App write access); then, in order:
+   a. **Integrations checked** — GitHub *Settings → GitHub Apps* and installed integrations:
+      nothing retains write access to this repository except the intended accounts.
+   b. **No unexpected pushes** — re-read `refs/heads/*` on the remote, compare with the known
+      list (22 branches on 2026-11-09), and watch for bot commits after a no-op commit.
+   c. **Working tree and branch state verified** — `git status`, `git branch -vv`, and the
+      remote/default-branch pointers recorded before and after.
+   d. **Legacy recovery confirmed remotely** — `git ls-remote origin legacy/index-beta2`
+      returns `bd26e72…`, and `refs/heads/master` is still `bd26e72…`.
+   e. **Only then** is the new baseline commit created.
+   History is never deleted, and the default branch is never overwritten, without explicit
+   founder approval: the rebuild lands on a branch first.
 2. **Gate 1 — new code lands on a branch** (`phase-1/foundation`) as a draft PR. `master`
    stays untouched and deployable throughout.
 3. **Gate 2 — new CI is proven** on that PR: format, lint, typecheck, unit, integration,
@@ -622,9 +700,10 @@ rename happens first and Vercel falls back to `main`, unreviewed code could publ
 
 | # | Decision | Recommendation | Needed by |
 |---|---|---|---|
-| O1 | Neon integration path (Neon-managed vs Vercel-managed) | Neon-managed | Phase 1 |
-| O2 | Cron cadence: Vercel Pro per-minute, external scheduler, or daily-only | Pro at launch; external scheduler interim | Phase 3 |
-| O3 | Media storage: Vercel Blob vs Cloudflare R2 | Vercel Blob | Phase 3 |
+| O1 | ~~Neon integration path~~ | **Resolved:** Neon-managed, founder-owned account, Free plan, env-var connection, no paid features | done |
+| O2 | ~~Cron cadence~~ | **Resolved:** external scheduler, five-minute target, no SLA, Vercel stays Hobby, portable to Pro | done |
+| O3 | ~~Media storage~~ | **Resolved:** deferred to Phase 3 behind a provider-agnostic seam | Phase 3 |
+| O10 | ~~Cost policy~~ | **Resolved:** $0 recurring baseline; any paid tier needs a written cost decision | done |
 | O4 | Newsletter provider | Resend (defer to Phase 5) | Phase 5 |
 | O5 | `LICENSE` / rights statement | private, all rights reserved | before first public commit |
 | O6 | Default branch rename window (`master` → `main`) | after CI green, before launch | Phase 1/7 boundary |
@@ -656,8 +735,8 @@ Dependencies: 2 and 3 both need 1; 4 needs 3; 5 needs 4; 6 spans 2–5; 7 needs 
 |---|---|---|
 | Payload/Next version incompatibility | build blocked | pin to the verified ranges; no v4 pre-releases; upgrade only behind a preview deploy |
 | Next 16 cache/Cache Components friction with Payload | subtle staleness | keep cacheComponents off initially; tag-based revalidation with explicit tests |
-| Vercel Hobby cron rejects sub-daily jobs | scheduling unavailable | cadence decision O2 resolved before Phase 4 |
-| Neon Free compute suspension | admin outage | monitor CU-hours, upgrade to Launch before launch |
+| External scheduler delayed or skipped | late publication | five-minute target documented as no-SLA; overdue detection, runner heartbeat and manual publish fallback (§6.3) |
+| Neon Free compute suspension at the monthly cap | admin read/write failure | usage tracking and alerts at 70/90% (§4.6), documented breach behaviour, cost decision escalated before any upgrade |
 | Cold starts after scale-to-zero | first-request latency | measure in Phase 6; disable scale-to-zero on paid plan if it matters |
 | Unlicensed imagery | legal exposure | licence field is mandatory and validated; no legacy assets reused |
 | Branch rename or Vercel misconfiguration | production serving stale/broken code | the gated order in §18.3, done in one window |
