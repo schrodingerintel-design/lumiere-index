@@ -2,7 +2,7 @@
 
 Status: **rev. 2 — founder decisions of 2026-11-09 incorporated; awaiting final sign-off.**
 Owner: Lumiere Media and Entertainment Technologies.
-Publication: Lumière Index — *News that matters.*
+Publication: Lumière Index — _News that matters._
 
 This document is the approval artefact for the rebuild. No implementation is started
 until it is signed off. Items still needing a founder decision are collected in
@@ -26,22 +26,22 @@ stays recoverable at tag `legacy/index-beta2` (see [§18](#18-git-history-and-gi
 
 ## 2. Decision summary
 
-| # | Decision | Choice | Status | Evidence |
-|---|---|---|---|---|
-| D1 | Framework | Next.js App Router + Payload CMS 3 embedded in one app | accepted by founder | Payload 3 is a Next-native CMS; one deployable, one auth system |
-| D2 | Database | Neon Postgres, founder-owned account, **Free plan**, env-var connection | accepted by founder | [§4](#4-database-neon-postgres) |
-| D2b | Cost policy | $0 recurring baseline; no paid tier without a written cost decision | accepted by founder | [§4.6](#46-cost-governance-and-free-tier-guardrails) |
-| D3 | DB adapter | `@payloadcms/db-postgres` (not `db-vercel-postgres`) | proposed | portable; explicit connection string; not tied to Vercel env names |
-| D4 | Authentication | Payload's own email/password auth on `Users` | proposed | no third-party auth needed; sessions and password hashing are built in |
-| D5 | Authorisation | Custom Payload `access` functions + server-action checks | proposed | collection and field level, never UI-only |
-| D6 | Media storage | provider-agnostic seam; vendor chosen in Phase 3 | deferred by founder | [§7](#7-media-and-uploads) |
-| D7 | Scheduling | Payload Jobs Queue as source of truth + protected, idempotent runner | accepted by founder | [§6](#6-scheduling-and-the-jobs-queue) |
-| D8 | Cron cadence | external free scheduler, five-minute target, no SLA; Vercel stays Hobby, portable to Pro | accepted by founder | [§6.4](#64-verified-vercel-cron-limits-and-the-chosen-approach) |
-| D9 | Timezone | UTC storage, per-user display timezone, publisher-set default | accepted by founder | [§8](#8-time-and-timezones) |
-| D10 | Newsletter delivery | Provider not yet chosen; delivery is **not** claimed | **OPEN** | [§12](#12-newsletter) |
-| D11 | Hosting | Vercel, single project, production branch `main` | accepted by founder | brief §4 |
-| D12 | Licence | none yet; all rights reserved by default | **OPEN** | no `LICENSE` exists today |
-| D13 | Manual publish fallback | authorised editors can publish an overdue article through the same guarded task path | accepted by founder | [§6.3](#63-failure-handling-overdue-detection-and-manual-fallback) |
+| #   | Decision                | Choice                                                                                   | Status              | Evidence                                                               |
+| --- | ----------------------- | ---------------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------- |
+| D1  | Framework               | Next.js App Router + Payload CMS 3 embedded in one app                                   | accepted by founder | Payload 3 is a Next-native CMS; one deployable, one auth system        |
+| D2  | Database                | Neon Postgres, founder-owned account, **Free plan**, env-var connection                  | accepted by founder | [§4](#4-database-neon-postgres)                                        |
+| D2b | Cost policy             | $0 recurring baseline; no paid tier without a written cost decision                      | accepted by founder | [§4.6](#46-cost-governance-and-free-tier-guardrails)                   |
+| D3  | DB adapter              | `@payloadcms/db-postgres` (not `db-vercel-postgres`)                                     | proposed            | portable; explicit connection string; not tied to Vercel env names     |
+| D4  | Authentication          | Payload's own email/password auth on `Users`                                             | proposed            | no third-party auth needed; sessions and password hashing are built in |
+| D5  | Authorisation           | Custom Payload `access` functions + server-action checks                                 | proposed            | collection and field level, never UI-only                              |
+| D6  | Media storage           | provider-agnostic seam; vendor chosen in Phase 3                                         | deferred by founder | [§7](#7-media-and-uploads)                                             |
+| D7  | Scheduling              | Payload Jobs Queue as source of truth + protected, idempotent runner                     | accepted by founder | [§6](#6-scheduling-and-the-jobs-queue)                                 |
+| D8  | Cron cadence            | external free scheduler, five-minute target, no SLA; Vercel stays Hobby, portable to Pro | accepted by founder | [§6.4](#64-verified-vercel-cron-limits-and-the-chosen-approach)        |
+| D9  | Timezone                | UTC storage, per-user display timezone, publisher-set default                            | accepted by founder | [§8](#8-time-and-timezones)                                            |
+| D10 | Newsletter delivery     | Provider not yet chosen; delivery is **not** claimed                                     | **OPEN**            | [§12](#12-newsletter)                                                  |
+| D11 | Hosting                 | Vercel, single project, production branch `main`                                         | accepted by founder | brief §4                                                               |
+| D12 | Licence                 | none yet; all rights reserved by default                                                 | **OPEN**            | no `LICENSE` exists today                                              |
+| D13 | Manual publish fallback | authorised editors can publish an overdue article through the same guarded task path     | accepted by founder | [§6.3](#63-failure-handling-overdue-detection-and-manual-fallback)     |
 
 ---
 
@@ -49,19 +49,18 @@ stays recoverable at tag `legacy/index-beta2` (see [§18](#18-git-history-and-gi
 
 Verified against Payload's published requirements on 2026-11-09.
 
-| Layer | Choice | Constraint / note |
-|---|---|---|
-| Runtime | Node.js 24 LTS pinned in `.nvmrc`, CI and Vercel | Payload requires `^22.23.4 \|\| >=24.22.1` |
-| Framework | Next.js `16.4.5` (App Router) | registry-checked 2026-11-09; inside Payload's supported 16.2.6+ range. Fallback to 15.4.11+ only if a Next 16 incompatibility appears |
-| CMS | `payload` `3.93.0` | registry-checked 2026-11-09; `@payloadcms/db-postgres` 3.93.0 declares `payload: 3.93.0`, so the family is pinned together. v4 is pre-release only — **do not** adopt it in this build |
-| DB adapter | `@payloadcms/db-postgres` | Drizzle-based; works with any Postgres |
-| Editor | Payload Lexical rich text | configured with a restricted feature set (§9) |
-| Styling | Tailwind CSS 4 + design tokens | token-driven, no component library dependency tree |
-| Validation | `zod` for form/API input | shared schemas between client and server |
-| Images | `sharp` (Payload upload sizes) + `next/image` | no client-side image pipeline |
-| Tests | `vitest`, Payload Local API, `@playwright/test`, `@axe-core/playwright` | [§14](#14-testing-strategy) |
-| Lint/format | ESLint (flat config) + Prettier | enforced in CI |
-| Package manager | npm, single root lockfile | replaces the previous dual `bun.lock` + `package-lock.json` drift |
+| Layer           | Choice                                                                  | Constraint / note                                                 |
+| --------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Runtime         | Node.js 24 LTS pinned in `.nvmrc`, CI and Vercel                        | Payload requires `^22.23.4 \|\| >=24.22.1`                        |     | Framework | Next.js `16.3.3` (App Router) | the version Payload's own blank template ships at v3.93.0, and the pin verified building here. Inside Payload's supported 16.2.6+ range; fallback to 15.4.11+ only if a Next 16 incompatibility appears |     | CMS | `payload` `3.93.0` | `@payloadcms/db-postgres` 3.93.0 declares `payload: 3.93.0`, so the family is pinned together. v4 is pre-release only — **do not** adopt it in this build |
+| UI runtime      | React `19.2.6`                                                          | template pin, inside Next 16.3.3's peer range                     |
+| DB adapter      | `@payloadcms/db-postgres`                                               | Drizzle-based; works with any Postgres                            |
+| Editor          | Payload Lexical rich text                                               | configured with a restricted feature set (§9)                     |
+| Styling         | Tailwind CSS 4 + design tokens                                          | token-driven, no component library dependency tree                |
+| Validation      | `zod` for form/API input                                                | shared schemas between client and server                          |
+| Images          | `sharp` (Payload upload sizes) + `next/image`                           | no client-side image pipeline                                     |
+| Tests           | `vitest`, Payload Local API, `@playwright/test`, `@axe-core/playwright` | [§14](#14-testing-strategy)                                       |
+| Lint/format     | ESLint (flat config) + Prettier                                         | enforced in CI                                                    |
+| Package manager | npm, single root lockfile                                               | replaces the previous dual `bun.lock` + `package-lock.json` drift |
 
 Version policy: exact versions in `package.json`, one committed lockfile, Dependabot
 weekly, and no major upgrades without a preview deploy and a green suite.
@@ -88,15 +87,15 @@ weekly, and no major upgrades without a preview deploy and a green suite.
 
 ### 4.2 Verified pricing and limits (Free plan, checked 2026-11-09)
 
-| Limit | Free | Consequence for us |
-|---|---|---|
-| Price | $0/month | sufficient for build-out and pre-launch |
-| Postgres storage | 1 GB per project (20 GB account-wide) | ample: articles and metadata only, media lives in object storage |
-| Compute | 100 CU-hours per project per month | 0.25 CU for ~400 h/month — far above editorial usage |
-| Branches | 10 per project | main + preview + local dev fits comfortably |
-| Projects | 100 | one is needed |
-| Scale to zero | after 5 min idle, cannot be disabled | first request after idle pays a cold start (typically a few hundred ms) |
-| On limit breach | compute suspends until the next billing period; **no data loss**, no overage billing | must be monitored, and upgraded before launch |
+| Limit            | Free                                                                                 | Consequence for us                                                      |
+| ---------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| Price            | $0/month                                                                             | sufficient for build-out and pre-launch                                 |
+| Postgres storage | 1 GB per project (20 GB account-wide)                                                | ample: articles and metadata only, media lives in object storage        |
+| Compute          | 100 CU-hours per project per month                                                   | 0.25 CU for ~400 h/month — far above editorial usage                    |
+| Branches         | 10 per project                                                                       | main + preview + local dev fits comfortably                             |
+| Projects         | 100                                                                                  | one is needed                                                           |
+| Scale to zero    | after 5 min idle, cannot be disabled                                                 | first request after idle pays a cold start (typically a few hundred ms) |
+| On limit breach  | compute suspends until the next billing period; **no data loss**, no overage billing | must be monitored, and upgraded before launch                           |
 
 **Paid plan (Launch):** usage-based with no minimum fee. Neon's own worked example puts a
 0.25 CU compute active 4 h/day at roughly **$3–5/month**. It is **not** enabled, and will not
@@ -165,12 +164,12 @@ to quietly introduce a subscription.
    Postgres connection string, an S3-compatible API, an HTTP mail API), so changing provider
    or tier is configuration, not a rewrite.
 
-| Guardrail | Where | Behaviour |
-|---|---|---|
-| Compute-hour and storage usage | daily task + `/api/health` | log usage; alert the founder at 70% and 90% of each free-tier cap |
-| Limit-breach detection | health check | operator banner naming the exhausted resource and its documented consequence |
-| Storage growth trend | weekly task | DB and media growth reported so the 1 GB cap never arrives unannounced |
-| Cold-start measurement | Phase 6 performance pass | measure; if unacceptable, present the cost of the fix as a decision, never as an action |
+| Guardrail                      | Where                      | Behaviour                                                                               |
+| ------------------------------ | -------------------------- | --------------------------------------------------------------------------------------- |
+| Compute-hour and storage usage | daily task + `/api/health` | log usage; alert the founder at 70% and 90% of each free-tier cap                       |
+| Limit-breach detection         | health check               | operator banner naming the exhausted resource and its documented consequence            |
+| Storage growth trend           | weekly task                | DB and media growth reported so the 1 GB cap never arrives unannounced                  |
+| Cold-start measurement         | Phase 6 performance pass   | measure; if unacceptable, present the cost of the fix as a decision, never as an action |
 
 ---
 
@@ -232,13 +231,13 @@ retry counts — visible in the admin — instead of a fire-and-forget HTTP call
 
 Tasks (one file each, in `payload/tasks/`):
 
-| Task | Queue | Retries | Purpose |
-|---|---|---|---|
-| `publishScheduledArticle` | `publishing` | 3 | publish an article whose scheduled time has passed |
-| `sendSubscriberConfirmation` | `email` | 3 | double opt-in email (Phase 5) |
-| `revalidateContent` | `default` | 2 | invalidate cache tags after publish/unpublish |
-| `sendWorkflowNotification` | `email` | 2 | notify editors of submissions/approvals (Phase 5) |
-| `checkOverduePublishing` | `publishing` | 1 | flag scheduled articles past their slot and a stale runner (§6.3) |
+| Task                         | Queue        | Retries | Purpose                                                           |
+| ---------------------------- | ------------ | ------- | ----------------------------------------------------------------- |
+| `publishScheduledArticle`    | `publishing` | 3       | publish an article whose scheduled time has passed                |
+| `sendSubscriberConfirmation` | `email`      | 3       | double opt-in email (Phase 5)                                     |
+| `revalidateContent`          | `default`    | 2       | invalidate cache tags after publish/unpublish                     |
+| `sendWorkflowNotification`   | `email`      | 2       | notify editors of submissions/approvals (Phase 5)                 |
+| `checkOverduePublishing`     | `publishing` | 1       | flag scheduled articles past their slot and a stale runner (§6.3) |
 
 `autoRun` is **never** used: Payload's own docs state it must not be used on serverless
 platforms. Running and scheduling are triggered through the endpoints Payload mounts:
@@ -287,7 +286,7 @@ design rather than an afterthought:
 - **Manual publishing fallback.** A Publisher — or a Managing Editor given the delegated
   capability — can publish a specific overdue article from the admin. It executes the same
   task code path (version pin, guarded transition, unique publication event, audit row with
-the human actor), so the manual route cannot double-publish or release an unapproved
+  the human actor), so the manual route cannot double-publish or release an unapproved
   version.
 - **Runner heartbeat.** Every successful scheduler invocation records a timestamp; the admin
   marks the scheduler "stale" when the last heartbeat is older than 15 minutes. An outage is
@@ -295,19 +294,19 @@ the human actor), so the manual route cannot double-publish or release an unappr
 
 ### 6.4 Scheduler: verified Vercel limits and the chosen approach
 
-| | Hobby | Pro / Enterprise |
-|---|---|---|
-| Cron jobs per project | 100 | 100 |
-| Minimum interval | **once per day** — sub-daily expressions fail the deployment | once per minute |
-| Scheduling precision | anywhere within the scheduled hour (±59 min) | per minute |
-| Timezone | UTC only | UTC only |
-| Built-in retries / alerts | none | none |
+|                           | Hobby                                                        | Pro / Enterprise |
+| ------------------------- | ------------------------------------------------------------ | ---------------- |
+| Cron jobs per project     | 100                                                          | 100              |
+| Minimum interval          | **once per day** — sub-daily expressions fail the deployment | once per minute  |
+| Scheduling precision      | anywhere within the scheduled hour (±59 min)                 | per minute       |
+| Timezone                  | UTC only                                                     | UTC only         |
+| Built-in retries / alerts | none                                                         | none             |
 
 **Founder decision (2026-11-09): external scheduler on the free tier.** Vercel stays on
 Hobby; the five-minute trigger comes from outside Vercel. The consequences are stated openly
 rather than hidden:
 
-- **No SLA — and it is documented.** The 5–15 minute window is a *target*, not a guarantee.
+- **No SLA — and it is documented.** The 5–15 minute window is a _target_, not a guarantee.
   If the scheduler is delayed, publication is late; it is never duplicated (§6.2) and always
   visible (§6.3). `docs/DEPLOYMENT.md` and the editorial guide say so explicitly.
 - **Not exclusive to GitHub Actions.** GitHub's scheduled workflows are known to be delayed
@@ -348,7 +347,7 @@ keeps the storage vendor **out of the architecture**: no provider is a hard depe
   - Candidate A — **Vercel Blob** (`@payloadcms/storage-vercel-blob`): one vendor, one bill.
   - Candidate B — **Cloudflare R2** (`@payloadcms/storage-s3` against an R2 endpoint):
     cheaper egress at scale, a second vendor. Payload's `storage-r2` adapter is Workers-only
-    and is *not* the right package for this deployment.
+    and is _not_ the right package for this deployment.
 
 Media collection rules:
 
@@ -391,19 +390,19 @@ No asset from the retired product is reused unless provenance is confirmed in wr
 
 ## 9. Content model
 
-| Collection | Purpose | Notable fields |
-|---|---|---|
-| `articles` | all editorial content | title, slug, dek, section (rel), format (rel), authors (rel, ordered), tags (rel), heroMedia (rel), body (Lexical), status, scheduledFor, publishedAt, updatedAt, isExclusive, exclusivityRationale, opinionDisclaimer, seo group, versions(drafts) |
-| `sections` | Latest/News, Celebrity, Film & TV, Music, Culture, Exclusives, Features | name, slug, description, seo, order, isPublic |
-| `formats` | Breaking, News, Exclusive, Interview, Feature, Analysis, Opinion | name, slug, rules copy, requiresRationale flag |
-| `authors` | bylines / contributors | name, slug, role, bio, avatar, socials, isStaff |
-| `tags` | topic taxonomy | name, slug, description |
-| `media` | images and documents | file, alt, caption, credit, licence, licenceNotes, focalPoint |
-| `users` | staff accounts | email, password, name, roles[], timezone, active |
-| `corrections` | corrections and clarifications | article (rel), type, summary, correctedAt, approvedBy, isPublic |
-| `subscribers` | newsletter list | email (unique), status, consentedAt, consentSource, unsubscribeToken, tags[] |
-| `workflowEvents` | immutable audit log | article, actor, fromStatus, toStatus, note, jobId, createdAt |
-| `publicationEvents` | publish/unpublish record + dedupe | article, version, publishedAt, actor, unique(article, version) |
+| Collection          | Purpose                                                                 | Notable fields                                                                                                                                                                                                                                      |
+| ------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `articles`          | all editorial content                                                   | title, slug, dek, section (rel), format (rel), authors (rel, ordered), tags (rel), heroMedia (rel), body (Lexical), status, scheduledFor, publishedAt, updatedAt, isExclusive, exclusivityRationale, opinionDisclaimer, seo group, versions(drafts) |
+| `sections`          | Latest/News, Celebrity, Film & TV, Music, Culture, Exclusives, Features | name, slug, description, seo, order, isPublic                                                                                                                                                                                                       |
+| `formats`           | Breaking, News, Exclusive, Interview, Feature, Analysis, Opinion        | name, slug, rules copy, requiresRationale flag                                                                                                                                                                                                      |
+| `authors`           | bylines / contributors                                                  | name, slug, role, bio, avatar, socials, isStaff                                                                                                                                                                                                     |
+| `tags`              | topic taxonomy                                                          | name, slug, description                                                                                                                                                                                                                             |
+| `media`             | images and documents                                                    | file, alt, caption, credit, licence, licenceNotes, focalPoint                                                                                                                                                                                       |
+| `users`             | staff accounts                                                          | email, password, name, roles[], timezone, active                                                                                                                                                                                                    |
+| `corrections`       | corrections and clarifications                                          | article (rel), type, summary, correctedAt, approvedBy, isPublic                                                                                                                                                                                     |
+| `subscribers`       | newsletter list                                                         | email (unique), status, consentedAt, consentSource, unsubscribeToken, tags[]                                                                                                                                                                        |
+| `workflowEvents`    | immutable audit log                                                     | article, actor, fromStatus, toStatus, note, jobId, createdAt                                                                                                                                                                                        |
+| `publicationEvents` | publish/unpublish record + dedupe                                       | article, version, publishedAt, actor, unique(article, version)                                                                                                                                                                                      |
 
 Design notes:
 
@@ -438,18 +437,18 @@ payload/access/fields.ts         // field-level: e.g. only Publisher sets status
 Six roles, one capability matrix (abridged; the full matrix ships as
 `docs/EDITORIAL_WORKFLOW.md`):
 
-| Capability | Contributor | Writer | Editor | Managing Editor | Publisher | Administrator |
-|---|---|---|---|---|---|---|
-| Create/edit own draft | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Edit others' drafts | — | — | ✅ | ✅ | ✅ | ✅ |
-| Submit for review | — | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Request changes / approve | — | — | — | ✅ | ✅ | ✅ |
-| Schedule publication | — | — | — | — | ✅ | ✅ |
-| Publish / unpublish | — | — | — | — | ✅ | ✅ |
-| Manage sections, tags, formats | — | — | — | ✅ | ✅ | ✅ |
-| Manage users and roles | — | — | — | — | — | ✅ |
-| Manage subscribers / corrections | — | — | — | ✅ | ✅ | ✅ |
-| Read audit log | — | — | own articles | ✅ | ✅ | ✅ |
+| Capability                       | Contributor | Writer | Editor       | Managing Editor | Publisher | Administrator |
+| -------------------------------- | ----------- | ------ | ------------ | --------------- | --------- | ------------- |
+| Create/edit own draft            | ✅          | ✅     | ✅           | ✅              | ✅        | ✅            |
+| Edit others' drafts              | —           | —      | ✅           | ✅              | ✅        | ✅            |
+| Submit for review                | —           | ✅     | ✅           | ✅              | ✅        | ✅            |
+| Request changes / approve        | —           | —      | —            | ✅              | ✅        | ✅            |
+| Schedule publication             | —           | —      | —            | —               | ✅        | ✅            |
+| Publish / unpublish              | —           | —      | —            | —               | ✅        | ✅            |
+| Manage sections, tags, formats   | —           | —      | —            | ✅              | ✅        | ✅            |
+| Manage users and roles           | —           | —      | —            | —               | —         | ✅            |
+| Manage subscribers / corrections | —           | —      | —            | ✅              | ✅        | ✅            |
+| Read audit log                   | —           | —      | own articles | ✅              | ✅        | ✅            |
 
 Rules that follow from the brief: a Writer never receives publishing rights implicitly;
 promotion is an explicit role change by an Administrator; every check runs on the server
@@ -535,12 +534,12 @@ Publishing requires the explicit transition above — preview has no path to it.
 
 ## 14. Testing strategy
 
-| Level | Tool | Scope |
-|---|---|---|
-| Unit | vitest | date/timezone helpers, slugging, permission predicates, SEO builders, validation schemas |
+| Level       | Tool                                                    | Scope                                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit        | vitest                                                  | date/timezone helpers, slugging, permission predicates, SEO builders, validation schemas                                                                                                                         |
 | Integration | vitest + Payload Local API against a throwaway Postgres | every access rule for every role; every workflow transition including illegal ones; publish idempotency (double-run the task, assert one publication); unauthenticated REST requests return 401/403 with no data |
-| E2E | Playwright + axe | the 20-step publishing script from the brief, run against a seeded app with its own database branch |
-| CI | GitHub Actions | install → format check → lint → typecheck → unit → integration → build, on every PR and every push to `main` |
+| E2E         | Playwright + axe                                        | the 20-step publishing script from the brief, run against a seeded app with its own database branch                                                                                                              |
+| CI          | GitHub Actions                                          | install → format check → lint → typecheck → unit → integration → build, on every PR and every push to `main`                                                                                                     |
 
 The 20-step manual script becomes `tests/e2e/publishing.spec.ts`, with steps 11–16 covering
 public visibility, correction, unpublish, and the guarantee that a draft URL 404s for a
@@ -553,11 +552,11 @@ not SQLite — Postgres-specific behaviour is part of what we are testing.
 
 ## 15. Environments and secrets
 
-| Environment | App | Database | Purpose |
-|---|---|---|---|
-| Local | `next dev` on the developer machine | Neon `dev` branch (or local Postgres) | development, fixtures only |
-| Preview | every PR, Vercel preview deployment | **its own Neon branch** | review, E2E, editorial QA |
-| Production | `main`, Vercel production | Neon `main` branch | public site |
+| Environment | App                                 | Database                              | Purpose                    |
+| ----------- | ----------------------------------- | ------------------------------------- | -------------------------- |
+| Local       | `next dev` on the developer machine | Neon `dev` branch (or local Postgres) | development, fixtures only |
+| Preview     | every PR, Vercel preview deployment | **its own Neon branch**               | review, E2E, editorial QA  |
+| Production  | `main`, Vercel production           | Neon `main` branch                    | public site                |
 
 - Testers on preview get `noindex` headers, a seeded editor account, and **never**
   production content or production credentials.
@@ -642,14 +641,14 @@ Anything that only pays off at ten times the current scale is deferred.
 
 ### 18.2 Current state, verified
 
-| Item | Finding |
-|---|---|
-| Default branch | `master` |
-| CI trigger | `.github/workflows/tests.yml` — `push: branches: [master]` + all PRs |
-| Other `master` references in repo | `TRUST_RELEASE.md:15` only |
-| Vercel config in repo | `lumiere-the-index-codebase/vercel.json` (old frontend, not root) |
-| Lovable coupling | 11 files (`lumiere-the-index-codebase/AGENTS.md`, `vite.config.ts`, `__root.tsx`, `apiClient.ts`, `lovable-error-reporting.ts`, `package.json`, `bunfig.toml`, `.gitignore`, both lockfiles) |
-| Branch protection / secret scanning | not visible from here — founder console action |
+| Item                                | Finding                                                                                                                                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default branch                      | `master`                                                                                                                                                                                     |
+| CI trigger                          | `.github/workflows/tests.yml` — `push: branches: [master]` + all PRs                                                                                                                         |
+| Other `master` references in repo   | `TRUST_RELEASE.md:15` only                                                                                                                                                                   |
+| Vercel config in repo               | `lumiere-the-index-codebase/vercel.json` (old frontend, not root)                                                                                                                            |
+| Lovable coupling                    | 11 files (`lumiere-the-index-codebase/AGENTS.md`, `vite.config.ts`, `__root.tsx`, `apiClient.ts`, `lovable-error-reporting.ts`, `package.json`, `bunfig.toml`, `.gitignore`, both lockfiles) |
+| Branch protection / secret scanning | not visible from here — founder console action                                                                                                                                               |
 
 ### 18.3 `master` → `main` migration, ordered
 
@@ -658,14 +657,14 @@ the new baseline exists and is green — not now.
 
 1. **Gate 0 — Lovable disconnected and verified, before any baseline commit.** The founder
    disconnects the Lovable project (or revokes its GitHub App write access); then, in order:
-   a. **Integrations checked** — GitHub *Settings → GitHub Apps* and installed integrations:
-      nothing retains write access to this repository except the intended accounts.
+   a. **Integrations checked** — GitHub _Settings → GitHub Apps_ and installed integrations:
+   nothing retains write access to this repository except the intended accounts.
    b. **No unexpected pushes** — re-read `refs/heads/*` on the remote, compare with the known
-      list (22 branches on 2026-11-09), and watch for bot commits after a no-op commit.
+   list (22 branches on 2026-11-09), and watch for bot commits after a no-op commit.
    c. **Working tree and branch state verified** — `git status`, `git branch -vv`, and the
-      remote/default-branch pointers recorded before and after.
+   remote/default-branch pointers recorded before and after.
    d. **Legacy recovery confirmed remotely** — `git ls-remote origin legacy/index-beta2`
-      returns `bd26e72…`, and `refs/heads/master` is still `bd26e72…`.
+   returns `bd26e72…`, and `refs/heads/master` is still `bd26e72…`.
    e. **Only then** is the new baseline commit created.
    History is never deleted, and the default branch is never overwritten, without explicit
    founder approval: the rebuild lands on a branch first.
@@ -678,7 +677,7 @@ the new baseline exists and is green — not now.
    whose Production Branch is `main`, or the existing project's Production Branch updated in
    the same window. Critically: the old project's automatic production deploys from `master`
    are disabled, so a stale `master` cannot serve the retired app or a half-migrated tree.
-5. **Gate 4 — rename.** GitHub *Settings → Branches → rename `master` to `main`*. This
+5. **Gate 4 — rename.** GitHub _Settings → Branches → rename `master` to `main`_. This
    moves open PR bases and resets branch-protection targeting; protection must be re-applied
    to `main` immediately afterwards.
 6. **Gate 5 — verify.** A no-op commit to `main` produces: green CI, a Vercel production
@@ -698,32 +697,32 @@ rename happens first and Vercel falls back to `main`, unreviewed code could publ
 
 ## 19. Open decisions
 
-| # | Decision | Recommendation | Needed by |
-|---|---|---|---|
-| O1 | ~~Neon integration path~~ | **Resolved:** Neon-managed, founder-owned account, Free plan, env-var connection, no paid features | done |
-| O2 | ~~Cron cadence~~ | **Resolved:** external scheduler, five-minute target, no SLA, Vercel stays Hobby, portable to Pro | done |
-| O3 | ~~Media storage~~ | **Resolved:** deferred to Phase 3 behind a provider-agnostic seam | Phase 3 |
-| O10 | ~~Cost policy~~ | **Resolved:** $0 recurring baseline; any paid tier needs a written cost decision | done |
-| O4 | Newsletter provider | Resend (defer to Phase 5) | Phase 5 |
-| O5 | `LICENSE` / rights statement | private, all rights reserved | before first public commit |
-| O6 | Default branch rename window (`master` → `main`) | after CI green, before launch | Phase 1/7 boundary |
-| O7 | Lovable disconnect | disconnect before baseline commit | Phase 1 |
-| O8 | Production URL canonical host (`lumiereindex.com` vs `www`) | apex canonical, `www` 301 | Phase 5 |
-| O9 | Editorial timezone seed value | founder sets `publicationTimezone` | Phase 3 |
+| #   | Decision                                                    | Recommendation                                                                                     | Needed by                  |
+| --- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------- |
+| O1  | ~~Neon integration path~~                                   | **Resolved:** Neon-managed, founder-owned account, Free plan, env-var connection, no paid features | done                       |
+| O2  | ~~Cron cadence~~                                            | **Resolved:** external scheduler, five-minute target, no SLA, Vercel stays Hobby, portable to Pro  | done                       |
+| O3  | ~~Media storage~~                                           | **Resolved:** deferred to Phase 3 behind a provider-agnostic seam                                  | Phase 3                    |
+| O10 | ~~Cost policy~~                                             | **Resolved:** $0 recurring baseline; any paid tier needs a written cost decision                   | done                       |
+| O4  | Newsletter provider                                         | Resend (defer to Phase 5)                                                                          | Phase 5                    |
+| O5  | `LICENSE` / rights statement                                | private, all rights reserved                                                                       | before first public commit |
+| O6  | Default branch rename window (`master` → `main`)            | after CI green, before launch                                                                      | Phase 1/7 boundary         |
+| O7  | Lovable disconnect                                          | disconnect before baseline commit                                                                  | Phase 1                    |
+| O8  | Production URL canonical host (`lumiereindex.com` vs `www`) | apex canonical, `www` 301                                                                          | Phase 5                    |
+| O9  | Editorial timezone seed value                               | founder sets `publicationTimezone`                                                                 | Phase 3                    |
 
 ---
 
 ## 20. Phases and exit criteria
 
-| Phase | Deliverable | Exit criteria |
-|---|---|---|
-| 1 | Foundation: baseline commit, repo docs, `.env.example`, strict TS/ESLint/Prettier, Next+Payload scaffold, CI | `npm run lint`, `typecheck`, `test`, `build` all green in CI on a branch; admin loads locally against the dev database |
-| 2 | Design system and public pages against fixtures | all 14 routes render, responsive, axe clean on key pages, Lighthouse ≥ 90 on a fixture article |
-| 3 | CMS, media, auth | articles/media/authors/sections work end to end; uploads carry licence; login and password reset work |
-| 4 | Roles, workflow, scheduling | capability matrix enforced in integration tests; scheduled publish fires once; failed job surfaces in admin |
-| 5 | SEO, RSS, newsletter | only published content indexed; sitemap/RSS valid; double opt-in and unsubscribe verified with a real inbox |
-| 6 | Testing | the 20-step script passes as Playwright E2E; unauthorised API access rejected; a11y and performance budgets met |
-| 7 | Production prep | backups + restore drill, env docs, smoke checklist, DNS plan — **deployment only with explicit approval** |
+| Phase | Deliverable                                                                                                  | Exit criteria                                                                                                          |
+| ----- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| 1     | Foundation: baseline commit, repo docs, `.env.example`, strict TS/ESLint/Prettier, Next+Payload scaffold, CI | `npm run lint`, `typecheck`, `test`, `build` all green in CI on a branch; admin loads locally against the dev database |
+| 2     | Design system and public pages against fixtures                                                              | all 14 routes render, responsive, axe clean on key pages, Lighthouse ≥ 90 on a fixture article                         |
+| 3     | CMS, media, auth                                                                                             | articles/media/authors/sections work end to end; uploads carry licence; login and password reset work                  |
+| 4     | Roles, workflow, scheduling                                                                                  | capability matrix enforced in integration tests; scheduled publish fires once; failed job surfaces in admin            |
+| 5     | SEO, RSS, newsletter                                                                                         | only published content indexed; sitemap/RSS valid; double opt-in and unsubscribe verified with a real inbox            |
+| 6     | Testing                                                                                                      | the 20-step script passes as Playwright E2E; unauthorised API access rejected; a11y and performance budgets met        |
+| 7     | Production prep                                                                                              | backups + restore drill, env docs, smoke checklist, DNS plan — **deployment only with explicit approval**              |
 
 Dependencies: 2 and 3 both need 1; 4 needs 3; 5 needs 4; 6 spans 2–5; 7 needs all.
 
@@ -731,15 +730,15 @@ Dependencies: 2 and 3 both need 1; 4 needs 3; 5 needs 4; 6 spans 2–5; 7 needs 
 
 ## 21. Risks
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Payload/Next version incompatibility | build blocked | pin to the verified ranges; no v4 pre-releases; upgrade only behind a preview deploy |
-| Next 16 cache/Cache Components friction with Payload | subtle staleness | keep cacheComponents off initially; tag-based revalidation with explicit tests |
-| External scheduler delayed or skipped | late publication | five-minute target documented as no-SLA; overdue detection, runner heartbeat and manual publish fallback (§6.3) |
-| Neon Free compute suspension at the monthly cap | admin read/write failure | usage tracking and alerts at 70/90% (§4.6), documented breach behaviour, cost decision escalated before any upgrade |
-| Cold starts after scale-to-zero | first-request latency | measure in Phase 6; disable scale-to-zero on paid plan if it matters |
-| Unlicensed imagery | legal exposure | licence field is mandatory and validated; no legacy assets reused |
-| Branch rename or Vercel misconfiguration | production serving stale/broken code | the gated order in §18.3, done in one window |
-| Lovable re-syncing the old app | work overwritten | Gate 0 disconnect before baseline |
-| Single-maintainer bus factor | delivery risk | docs-first, no tribal knowledge, everything reproducible from the repo |
-| No backups exist today | data loss | nightly dump + restore drill before launch |
+| Risk                                                 | Impact                               | Mitigation                                                                                                          |
+| ---------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Payload/Next version incompatibility                 | build blocked                        | pin to the verified ranges; no v4 pre-releases; upgrade only behind a preview deploy                                |
+| Next 16 cache/Cache Components friction with Payload | subtle staleness                     | keep cacheComponents off initially; tag-based revalidation with explicit tests                                      |
+| External scheduler delayed or skipped                | late publication                     | five-minute target documented as no-SLA; overdue detection, runner heartbeat and manual publish fallback (§6.3)     |
+| Neon Free compute suspension at the monthly cap      | admin read/write failure             | usage tracking and alerts at 70/90% (§4.6), documented breach behaviour, cost decision escalated before any upgrade |
+| Cold starts after scale-to-zero                      | first-request latency                | measure in Phase 6; disable scale-to-zero on paid plan if it matters                                                |
+| Unlicensed imagery                                   | legal exposure                       | licence field is mandatory and validated; no legacy assets reused                                                   |
+| Branch rename or Vercel misconfiguration             | production serving stale/broken code | the gated order in §18.3, done in one window                                                                        |
+| Lovable re-syncing the old app                       | work overwritten                     | Gate 0 disconnect before baseline                                                                                   |
+| Single-maintainer bus factor                         | delivery risk                        | docs-first, no tribal knowledge, everything reproducible from the repo                                              |
+| No backups exist today                               | data loss                            | nightly dump + restore drill before launch                                                                          |
