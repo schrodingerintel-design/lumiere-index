@@ -3,7 +3,7 @@
 Status: **evaluation only.** No application code, dependency or architecture has been changed
 to favour either platform. Decision pending founder sign-off.
 
-Date: 2026-11-09. Stack under test: Next.js 16.3.3 (pinned today), Payload 3.93.0,
+Date: 2026-11-09. Stack under test: Next.js 16.4.5 (raised from the 16.3.3 pin during this evaluation), Payload 3.93.0,
 `@payloadcms/db-postgres`, React 19.2.6, Neon Postgres, Payload auth + RBAC (Phase 4),
 Payload Jobs Queue (Phase 4), draft preview + ISR (Phases 3–5), media uploads (Phase 3).
 
@@ -191,17 +191,17 @@ difference between viable and not viable; the operational risk is the larger var
 
 ## 4. What must change if Cloudflare is chosen
 
-| Change                                                                            | Why                                                                     | Effort                           |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
-| Next.js 16.3.3 → **16.4.5**                                                       | OpenNext requires `>=16.4.5`; 16.3.3 is also affected by CVE-2026-94545 | Small, required on any host      |
-| Add `@opennextjs/cloudflare`, `wrangler`, `open-next.config.ts`, `wrangler.jsonc` | Workers deployment                                                      | Small                            |
-| Request-scoped Postgres pool over Hyperdrive (`maxUses: 1`)                       | Prevents cross-request promise corruption                               | Small but subtle; must be tested |
-| Workers-safe password hashing for Payload auth                                    | PBKDF2 limits in the isolate                                            | Medium; verify before Phase 4    |
-| Cloudflare Images transforms instead of Payload `imageSizes`/sharp                | Native binary unavailable                                               | Medium; replaces part of Phase 3 |
-| R2 storage via `@payloadcms/storage-s3` (R2 endpoint)                             | Object storage through a binding or S3 API                              | Small                            |
-| Cron trigger calling the jobs runner                                              | Native scheduling                                                       | Small                            |
-| Per-PR Neon branch automation                                                     | Isolated previews                                                       | ~1 day of CI work                |
-| ISR/incremental cache binding (R2 or KV)                                          | OpenNext needs a cache for ISR                                          | Small                            |
+| Change                                                                            | Why                                                                 | Effort                           |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------- |
+| Next.js **16.4.5** (raised from 16.3.3; done)                                     | OpenNext requires `>=16.4.5`; 16.3.3 was affected by CVE-2026-94545 | Complete                         |
+| Add `@opennextjs/cloudflare`, `wrangler`, `open-next.config.ts`, `wrangler.jsonc` | Workers deployment                                                  | Small                            |
+| Request-scoped Postgres pool over Hyperdrive (`maxUses: 1`)                       | Prevents cross-request promise corruption                           | Small but subtle; must be tested |
+| Workers-safe password hashing for Payload auth                                    | PBKDF2 limits in the isolate                                        | Medium; verify before Phase 4    |
+| Cloudflare Images transforms instead of Payload `imageSizes`/sharp                | Native binary unavailable                                           | Medium; replaces part of Phase 3 |
+| R2 storage via `@payloadcms/storage-s3` (R2 endpoint)                             | Object storage through a binding or S3 API                          | Small                            |
+| Cron trigger calling the jobs runner                                              | Native scheduling                                                   | Small                            |
+| Per-PR Neon branch automation                                                     | Isolated previews                                                   | ~1 day of CI work                |
+| ISR/incremental cache binding (R2 or KV)                                          | OpenNext needs a cache for ISR                                      | Small                            |
 
 What does **not** change: Neon ownership and the Free plan, the Postgres schema, every Payload
 collection, the RBAC matrix, the workflow state machine, the jobs-queue idempotency design, the
@@ -209,12 +209,13 @@ editorial and SEO plans, and the test strategy.
 
 ## 5. Security finding that applies to both hosts
 
-Our current pin `next@16.3.3` is inside the affected range for **CVE-2026-94545**
-(`>=16.2.0 <16.3.6`, CVSS 9.5, RCE in the Node.js `next/og` ImageResponse). Later advisories
-(both fixed in `16.4.1`) cover an Image Optimization RCE with SVG input and a `use cache`
-issue. We do not yet generate OG images or use `use cache`, so there is no live exposure today,
-but Phase 5 does add OG image generation. **Upgrade to 16.4.5 regardless of the hosting
-decision**; Payload 3.93.0 supports `>=16.3.3 <17`.
+**Resolved on 2026-11-09: the pin is now `next@16.4.5`.** The previous pin, `16.3.3`, was inside
+the affected range for **CVE-2026-94545** (`>=16.2.0 <16.3.6`, CVSS 9.5, RCE in the Node.js
+`next/og` ImageResponse). Later advisories, both fixed in `16.4.1`, cover an Image Optimization
+RCE with SVG input and a `use cache` issue. 16.4.5 clears all three and is the minimum the
+OpenNext Workers adapter accepts; Payload 3.93.0 supports `>=16.3.3 <17`. Re-verified after the
+upgrade: clean typecheck, ESLint and Prettier, a successful production build, and the auth probes
+in §8.
 
 ## 6. Decision gates
 
@@ -230,6 +231,13 @@ decision**; Payload 3.93.0 supports `>=16.3.3 <17`.
    and make the media adapter R2/Images. If it fails: fall back to Vercel Pro, and the approved
    architecture stands unchanged.
 
+### Gate B status
+
+**Not executed.** This environment has no Cloudflare account, no Neon project and no deployment
+credentials, so none of the ten acceptance criteria could be run against real infrastructure. A
+build and a local Postgres instance cannot substitute for a deployed Worker, a real Hyperdrive
+configuration or a per-PR Neon branch.
+
 ## 7. Open questions this evaluation could not settle
 
 - Real-world TTFB for the Payload admin from Workers isolates versus Vercel — needs measurement,
@@ -241,3 +249,42 @@ decision**; Payload 3.93.0 supports `>=16.3.3 <17`.
   Free plan compute is a separate ceiling: a Worker with a warm isolate keeps querying Neon and
   can exhaust Neon's 100 compute-hours before the Workers bill moves. This should be watched
   during Gate B.
+
+## 8. Local authentication verification (no deployment)
+
+Run on 2026-11-09 against Next 16.4.5, Payload 3.93.0 and a disposable Postgres 18 cluster, with a
+freshly created schema. These results settle the "null user" question and exercise the parts of
+the Gate B authentication criteria that do not need Cloudflare. They do **not** substitute for a
+deployed Worker.
+
+| Probe                                                          | Result                                                                                           |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `GET /api/users` anonymous                                     | `403`                                                                                            |
+| `GET /api/users/me` anonymous                                  | `200`, `{ user: null }` (Payload's shape, not a session)                                         |
+| `GET /admin/login`                                             | `200`                                                                                            |
+| First user via `POST /api/users/first-register`                | `200`, `id=1`, session token returned                                                            |
+| Second `first-register` attempt                                | `403` — bootstrap closes after the first account                                                 |
+| `POST /api/users` anonymous, before any user                   | `403`                                                                                            |
+| `POST /api/users/login` wrong password                         | `401`                                                                                            |
+| `POST /api/users/login` correct password                       | `200`, token + `exp`                                                                             |
+| `GET /api/users/me` with cookie **and** matching `Origin`      | `200`, `user=editor@example.com`                                                                 |
+| Same request repeated after a delay                            | `200`, same user — session persists                                                              |
+| `GET /api/users?limit=5` with cookie **and** matching `Origin` | `200`, `totalDocs` returned                                                                      |
+| Same cookie, **no** `Origin`                                   | `/api/users` `403`; `/me` `200` with `user: null`                                                |
+| Same cookie, foreign `Origin`                                  | `403` on both read and write                                                                     |
+| Authenticated `POST /api/users` (staff creates staff)          | `201`, second account `id=2`                                                                     |
+| Second account's own cookie session                            | `200` on `/me`, `200` on list — identical capabilities                                           |
+| `POST /api/users/logout`                                       | `200`; afterwards `/me` returns `null` and `/api/users` returns `403`                            |
+| Stored credential                                              | `salt` 64 chars, `hash` 81 chars (PBKDF2), no plaintext, `login_attempts` / `lock_until` present |
+| Session rows                                                   | `users_sessions` = 2 after two logins                                                            |
+
+Findings: the earlier "null user" was **not** a broken session. Payload ignores the session cookie
+unless the request `Origin` matches `serverURL`, on reads as well as mutations, so header-less
+`curl` calls are treated as anonymous. Authentication itself is Payload's built-in flow — no custom
+cryptography anywhere — and RBAC is currently a single boundary (authenticated staff vs anonymous)
+because the roles field and capability matrix are Phase 4 work, as approved. Both accounts in this
+test could read and write staff records, which is expected at this stage and must not be mistaken
+for the final matrix.
+
+Local dev timings, for orientation only (not Workers, not production): `/api/users/me` 21–49 ms,
+`/admin/login` 178–286 ms, `/admin` 121–272 ms.

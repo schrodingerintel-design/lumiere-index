@@ -51,8 +51,8 @@ Verified against Payload's published requirements on 2026-11-09.
 
 | Layer           | Choice                                                                  | Constraint / note                                                 |
 | --------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Runtime         | Node.js 24 LTS pinned in `.nvmrc`, CI and Vercel                        | Payload requires `^22.23.4 \|\| >=24.22.1`                        |     | Framework | Next.js `16.3.3` (App Router) | the version Payload's own blank template ships at v3.93.0, and the pin verified building here. Inside Payload's supported 16.2.6+ range; fallback to 15.4.11+ only if a Next 16 incompatibility appears |     | CMS | `payload` `3.93.0` | `@payloadcms/db-postgres` 3.93.0 declares `payload: 3.93.0`, so the family is pinned together. v4 is pre-release only — **do not** adopt it in this build |
-| UI runtime      | React `19.2.6`                                                          | template pin, inside Next 16.3.3's peer range                     |
+| Runtime         | Node.js 24 LTS pinned in `.nvmrc`, CI and Vercel                        | Payload requires `^22.23.4 \|\| >=24.22.1`                        |     | Framework | Next.js `16.4.5` (App Router) | minimum for CVE-2026-94545 and for the OpenNext Workers adapter; inside Payload's supported `>=16.3.3 <17`; fallback to 15.4.11+ only if a Next 16 incompatibility appears |     | CMS | `payload` `3.93.0` | `@payloadcms/db-postgres` 3.93.0 declares `payload: 3.93.0`, so the family is pinned together. v4 is pre-release only — **do not** adopt it in this build |
+| UI runtime      | React `19.2.6`                                                          | template pin, inside Next 16.4.5's peer range (React 19.2.x)      |
 | DB adapter      | `@payloadcms/db-postgres`                                               | Drizzle-based; works with any Postgres                            |
 | Editor          | Payload Lexical rich text                                               | configured with a restricted feature set (§9)                     |
 | Styling         | Tailwind CSS 4 + design tokens                                          | token-driven, no component library dependency tree                |
@@ -460,6 +460,16 @@ soft (unpublish + archive) for anyone below Administrator.
 endpoints (database-backed, no extra service), constant-time secret comparison,
 no account enumeration in password reset, and every admin action written to
 `workflowEvents`.
+
+**Verified locally on 2026-11-09** (Payload 3.93.0, Next 16.4.5, Postgres 18): Payload's own auth
+stores `salt` plus an 81-character PBKDF2 `hash` and never plaintext, and keeps `login_attempts`
+and `lock_until` for lockout; a wrong password returns `401`, and first-register closes itself
+once the first account exists (`403`). Cookie sessions are honoured **only** when the request's
+`Origin` matches `serverURL` — otherwise Payload quietly treats the request as anonymous, on `GET`
+as well as on mutations. That is why `/api/users/me` answers `200` with `{ user: null }` and
+`/api/users` answers `403` from a bare `curl`: it is a CSRF/Origin rule, not a broken session.
+Bearer-token requests (the jobs scheduler) are unaffected. Any test or tooling that exercises
+cookie auth must send `Origin`.
 
 ---
 
